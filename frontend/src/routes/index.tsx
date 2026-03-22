@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate } from 'react-router-dom';
+import { createBrowserRouter, createHashRouter, Navigate } from 'react-router-dom';
 import { lazy, Suspense, type ReactNode } from 'react';
 import { AppLayout } from '@/layouts/AppLayout';
 import { AuthLayout } from '@/layouts/AuthLayout';
@@ -61,7 +61,11 @@ function page(Element: React.LazyExoticComponent<React.ComponentType>) {
 // Router
 // ---------------------------------------------------------------------------
 
-export const router = createBrowserRouter([
+// Use HashRouter for static hosting (GitHub Pages), BrowserRouter for server deployments
+const isStaticDeploy = import.meta.env.VITE_DEMO_MODE === 'true';
+const createRouter = isStaticDeploy ? createHashRouter : createBrowserRouter;
+
+export const router = createRouter([
   {
     path: '/login',
     element: <AuthLayout />,

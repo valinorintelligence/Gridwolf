@@ -23,6 +23,8 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Shield,
+  Activity,
+  Layers,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { NAV_GROUPS } from '@/lib/constants';
@@ -50,6 +52,8 @@ const iconMap: Record<string, LucideIcon> = {
   Wrench: LayoutGrid,
   Bot,
   Settings,
+  Activity,
+  Layers,
 };
 
 interface SidebarProps {

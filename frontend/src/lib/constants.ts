@@ -59,6 +59,8 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: 'Topology', path: '/network', icon: 'Network' },
       { label: 'Asset Inventory', path: '/assets', icon: 'Server' },
+      { label: 'Protocol Analyzer', path: '/protocols', icon: 'Activity' },
+      { label: 'Purdue Model', path: '/purdue', icon: 'Layers' },
     ],
   },
   {

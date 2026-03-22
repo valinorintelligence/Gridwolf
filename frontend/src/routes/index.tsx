@@ -28,6 +28,8 @@ const Integrations = lazy(() => import('@/pages/Integrations'));
 const Workshop = lazy(() => import('@/pages/Workshop'));
 const Settings = lazy(() => import('@/pages/Settings'));
 const AICopilot = lazy(() => import('@/pages/AICopilot'));
+const ProtocolAnalyzer = lazy(() => import('@/pages/ProtocolAnalyzer'));
+const PurdueModel = lazy(() => import('@/pages/PurdueModel'));
 
 // ---------------------------------------------------------------------------
 // Suspense wrapper
@@ -89,6 +91,8 @@ export const router = createBrowserRouter([
       { path: 'workshop', element: page(Workshop) },
       { path: 'settings', element: page(Settings) },
       { path: 'copilot', element: page(AICopilot) },
+      { path: 'protocols', element: page(ProtocolAnalyzer) },
+      { path: 'purdue', element: page(PurdueModel) },
     ],
   },
   {

@@ -1,0 +1,27 @@
+{
+  "$schema": "https://raw.githubusercontent.com/nicerdicer/tauri/dev/crates/tauri-cli/config.schema.json",
+  "productName": "Gridwolf",
+  "identifier": "com.gridwolf.app",
+  "version": "0.1.0",
+  "build": {
+    "frontendDist": "../frontend/dist",
+    "devUrl": "http://localhost:5173",
+    "beforeDevCommand": "cd ../frontend && npm run dev",
+    "beforeBuildCommand": "cd ../frontend && npm run build"
+  },
+  "app": {
+    "title": "Gridwolf",
+    "windows": [
+      {
+        "title": "Gridwolf - Security Operations Platform",
+        "width": 1400,
+        "height": 900,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' http://localhost:8000 ws://localhost:8000"
+    }
+  }
+}

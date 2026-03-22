@@ -1,0 +1,127 @@
+@import "tailwindcss";
+
+/* Gridwolf Design System — Palantir-inspired */
+
+:root {
+  --bg-primary: #0a0e17;
+  --bg-secondary: #111827;
+  --bg-tertiary: #1f2937;
+  --bg-elevated: #263046;
+
+  --surface-card: #111827;
+  --surface-hover: #1e293b;
+  --surface-active: #263046;
+
+  --border: #1e293b;
+  --border-hover: #334155;
+  --border-active: #3b82f6;
+
+  --accent: #3b82f6;
+  --accent-hover: #2563eb;
+  --accent-muted: #1e3a5f;
+
+  --content-primary: #f1f5f9;
+  --content-secondary: #94a3b8;
+  --content-tertiary: #64748b;
+  --content-muted: #475569;
+
+  --severity-critical: #dc2626;
+  --severity-high: #ea580c;
+  --severity-medium: #d97706;
+  --severity-low: #2563eb;
+  --severity-info: #6b7280;
+
+  --type-host: #3b82f6;
+  --type-vulnerability: #dc2626;
+  --type-network-flow: #8b5cf6;
+  --type-protocol: #06b6d4;
+  --type-product: #10b981;
+  --type-scanner: #f59e0b;
+  --type-attack-path: #ef4444;
+  --type-compliance: #6366f1;
+  --type-component: #14b8a6;
+  --type-user: #a855f7;
+
+  --status-active: #dc2626;
+  --status-resolved: #10b981;
+  --status-mitigated: #3b82f6;
+  --status-false-positive: #6b7280;
+  --status-risk-accepted: #d97706;
+
+  color-scheme: dark;
+}
+
+.light {
+  --bg-primary: #f8fafc;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #f1f5f9;
+  --bg-elevated: #e2e8f0;
+
+  --surface-card: #ffffff;
+  --surface-hover: #f1f5f9;
+  --surface-active: #e2e8f0;
+
+  --border: #e2e8f0;
+  --border-hover: #cbd5e1;
+  --border-active: #3b82f6;
+
+  --content-primary: #0f172a;
+  --content-secondary: #475569;
+  --content-tertiary: #64748b;
+  --content-muted: #94a3b8;
+
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  background: var(--bg-primary);
+  color: var(--content-primary);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--content-muted);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--content-tertiary);
+}
+
+@theme {
+  --color-bg-primary: var(--bg-primary);
+  --color-bg-secondary: var(--bg-secondary);
+  --color-bg-tertiary: var(--bg-tertiary);
+  --color-bg-elevated: var(--bg-elevated);
+  --color-surface-card: var(--surface-card);
+  --color-surface-hover: var(--surface-hover);
+  --color-surface-active: var(--surface-active);
+  --color-border-default: var(--border);
+  --color-border-hover: var(--border-hover);
+  --color-border-active: var(--border-active);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-muted: var(--accent-muted);
+  --color-content-primary: var(--content-primary);
+  --color-content-secondary: var(--content-secondary);
+  --color-content-tertiary: var(--content-tertiary);
+  --color-content-muted: var(--content-muted);
+  --color-severity-critical: var(--severity-critical);
+  --color-severity-high: var(--severity-high);
+  --color-severity-medium: var(--severity-medium);
+  --color-severity-low: var(--severity-low);
+  --color-severity-info: var(--severity-info);
+}

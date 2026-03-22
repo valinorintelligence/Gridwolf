@@ -31,6 +31,8 @@ interface ChartWidgetProps {
   title?: string;
   height?: number;
   className?: string;
+  /** When true, each bar uses the `fill` property from data items */
+  colorByData?: boolean;
 }
 
 const darkTooltipStyle = {
@@ -44,7 +46,8 @@ function renderCartesianChart(
   type: 'bar' | 'line' | 'area',
   data: Record<string, unknown>[],
   dataKeys: DataKeyConfig[],
-  xAxisKey: string
+  xAxisKey: string,
+  colorByData?: boolean
 ) {
   const commonAxisProps = {
     stroke: 'var(--color-text-secondary)',
@@ -78,7 +81,15 @@ function renderCartesianChart(
             name={dk.name ?? dk.key}
             fill={dk.color}
             radius={[4, 4, 0, 0]}
-          />
+          >
+            {colorByData &&
+              data.map((entry, idx) => (
+                <Cell
+                  key={idx}
+                  fill={(entry.fill as string) ?? dk.color}
+                />
+              ))}
+          </Bar>
         ))}
       </BarChart>
     );
@@ -162,25 +173,26 @@ export default function ChartWidget({
   title,
   height = 300,
   className,
+  colorByData,
 }: ChartWidgetProps) {
   const isPie = type === 'pie' || type === 'donut';
 
   return (
     <div
       className={cn(
-        'rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-4',
+        'rounded-lg border border-border-default bg-surface-card p-4',
         className
       )}
     >
       {title && (
-        <h3 className="mb-4 text-sm font-semibold text-[var(--color-text-primary)]">
+        <h3 className="mb-4 text-sm font-semibold text-content-primary">
           {title}
         </h3>
       )}
       <ResponsiveContainer width="100%" height={height}>
         {isPie
           ? renderPieChart(data, dataKeys, type === 'donut')
-          : renderCartesianChart(type, data, dataKeys, xAxisKey)}
+          : renderCartesianChart(type, data, dataKeys, xAxisKey, colorByData)}
       </ResponsiveContainer>
     </div>
   );

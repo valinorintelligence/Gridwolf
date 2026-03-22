@@ -19,16 +19,7 @@ export default function CommandCenter() {
       Object.entries(stats.severityBreakdown).map(([name, value]) => ({
         name: name.charAt(0).toUpperCase() + name.slice(1),
         count: value,
-      })),
-    [stats.severityBreakdown]
-  );
-
-  const severityDataKeys = useMemo(
-    () =>
-      Object.keys(stats.severityBreakdown).map((sev) => ({
-        key: 'count',
-        color: SEVERITY_COLORS[sev] ?? '#6b7280',
-        name: sev,
+        fill: SEVERITY_COLORS[name] ?? '#6b7280',
       })),
     [stats.severityBreakdown]
   );
@@ -123,10 +114,11 @@ export default function CommandCenter() {
             title="Vulnerability Severity Breakdown"
             data={severityChartData}
             dataKeys={[
-              { key: 'count', color: '#ef4444', name: 'Count' },
+              { key: 'count', color: '#ef4444', name: 'Vulnerabilities' },
             ]}
             xAxisKey="name"
             height={280}
+            colorByData
           />
         </WidgetWrapper>
 

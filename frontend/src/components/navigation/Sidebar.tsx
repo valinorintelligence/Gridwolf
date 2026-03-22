@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -52,7 +52,11 @@ const iconMap: Record<string, LucideIcon> = {
   Settings,
 };
 
-export default function Sidebar() {
+interface SidebarProps {
+  onWidthChange?: (width: number) => void;
+}
+
+export default function Sidebar({ onWidthChange }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(() => {
     try {
       return localStorage.getItem(COLLAPSED_KEY) === 'true';
@@ -67,31 +71,41 @@ export default function Sidebar() {
     } catch {
       // ignore
     }
-  }, [collapsed]);
+    onWidthChange?.(collapsed ? 64 : 256);
+  }, [collapsed, onWidthChange]);
+
+  // Emit initial width
+  useEffect(() => {
+    onWidthChange?.(collapsed ? 64 : 256);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <aside
       className={cn(
-        'fixed left-0 top-0 z-40 flex h-screen flex-col border-r border-[var(--color-border)] bg-[var(--color-surface)] transition-[width] duration-200',
+        'fixed left-0 top-0 z-40 flex h-screen flex-col border-r bg-surface-card transition-[width] duration-200',
+        'border-border-default',
         collapsed ? 'w-16' : 'w-64'
       )}
     >
       {/* Branding */}
-      <div className="flex h-14 items-center gap-2 border-b border-[var(--color-border)] px-4">
-        <Shield className="h-6 w-6 flex-shrink-0 text-[var(--color-accent)]" />
+      <div className="flex h-14 items-center gap-3 border-b border-border-default px-4">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent/15">
+          <Shield className="h-5 w-5 text-accent" />
+        </div>
         {!collapsed && (
-          <span className="text-base font-bold tracking-wider text-[var(--color-text-primary)]">
+          <span className="text-sm font-bold tracking-[0.2em] text-content-primary">
             GRIDWOLF
           </span>
         )}
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto px-2 py-3">
+      <nav className="flex-1 overflow-y-auto px-2 py-3 scrollbar-thin">
         {NAV_GROUPS.map((group) => (
-          <div key={group.group} className="mb-3">
+          <div key={group.group} className="mb-2">
             {!collapsed && (
-              <p className="mb-1 px-2 text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-secondary)]">
+              <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-content-tertiary">
                 {group.group}
               </p>
             )}
@@ -105,16 +119,16 @@ export default function Sidebar() {
                   end={item.path === '/'}
                   className={({ isActive }) =>
                     cn(
-                      'group flex items-center gap-3 rounded-md px-2 py-2 text-sm font-medium transition-colors',
-                      collapsed && 'justify-center',
+                      'group flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-all duration-150',
+                      collapsed && 'justify-center px-0',
                       isActive
-                        ? 'border-l-2 border-l-[var(--color-accent)] bg-[var(--color-accent)]/10 text-[var(--color-accent)]'
-                        : 'border-l-2 border-l-transparent text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)] hover:text-[var(--color-text-primary)]'
+                        ? 'bg-accent/10 text-accent shadow-sm shadow-accent/5'
+                        : 'text-content-secondary hover:bg-surface-hover hover:text-content-primary'
                     )
                   }
                   title={collapsed ? item.label : undefined}
                 >
-                  <Icon className="h-4 w-4 flex-shrink-0" />
+                  <Icon className="h-[18px] w-[18px] shrink-0" />
                   {!collapsed && <span className="truncate">{item.label}</span>}
                 </NavLink>
               );
@@ -124,28 +138,13 @@ export default function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="border-t border-[var(--color-border)] p-2">
-        <NavLink
-          to="/settings"
-          className={({ isActive }) =>
-            cn(
-              'flex items-center gap-3 rounded-md px-2 py-2 text-sm font-medium transition-colors',
-              collapsed && 'justify-center',
-              isActive
-                ? 'text-[var(--color-accent)]'
-                : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
-            )
-          }
-          title={collapsed ? 'Settings' : undefined}
-        >
-          <Settings className="h-4 w-4 flex-shrink-0" />
-          {!collapsed && <span>Settings</span>}
-        </NavLink>
-
+      <div className="border-t border-border-default p-2">
         <button
           onClick={() => setCollapsed((prev) => !prev)}
-          className="mt-1 flex w-full items-center gap-3 rounded-md px-2 py-2 text-sm text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-bg)] hover:text-[var(--color-text-primary)]"
-          style={collapsed ? { justifyContent: 'center' } : undefined}
+          className={cn(
+            'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-[13px] text-content-tertiary transition-colors hover:bg-surface-hover hover:text-content-primary',
+            collapsed && 'justify-center px-0'
+          )}
         >
           {collapsed ? (
             <ChevronsRight className="h-4 w-4" />

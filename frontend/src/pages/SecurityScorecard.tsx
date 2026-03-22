@@ -1,10 +1,7 @@
-import { useState } from 'react';
 import { Shield, TrendingUp, AlertTriangle, CheckCircle, ChevronRight } from 'lucide-react';
 import { Card, CardHeader, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import ChartWidget from '@/components/dashboard/ChartWidget';
-import StatCard from '@/components/dashboard/StatCard';
-import { cn } from '@/lib/cn';
 
 const OVERALL_SCORE = 68;
 

@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Puzzle, Settings, Plus, Check, X, RefreshCw, ExternalLink } from 'lucide-react';
-import { Card, CardHeader, CardContent } from '@/components/ui/Card';
+import { Puzzle, Settings, Plus, X, RefreshCw, ExternalLink } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';

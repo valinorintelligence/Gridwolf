@@ -6,7 +6,7 @@ import ChartWidget from '@/components/dashboard/ChartWidget';
 import TimelineWidget from '@/components/dashboard/TimelineWidget';
 import { Badge } from '@/components/ui/Badge';
 import SeverityBadge from '@/components/shared/SeverityBadge';
-import { MOCK_OBJECTS, MOCK_DASHBOARD_STATS, MOCK_LINKS } from '@/data/mock';
+import { MOCK_OBJECTS, MOCK_DASHBOARD_STATS } from '@/data/mock';
 import { SEVERITY_COLORS } from '@/lib/constants';
 import { cn } from '@/lib/cn';
 
@@ -61,7 +61,7 @@ export default function ThreatIntelligence() {
   const vulns = useMemo(
     () => MOCK_OBJECTS.filter((o) => o.typeId === 'type-vuln'),
     []
-  );
+  ); void vulns;
 
   // Severity distribution for chart
   const severityChartData = useMemo(

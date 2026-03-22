@@ -7,7 +7,7 @@ import { ObjectTable } from '@/components/ontology/ObjectTable';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { MOCK_OBJECTS, OBJECT_TYPE_DEFINITIONS } from '@/data/mock';
-import { SEVERITY_ORDER } from '@/lib/constants';
+// import { SEVERITY_ORDER } from '@/lib/constants';
 
 export default function AssetInventory() {
   const [search, setSearch] = useState('');

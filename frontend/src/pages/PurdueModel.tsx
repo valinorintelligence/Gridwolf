@@ -72,11 +72,12 @@ function levelIndex(key: string): number {
   return map[key] ?? -1;
 }
 
+/* Utility: check unauthorized cross-level communication
 function isUnauthorizedCrossLevel(flow: CrossLevelFlow): boolean {
   if (!flow.authorized) return true;
   const dist = Math.abs(levelIndex(flow.sourceLevel) - levelIndex(flow.targetLevel));
   return dist > 2;
-}
+} */
 
 // ---------------------------------------------------------------------------
 // Side Panel
@@ -260,7 +261,7 @@ export default function PurdueModel() {
         <CardContent className="p-0">
           <div className="relative">
             {/* Render levels top-down: L5 at top, L0 at bottom */}
-            {[...PURDUE_LEVELS].reverse().map((pLevel, idx) => {
+            {[...PURDUE_LEVELS].reverse().map((pLevel) => {
               const levelKey = pLevel.level === 3.5 ? 'DMZ' : `L${pLevel.level}`;
               const levelHosts = hostsByLevel[levelKey] ?? [];
               const color = LEVEL_COLORS[levelKey] ?? '#6b7280';

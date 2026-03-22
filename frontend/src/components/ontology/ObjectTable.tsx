@@ -124,7 +124,7 @@ export function ObjectTable({
   /* Resolve cell value */
   const getCellValue = useCallback((obj: OntologyObject, key: string): unknown => {
     if (key.startsWith('prop.')) return obj.properties[key.slice(5)];
-    return (obj as Record<string, unknown>)[key];
+    return (obj as unknown as Record<string, unknown>)[key];
   }, []);
 
   /* Sort */

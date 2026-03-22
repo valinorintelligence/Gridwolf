@@ -1,8 +1,7 @@
 import { useState, useMemo } from 'react';
-import { Clock, AlertTriangle, CheckCircle, Timer, TrendingDown } from 'lucide-react';
+import { Clock, AlertTriangle, CheckCircle, Timer } from 'lucide-react';
 import { Card, CardHeader, CardContent } from '@/components/ui/Card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
-import { Badge } from '@/components/ui/Badge';
 import { Select } from '@/components/ui/Select';
 import StatCard from '@/components/dashboard/StatCard';
 import ChartWidget from '@/components/dashboard/ChartWidget';
@@ -70,7 +69,7 @@ export default function SLATracker() {
   }, [filterStatus]);
 
   const breachedCount = VULN_SLAS.filter((v) => v.slaStatus === 'breached').length;
-  const approachingCount = VULN_SLAS.filter((v) => v.slaStatus === 'approaching').length;
+  const approachingCount = VULN_SLAS.filter((v) => v.slaStatus === 'approaching').length; void approachingCount;
   const withinCount = VULN_SLAS.filter((v) => v.slaStatus === 'within').length;
 
   return (

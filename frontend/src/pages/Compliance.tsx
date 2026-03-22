@@ -6,7 +6,6 @@ import ChartWidget from '@/components/dashboard/ChartWidget';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
-import { Tabs, TabList, Tab, TabPanel } from '@/components/ui/Tabs';
 import { MOCK_OBJECTS } from '@/data/mock';
 import { cn } from '@/lib/cn';
 

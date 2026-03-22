@@ -24,7 +24,7 @@ function Card({ accentColor, className, style, children, ...props }: CardProps) 
   );
 }
 
-interface CardHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
+interface CardHeaderProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'title'> {
   title?: React.ReactNode;
   action?: React.ReactNode;
 }

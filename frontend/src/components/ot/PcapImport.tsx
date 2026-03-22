@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import { Upload, FileUp, CheckCircle, AlertTriangle, X, FileText, Loader2 } from 'lucide-react';
+import { Upload, FileUp, CheckCircle, AlertTriangle, X, FileText } from 'lucide-react';
 import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { cn } from '@/lib/cn';

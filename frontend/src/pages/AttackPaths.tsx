@@ -3,8 +3,7 @@ import { Route, AlertTriangle, Crosshair, Target, ChevronRight } from 'lucide-re
 import { Card, CardHeader, CardContent } from '@/components/ui/Card';
 import StatCard from '@/components/dashboard/StatCard';
 import SeverityBadge from '@/components/shared/SeverityBadge';
-import { Badge } from '@/components/ui/Badge';
-import { Button } from '@/components/ui/Button';
+// Badge and Button available for future use
 import { MOCK_OBJECTS, MOCK_LINKS } from '@/data/mock';
 import { cn } from '@/lib/cn';
 

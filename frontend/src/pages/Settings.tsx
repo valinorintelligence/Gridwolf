@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Settings as SettingsIcon, Shield, Bell, Key, Copy, Trash2, Plus, Eye, EyeOff } from 'lucide-react';
+import { Settings as SettingsIcon, Copy, Trash2, Plus } from 'lucide-react';
 import { Card, CardHeader, CardContent } from '@/components/ui/Card';
 import { Tabs, TabList, Tab, TabPanel } from '@/components/ui/Tabs';
 import { Badge } from '@/components/ui/Badge';

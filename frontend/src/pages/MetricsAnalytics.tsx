@@ -1,5 +1,5 @@
 import { BarChart3, TrendingUp, Scan, Server, ShieldAlert } from 'lucide-react';
-import { Card, CardHeader, CardContent } from '@/components/ui/Card';
+// Card available for future use
 import ChartWidget from '@/components/dashboard/ChartWidget';
 import StatCard from '@/components/dashboard/StatCard';
 import { WidgetGrid, WidgetWrapper } from '@/components/dashboard/WidgetGrid';

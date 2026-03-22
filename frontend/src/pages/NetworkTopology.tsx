@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/Badge';
 import { ObjectCard } from '@/components/ontology/ObjectCard';
 import { MOCK_OBJECTS } from '@/data/mock';
 import { PURDUE_LEVELS } from '@/lib/constants';
-import { cn } from '@/lib/cn';
+// cn available for future use
 
 const LEVEL_COLORS: Record<string, string> = {
   L0: '#ef4444',

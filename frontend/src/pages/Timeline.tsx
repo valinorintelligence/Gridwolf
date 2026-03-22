@@ -1,14 +1,11 @@
 import { useState, useMemo } from 'react';
-import { History, Filter, Calendar, ChevronDown } from 'lucide-react';
+import { History, Filter, Calendar } from 'lucide-react';
 import { Card, CardHeader, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
-import { Button } from '@/components/ui/Button';
 import { Select } from '@/components/ui/Select';
-import { Input } from '@/components/ui/Input';
 import SearchBar from '@/components/shared/SearchBar';
 import TimelineWidget from '@/components/dashboard/TimelineWidget';
 import { MOCK_DASHBOARD_STATS } from '@/data/mock';
-import { cn } from '@/lib/cn';
 
 const ALL_EVENTS = [
   ...MOCK_DASHBOARD_STATS.recentEvents,
@@ -74,7 +71,7 @@ export default function Timeline() {
       if (objectTypeFilter !== 'all' && evt.objectType !== objectTypeFilter) return false;
       if (search) {
         const q = search.toLowerCase();
-        if (!evt.objectTitle.toLowerCase().includes(q) && !evt.action.toLowerCase().includes(q)) return false;
+        if (!(evt.objectTitle ?? '').toLowerCase().includes(q) && !evt.action.toLowerCase().includes(q)) return false;
       }
       return true;
     });
@@ -84,8 +81,8 @@ export default function Timeline() {
     id: evt.id,
     timestamp: evt.timestamp,
     action: formatAction(evt.action),
-    objectType: evt.objectType.toLowerCase(),
-    objectTitle: evt.objectTitle,
+    objectType: (evt.objectType ?? '').toLowerCase(),
+    objectTitle: evt.objectTitle ?? '',
   }));
 
   return (

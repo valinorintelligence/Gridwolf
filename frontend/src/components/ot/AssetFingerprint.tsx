@@ -1,4 +1,4 @@
-import { Server, Shield, AlertTriangle, Wifi, WifiOff, Clock, Cpu } from 'lucide-react';
+import { AlertTriangle, Wifi, WifiOff, Clock, Cpu } from 'lucide-react';
 import { Card, CardHeader, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { cn } from '@/lib/cn';

@@ -22,7 +22,7 @@
 
 ## Overview
 
-Gridwolf combines **OT/ICS network security** with **Application Security Posture Management (ASPM)** through a **Palantir Ontology-style data model** where every entity — hosts, vulnerabilities, network flows, protocols, compliance controls — is an interconnected object you can explore, link, and act on.
+Gridwolf combines **OT/ICS network security** with **Application Security Posture Management (ASPM)** through an **ontology-driven data model** where every entity — hosts, vulnerabilities, network flows, protocols, compliance controls — is an interconnected object you can explore, link, and act on.
 
 Built for **operational technology (OT) engineers** and **security operations teams** managing industrial control systems, SCADA networks, and critical infrastructure. Designed to run in **fully air-gapped environments** with zero internet dependency.
 
@@ -32,7 +32,7 @@ Built for **operational technology (OT) engineers** and **security operations te
 Real-time operational security dashboard with severity breakdown, vulnerability trends, network topology preview, and threat level indicators.
 
 ### 🔬 Ontology Explorer
-Palantir-style object explorer where every entity is a typed object with properties, links, and actions. 10 pre-defined object types: Host, Vulnerability, NetworkFlow, Protocol, Product, Scanner, AttackPath, ComplianceControl, Component, Identity.
+Ontology-driven object explorer where every entity is a typed object with properties, links, and actions. 10 pre-defined object types: Host, Vulnerability, NetworkFlow, Protocol, Product, Scanner, AttackPath, ComplianceControl, Component, Identity.
 
 ### 🌐 Network Topology
 ICS/SCADA network visualization with Purdue Model level grouping, protocol-aware connections, and cross-level communication analysis.
@@ -153,7 +153,7 @@ Purpose-built for disconnected OT environments:
 
 ### Ontology Data Model
 
-Everything in Gridwolf is an **Object** — inspired by Palantir's Ontology:
+Everything in Gridwolf is an **Object** — built on an ontology-first architecture:
 
 ```
 ObjectType (schema)
@@ -277,7 +277,7 @@ Gridwolf/
 │   ├── src/
 │   │   ├── components/
 │   │   │   ├── ui/            # 10 base UI components (Button, Card, Table, etc.)
-│   │   │   ├── ontology/      # 8 Palantir-style components
+│   │   │   ├── ontology/      # 8 ontology-driven components
 │   │   │   ├── dashboard/     # 6 widget components
 │   │   │   ├── navigation/    # Sidebar, TopBar, CommandPalette
 │   │   │   ├── shared/        # ThemeToggle, SearchBar, Badges

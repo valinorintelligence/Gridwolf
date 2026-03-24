@@ -11,5 +11,8 @@
     "build": "npm run build --workspace=frontend",
     "lint": "npm run lint --workspace=frontend",
     "preview": "npm run preview --workspace=frontend"
+  },
+  "devDependencies": {
+    "puppeteer": "^24.40.0"
   }
 }

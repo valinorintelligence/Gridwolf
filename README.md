@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://valinorintelligence.github.io/Gridwolf/"><strong>🔴 Live Demo</strong></a> •
+  <a href="https://gridwolf.vercel.app"><strong>🔴 Live Demo</strong></a> •
   <a href="#features">Features</a> •
   <a href="#screenshots">Screenshots</a> •
   <a href="#quick-start">Quick Start</a> •
@@ -124,6 +124,27 @@ Purpose-built for disconnected OT environments:
 ### MITRE ATT&CK for ICS
 ![Threat Intelligence](docs/screenshots/threat-intelligence.png)
 
+### Ontology Explorer
+![Ontology Explorer](docs/screenshots/ontology-explorer.png)
+
+### Relationship Graph
+![Relationship Graph](docs/screenshots/relationship-graph.png)
+
+### Network Topology
+![Network Topology](docs/screenshots/network-topology.png)
+
+### Attack Path Analysis
+![Attack Paths](docs/screenshots/attack-paths.png)
+
+### Compliance Dashboard
+![Compliance](docs/screenshots/compliance.png)
+
+### Security Scorecard
+![Security Scorecard](docs/screenshots/security-scorecard.png)
+
+### AI Copilot
+![AI Copilot](docs/screenshots/ai-copilot.png)
+
 ## Architecture
 
 ```
@@ -191,7 +212,7 @@ ObjectType (schema)
 
 ```bash
 # Clone the repo
-git clone https://github.com/TheSecurityLead/Gridwolf.git
+git clone https://github.com/valinorintelligence/Gridwolf.git
 cd Gridwolf
 
 # Start database services

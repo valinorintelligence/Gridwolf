@@ -167,37 +167,75 @@ Assessments span days. Gridwolf keeps your work organized and generates professi
 
 ---
 
-## Screenshots
+## Screenshots & Visual Tour
 
-### Command Center
-![Command Center](docs/screenshots/command-center.png)
+### 📸 Complete Visual Guide
+See **[SCREENSHOTS.md](./SCREENSHOTS.md)** for a comprehensive visual tour of all features with descriptions.
 
-### ICS Protocol Analyzer
-![Protocol Analyzer](docs/screenshots/protocol-analyzer.png)
+### Core Features
 
-### Purdue Model / ISA-95
-![Purdue Model](docs/screenshots/purdue-model.png)
+#### Dashboard & Network Discovery
+| Feature | Screenshot |
+|---------|-----------|
+| **Command Center** (Dashboard) | ![Dashboard](docs/screenshots/01-command-center.png) |
+| **PCAP Import & Analysis** | ![PCAP Analysis](docs/screenshots/02-pcap-analysis.png) |
+| **Network Topology** | ![Topology](docs/screenshots/03-topology.png) |
+| **Device Inventory** | ![Device Inventory](docs/screenshots/04-device-inventory.png) |
+| **Deep Protocol Analysis** | ![Protocol Analysis](docs/screenshots/05-protocol-analysis.png) |
 
-### Vulnerability Management
-![Vulnerability Management](docs/screenshots/vulnerability-management.png)
+#### Security & Detection
+| Feature | Screenshot |
+|---------|-----------|
+| **MITRE ATT&CK for ICS** | ![MITRE ATT&CK](docs/screenshots/13-mitre-attck.png) |
+| **CVE Matching** | ![CVE Management](docs/screenshots/14-vulnerability-management.png) |
+| **Compliance (IEC/NIST/NERC)** | ![Compliance](docs/screenshots/15-compliance.png) |
 
-### MITRE ATT&CK for ICS
-![Threat Intelligence](docs/screenshots/threat-intelligence.png)
+### 🆕 New Features (v0.9.2)
 
-### Ontology Explorer
-![Ontology Explorer](docs/screenshots/ontology-explorer.png)
+#### Advanced Threat Detection
+| Feature | Description | Screenshot |
+|---------|-------------|-----------|
+| **Live Capture Visualization** | Real-time topology during packet capture with progressive device discovery | ![Live Capture](docs/screenshots/06-live-capture.png) |
+| **C2/Beacon Detection** | IAT clustering, Shannon entropy DNS, asymmetric flow analysis | ![C2 Detection](docs/screenshots/07-c2-detection.png) |
+| **Purdue Violations** | Automated cross-zone communication anomaly detection | ![Purdue Violations](docs/screenshots/08-purdue-violations.png) |
+| **Write/Program Paths** | Detect dangerous control operations (S7 uploads, Modbus writes) | ![Write Paths](docs/screenshots/09-write-paths.png) |
 
-### Relationship Graph
-![Relationship Graph](docs/screenshots/relationship-graph.png)
+#### Investigation & Reporting
+| Feature | Description | Screenshot |
+|---------|-------------|-----------|
+| **Report Diffing** | Side-by-side snapshot comparison with node/edge/field deltas | ![Report Diffing](docs/screenshots/10-report-diffing.png) |
+| **Focus Queue** | Prioritized investigation workflow with authentication gaps | ![Investigations](docs/screenshots/11-investigations.png) |
+| **Assessment Reports** | Professional PDF generation with custom sections | ![Assessment Reports](docs/screenshots/16-assessment-reports.png) |
 
-### Network Topology
-![Network Topology](docs/screenshots/network-topology.png)
+#### Administration
+| Feature | Description | Screenshot |
+|---------|-------------|-----------|
+| **System Admin Dashboard** | Real-time CPU, memory, disk, DB monitoring | ![System Admin](docs/screenshots/12-system-admin.png) |
+| **Sessions & Projects** | Assessment organization and management | ![Sessions & Projects](docs/screenshots/17-sessions-projects.png) |
+| **Baseline Drift** | Network change detection and quantification | ![Baseline Drift](docs/screenshots/18-baseline-drift.png) |
 
-### Attack Path Analysis
-![Attack Paths](docs/screenshots/attack-paths.png)
+---
 
-### Compliance Dashboard
-![Compliance](docs/screenshots/compliance.png)
+### 📋 Feature Matrix
+
+| Feature | v0.9.2 | Status |
+|---------|--------|--------|
+| PCAP Import (19+ protocols) | ✓ | Stable |
+| **Live Capture** | **✨ NEW** | v0.9.2 |
+| Topology Visualization (4 views) | ✓ | Stable |
+| Device Inventory & Fingerprinting | ✓ | Stable |
+| **C2/Beacon Detection** | **✨ NEW** | v0.9.2 |
+| **Purdue Violations** | **✨ NEW** | v0.9.2 |
+| **Write/Program Paths** | **✨ NEW** | v0.9.2 |
+| **Report Diffing** | **✨ NEW** | v0.9.2 |
+| **Focus Queue** | **✨ NEW** | v0.9.2 |
+| **System Admin** | **✨ NEW** | v0.9.2 |
+| MITRE ATT&CK for ICS (40+ rules) | ✓ | Stable |
+| CVE Matching (1,500+ ICS CVEs) | ✓ | Stable |
+| Compliance (IEC/NIST/NERC) | ✓ | Stable |
+| Assessment Reports (PDF/CSV/SBOM/STIX) | ✓ | Stable |
+| Sessions & Projects | ✓ | Stable |
+| Baseline Drift Detection | ✓ | Stable |
 
 ### Security Scorecard
 ![Security Scorecard](docs/screenshots/security-scorecard.png)

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Shield, LogIn, Zap } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { Input } from '@/components/ui/Input';
@@ -38,7 +38,7 @@ export default function Login() {
           </div>
           <h1 className="mt-4 text-2xl font-bold text-content-primary">Gridwolf</h1>
           <p className="mt-1 text-sm text-content-secondary">
-            ICS/OT Attack Surface Management
+            Passive ICS/SCADA Network Discovery
           </p>
         </div>
 
@@ -103,7 +103,14 @@ export default function Login() {
         </form>
 
         <p className="text-center text-xs text-content-tertiary">
-          Gridwolf ASPM Platform v0.1.0
+          Don't have an account?{' '}
+          <Link to="/register" className="text-accent hover:underline font-medium">
+            Create one
+          </Link>
+        </p>
+
+        <p className="text-center text-xs text-content-tertiary">
+          Gridwolf v0.1.0
         </p>
       </div>
     </div>

@@ -24,6 +24,9 @@ import {
   Shield,
   Activity,
   Layers,
+  FileText,
+  Download,
+  FolderOpen,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { NAV_GROUPS } from '@/lib/constants';
@@ -53,6 +56,9 @@ const iconMap: Record<string, LucideIcon> = {
   Settings,
   Activity,
   Layers,
+  FileText,
+  Download,
+  FolderOpen,
 };
 
 interface SidebarProps {

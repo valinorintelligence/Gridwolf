@@ -20,7 +20,7 @@ export function AuthLayout() {
 
         {/* Footer */}
         <p className="text-center text-xs text-text-tertiary">
-          Open-source security operations platform
+          Passive OT Network Discovery & Visualization
         </p>
       </div>
     </div>

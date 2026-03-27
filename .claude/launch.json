@@ -5,7 +5,7 @@
       "name": "gridwolf-frontend",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev", "--prefix", "frontend"],
-      "port": 5173
+      "port": 5174
     }
   ]
 }

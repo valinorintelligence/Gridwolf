@@ -48,33 +48,36 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    group: 'Ontology',
+    group: 'Capture',
     items: [
-      { label: 'Explorer', path: '/ontology', icon: 'Boxes' },
-      { label: 'Relationship Graph', path: '/graph', icon: 'GitFork' },
+      { label: 'PCAP Analysis', path: '/pcap', icon: 'FileSearch' },
+      { label: 'Tool Import', path: '/scans/import', icon: 'Upload' },
+      { label: 'External Tools', path: '/integrations', icon: 'Plug' },
     ],
   },
   {
-    group: 'Network',
+    group: 'Discovery',
     items: [
       { label: 'Topology', path: '/network', icon: 'Network' },
-      { label: 'Asset Inventory', path: '/assets', icon: 'Server' },
-      { label: 'Protocol Analyzer', path: '/protocols', icon: 'Activity' },
+      { label: 'Device Inventory', path: '/assets', icon: 'Server' },
+      { label: 'Protocol Analysis', path: '/protocols', icon: 'Activity' },
       { label: 'Purdue Model', path: '/purdue', icon: 'Layers' },
+      { label: 'Signatures', path: '/signatures', icon: 'Fingerprint' },
     ],
   },
   {
     group: 'Security',
     items: [
-      { label: 'Vulnerabilities', path: '/vulnerabilities', icon: 'ShieldAlert' },
-      { label: 'Threats', path: '/threats', icon: 'Skull' },
+      { label: 'MITRE ATT&CK', path: '/threats', icon: 'Skull' },
+      { label: 'CVE Matching', path: '/vulnerabilities', icon: 'ShieldAlert' },
       { label: 'Attack Paths', path: '/attack-paths', icon: 'Route' },
+      { label: 'Baseline Drift', path: '/baseline', icon: 'GitCompare' },
     ],
   },
   {
     group: 'Compliance',
     items: [
-      { label: 'Compliance', path: '/compliance', icon: 'ClipboardCheck' },
+      { label: 'IEC/NIST/NERC', path: '/compliance', icon: 'ClipboardCheck' },
       { label: 'SBOM', path: '/sbom', icon: 'Package' },
     ],
   },
@@ -82,7 +85,6 @@ export const NAV_GROUPS: NavGroup[] = [
     group: 'Analytics',
     items: [
       { label: 'Scorecard', path: '/scorecard', icon: 'Gauge' },
-      { label: 'SLA Tracker', path: '/sla', icon: 'Timer' },
       { label: 'Metrics', path: '/metrics', icon: 'BarChart3' },
       { label: 'Timeline', path: '/timeline', icon: 'CalendarClock' },
     ],
@@ -90,9 +92,15 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     group: 'Operations',
     items: [
-      { label: 'Scan Import', path: '/scans/import', icon: 'Upload' },
-      { label: 'Integrations', path: '/integrations', icon: 'Plug' },
+      { label: 'Sessions & Projects', path: '/sessions', icon: 'FolderOpen' },
       { label: 'Workshop', path: '/workshop', icon: 'Wrench' },
+    ],
+  },
+  {
+    group: 'Reporting',
+    items: [
+      { label: 'Assessment Reports', path: '/reports', icon: 'FileText' },
+      { label: 'Export & STIX', path: '/exports', icon: 'Download' },
     ],
   },
   {

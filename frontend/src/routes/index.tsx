@@ -8,12 +8,13 @@ import { AuthLayout } from '@/layouts/AuthLayout';
 // ---------------------------------------------------------------------------
 
 const Login = lazy(() => import('@/pages/Login'));
+const Register = lazy(() => import('@/pages/Register'));
 const CommandCenter = lazy(() => import('@/pages/CommandCenter'));
 const OntologyExplorer = lazy(() => import('@/pages/OntologyExplorer'));
 const ObjectDetailPage = lazy(() => import('@/pages/ObjectDetailPage'));
 const RelationshipGraphPage = lazy(() => import('@/pages/RelationshipGraphPage'));
 const NetworkTopology = lazy(() => import('@/pages/NetworkTopology'));
-const AssetInventory = lazy(() => import('@/pages/AssetInventory'));
+const DeviceInventory = lazy(() => import('@/pages/DeviceInventory'));
 const VulnerabilityManagement = lazy(() => import('@/pages/VulnerabilityManagement'));
 const ThreatIntelligence = lazy(() => import('@/pages/ThreatIntelligence'));
 const AttackPaths = lazy(() => import('@/pages/AttackPaths'));
@@ -30,6 +31,12 @@ const Settings = lazy(() => import('@/pages/Settings'));
 const AICopilot = lazy(() => import('@/pages/AICopilot'));
 const ProtocolAnalyzer = lazy(() => import('@/pages/ProtocolAnalyzer'));
 const PurdueModel = lazy(() => import('@/pages/PurdueModel'));
+const ReportGenerator = lazy(() => import('@/pages/ReportGenerator'));
+const SessionManager = lazy(() => import('@/pages/SessionManager'));
+const ExportHub = lazy(() => import('@/pages/ExportHub'));
+const PcapImport = lazy(() => import('@/pages/PcapImport'));
+const BaselineDrift = lazy(() => import('@/pages/BaselineDrift'));
+const SignatureEditor = lazy(() => import('@/pages/SignatureEditor'));
 
 // ---------------------------------------------------------------------------
 // Suspense wrapper
@@ -72,6 +79,11 @@ export const router = createRouter([
     children: [{ index: true, element: page(Login) }],
   },
   {
+    path: '/register',
+    element: <AuthLayout />,
+    children: [{ index: true, element: page(Register) }],
+  },
+  {
     path: '/',
     element: <AppLayout />,
     children: [
@@ -80,7 +92,7 @@ export const router = createRouter([
       { path: 'ontology/:typeId/:objectId', element: page(ObjectDetailPage) },
       { path: 'graph', element: page(RelationshipGraphPage) },
       { path: 'network', element: page(NetworkTopology) },
-      { path: 'assets', element: page(AssetInventory) },
+      { path: 'assets', element: page(DeviceInventory) },
       { path: 'vulnerabilities', element: page(VulnerabilityManagement) },
       { path: 'threats', element: page(ThreatIntelligence) },
       { path: 'attack-paths', element: page(AttackPaths) },
@@ -97,6 +109,12 @@ export const router = createRouter([
       { path: 'copilot', element: page(AICopilot) },
       { path: 'protocols', element: page(ProtocolAnalyzer) },
       { path: 'purdue', element: page(PurdueModel) },
+      { path: 'reports', element: page(ReportGenerator) },
+      { path: 'sessions', element: page(SessionManager) },
+      { path: 'exports', element: page(ExportHub) },
+      { path: 'pcap', element: page(PcapImport) },
+      { path: 'baseline', element: page(BaselineDrift) },
+      { path: 'signatures', element: page(SignatureEditor) },
     ],
   },
   {

@@ -37,6 +37,13 @@ const ExportHub = lazy(() => import('@/pages/ExportHub'));
 const PcapImport = lazy(() => import('@/pages/PcapImport'));
 const BaselineDrift = lazy(() => import('@/pages/BaselineDrift'));
 const SignatureEditor = lazy(() => import('@/pages/SignatureEditor'));
+const ReportDiff = lazy(() => import('@/pages/ReportDiff'));
+const LiveCapture = lazy(() => import('@/pages/LiveCapture'));
+const C2Detection = lazy(() => import('@/pages/C2Detection'));
+const PurdueViolations = lazy(() => import('@/pages/PurdueViolations'));
+const WritePaths = lazy(() => import('@/pages/WritePaths'));
+const SystemAdmin = lazy(() => import('@/pages/SystemAdmin'));
+const Investigations = lazy(() => import('@/pages/Investigations'));
 
 // ---------------------------------------------------------------------------
 // Suspense wrapper
@@ -113,8 +120,15 @@ export const router = createRouter([
       { path: 'sessions', element: page(SessionManager) },
       { path: 'exports', element: page(ExportHub) },
       { path: 'pcap', element: page(PcapImport) },
+      { path: 'live-capture', element: page(LiveCapture) },
       { path: 'baseline', element: page(BaselineDrift) },
       { path: 'signatures', element: page(SignatureEditor) },
+      { path: 'c2-detection', element: page(C2Detection) },
+      { path: 'purdue-violations', element: page(PurdueViolations) },
+      { path: 'write-paths', element: page(WritePaths) },
+      { path: 'report-diff', element: page(ReportDiff) },
+      { path: 'investigations', element: page(Investigations) },
+      { path: 'admin', element: page(SystemAdmin) },
     ],
   },
   {

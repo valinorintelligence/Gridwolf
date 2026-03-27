@@ -51,6 +51,7 @@ export const NAV_GROUPS: NavGroup[] = [
     group: 'Capture',
     items: [
       { label: 'PCAP Analysis', path: '/pcap', icon: 'FileSearch' },
+      { label: 'Live Capture', path: '/live-capture', icon: 'Radio' },
       { label: 'Tool Import', path: '/scans/import', icon: 'Upload' },
       { label: 'External Tools', path: '/integrations', icon: 'Plug' },
     ],
@@ -66,11 +67,13 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    group: 'Security',
+    group: 'Security & Detection',
     items: [
       { label: 'MITRE ATT&CK', path: '/threats', icon: 'Skull' },
       { label: 'CVE Matching', path: '/vulnerabilities', icon: 'ShieldAlert' },
-      { label: 'Attack Paths', path: '/attack-paths', icon: 'Route' },
+      { label: 'C2/Beacon Detection', path: '/c2-detection', icon: 'Radar' },
+      { label: 'Purdue Violations', path: '/purdue-violations', icon: 'Layers' },
+      { label: 'Write/Program Paths', path: '/write-paths', icon: 'Zap' },
       { label: 'Baseline Drift', path: '/baseline', icon: 'GitCompare' },
     ],
   },
@@ -97,10 +100,23 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
+    group: 'Investigations',
+    items: [
+      { label: 'Focus Queue', path: '/investigations', icon: 'Search' },
+      { label: 'Report Diffing', path: '/report-diff', icon: 'GitCompare' },
+    ],
+  },
+  {
     group: 'Reporting',
     items: [
       { label: 'Assessment Reports', path: '/reports', icon: 'FileText' },
       { label: 'Export & STIX', path: '/exports', icon: 'Download' },
+    ],
+  },
+  {
+    group: 'Administration',
+    items: [
+      { label: 'System Admin', path: '/admin', icon: 'Settings' },
     ],
   },
   {

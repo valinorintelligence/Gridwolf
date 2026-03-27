@@ -1,4 +1,5 @@
-import uuid
+from __future__ import annotations
+from typing import Optional, List
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
@@ -30,10 +31,10 @@ router = APIRouter(prefix="/objects", tags=["objects"])
 
 @router.get("/", response_model=ObjectListResponse)
 async def list_objects_endpoint(
-    type_id: uuid.UUID | None = Query(None, description="Filter by object type"),
-    status_filter: str | None = Query(None, alias="status", description="Filter by status"),
-    severity: str | None = Query(None, description="Filter by severity"),
-    search: str | None = Query(None, description="Search in title"),
+    type_id: Optional[str] = Query(None, description="Filter by object type"),
+    status_filter: Optional[str] = Query(None, alias="status", description="Filter by status"),
+    severity: Optional[str] = Query(None, description="Filter by severity"),
+    search: Optional[str] = Query(None, description="Search in title"),
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
@@ -53,7 +54,7 @@ async def list_objects_endpoint(
 
 @router.get("/{object_id}", response_model=ObjectResponse)
 async def get_object_endpoint(
-    object_id: uuid.UUID,
+    object_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -83,7 +84,7 @@ async def create_object_endpoint(
 
 @router.put("/{object_id}", response_model=ObjectResponse)
 async def update_object_endpoint(
-    object_id: uuid.UUID,
+    object_id: str,
     data: ObjectUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -104,7 +105,7 @@ async def update_object_endpoint(
 
 @router.delete("/{object_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_object_endpoint(
-    object_id: uuid.UUID,
+    object_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -118,9 +119,9 @@ async def delete_object_endpoint(
     await delete_object(db, object_id)
 
 
-@router.get("/{object_id}/links", response_model=list[LinkResponse])
+@router.get("/{object_id}/links", response_model=List[LinkResponse])
 async def get_object_links_endpoint(
-    object_id: uuid.UUID,
+    object_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -129,8 +130,8 @@ async def get_object_links_endpoint(
 
 @router.post("/{object_id}/actions/{action_id}")
 async def execute_action_endpoint(
-    object_id: uuid.UUID,
-    action_id: uuid.UUID,
+    object_id: str,
+    action_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):

@@ -1,4 +1,5 @@
-import uuid
+from __future__ import annotations
+from typing import Optional, List
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
@@ -17,23 +18,23 @@ class DashboardStats(BaseModel):
     total_objects: int
     total_types: int
     total_links: int
-    objects_by_type: list[dict]
-    objects_by_severity: list[dict]
-    objects_by_status: list[dict]
-    recent_objects: list[dict]
+    objects_by_type: List[dict]
+    objects_by_severity: List[dict]
+    objects_by_status: List[dict]
+    recent_objects: List[dict]
 
 
 class SavedDashboardCreate(BaseModel):
     name: str
-    layout: dict | None = None
+    layout: Optional[dict] = None
     is_default: bool = False
 
 
 class SavedDashboardResponse(BaseModel):
-    id: uuid.UUID
+    id: str
     name: str
-    user_id: uuid.UUID
-    layout: dict | None
+    user_id: str
+    layout: Optional[dict]
     is_default: bool
     created_at: str
 
@@ -107,7 +108,7 @@ async def get_dashboard_stats(
     )
 
 
-@router.get("/saved", response_model=list[SavedDashboardResponse])
+@router.get("/saved", response_model=List[SavedDashboardResponse])
 async def list_saved_dashboards(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),

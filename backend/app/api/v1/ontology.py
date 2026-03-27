@@ -1,4 +1,5 @@
-import uuid
+from __future__ import annotations
+from typing import Optional, List
 
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,7 +22,7 @@ from app.services.ontology import (
 router = APIRouter(prefix="/ontology", tags=["ontology"])
 
 
-@router.get("/types", response_model=list[ObjectTypeResponse])
+@router.get("/types", response_model=List[ObjectTypeResponse])
 async def list_types(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -31,7 +32,7 @@ async def list_types(
 
 @router.get("/types/{type_id}", response_model=ObjectTypeResponse)
 async def get_type(
-    type_id: uuid.UUID,
+    type_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -49,7 +50,7 @@ async def create_type(
 
 @router.get("/graph", response_model=GraphResponse)
 async def get_graph_data(
-    type_id: uuid.UUID | None = Query(None, description="Filter graph by object type"),
+    type_id: Optional[str] = Query(None, description="Filter graph by object type"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):

@@ -1,14 +1,15 @@
-import uuid
+from __future__ import annotations
 from datetime import datetime
+from typing import Optional
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, Field
 
 
 class UserCreate(BaseModel):
     username: str = Field(..., min_length=3, max_length=100)
     email: str = Field(..., max_length=255)
     password: str = Field(..., min_length=8)
-    full_name: str | None = None
+    full_name: Optional[str] = None
 
 
 class UserLogin(BaseModel):
@@ -17,10 +18,10 @@ class UserLogin(BaseModel):
 
 
 class UserResponse(BaseModel):
-    id: uuid.UUID
+    id: str
     username: str
     email: str
-    full_name: str | None
+    full_name: Optional[str]
     role: str
     is_active: bool
 

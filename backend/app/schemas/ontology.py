@@ -1,5 +1,6 @@
-import uuid
+from __future__ import annotations
 from datetime import datetime
+from typing import Optional, List
 
 from pydantic import BaseModel, Field
 
@@ -9,27 +10,27 @@ from pydantic import BaseModel, Field
 
 class ObjectTypeCreate(BaseModel):
     name: str = Field(..., max_length=100)
-    icon: str | None = None
-    color: str | None = None
-    description: str | None = None
-    properties_schema: dict | None = None
+    icon: Optional[str] = None
+    color: Optional[str] = None
+    description: Optional[str] = None
+    properties_schema: Optional[dict] = None
 
 
 class ObjectTypeUpdate(BaseModel):
-    name: str | None = None
-    icon: str | None = None
-    color: str | None = None
-    description: str | None = None
-    properties_schema: dict | None = None
+    name: Optional[str] = None
+    icon: Optional[str] = None
+    color: Optional[str] = None
+    description: Optional[str] = None
+    properties_schema: Optional[dict] = None
 
 
 class ObjectTypeResponse(BaseModel):
-    id: uuid.UUID
+    id: str
     name: str
-    icon: str | None
-    color: str | None
-    description: str | None
-    properties_schema: dict | None
+    icon: Optional[str]
+    color: Optional[str]
+    description: Optional[str]
+    properties_schema: Optional[dict]
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -39,28 +40,28 @@ class ObjectTypeResponse(BaseModel):
 
 
 class ObjectCreate(BaseModel):
-    type_id: uuid.UUID
+    type_id: str
     title: str = Field(..., max_length=500)
-    properties: dict | None = None
-    status: str | None = None
-    severity: str | None = None
+    properties: Optional[dict] = None
+    status: Optional[str] = None
+    severity: Optional[str] = None
 
 
 class ObjectUpdate(BaseModel):
-    title: str | None = None
-    properties: dict | None = None
-    status: str | None = None
-    severity: str | None = None
+    title: Optional[str] = None
+    properties: Optional[dict] = None
+    status: Optional[str] = None
+    severity: Optional[str] = None
 
 
 class ObjectResponse(BaseModel):
-    id: uuid.UUID
-    type_id: uuid.UUID
-    type_name: str | None = None
+    id: str
+    type_id: str
+    type_name: Optional[str] = None
     title: str
-    properties: dict | None
-    status: str | None
-    severity: str | None
+    properties: Optional[dict]
+    status: Optional[str]
+    severity: Optional[str]
     created_at: datetime
     updated_at: datetime
 
@@ -68,7 +69,7 @@ class ObjectResponse(BaseModel):
 
 
 class ObjectListResponse(BaseModel):
-    items: list[ObjectResponse]
+    items: List[ObjectResponse]
     total: int
     page: int
     page_size: int
@@ -79,18 +80,18 @@ class ObjectListResponse(BaseModel):
 
 
 class LinkCreate(BaseModel):
-    source_id: uuid.UUID
-    target_id: uuid.UUID
+    source_id: str
+    target_id: str
     link_type: str = Field(..., max_length=100)
-    properties: dict | None = None
+    properties: Optional[dict] = None
 
 
 class LinkResponse(BaseModel):
-    id: uuid.UUID
-    source_id: uuid.UUID
-    target_id: uuid.UUID
+    id: str
+    source_id: str
+    target_id: str
     link_type: str
-    properties: dict | None
+    properties: Optional[dict]
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -101,45 +102,45 @@ class LinkResponse(BaseModel):
 
 class ActionCreate(BaseModel):
     name: str = Field(..., max_length=100)
-    object_type_id: uuid.UUID
-    action_type: str | None = None
-    config: dict | None = None
+    object_type_id: str
+    action_type: Optional[str] = None
+    config: Optional[dict] = None
 
 
 class ActionResponse(BaseModel):
-    id: uuid.UUID
+    id: str
     name: str
-    object_type_id: uuid.UUID
-    action_type: str | None
-    config: dict | None
+    object_type_id: str
+    action_type: Optional[str]
+    config: Optional[dict]
     created_at: datetime
 
     model_config = {"from_attributes": True}
 
 
 class ActionExecuteRequest(BaseModel):
-    object_id: uuid.UUID
+    object_id: str
 
 
 # --- Graph schemas ---
 
 
 class GraphNode(BaseModel):
-    id: uuid.UUID
-    type_id: uuid.UUID
-    type_name: str | None = None
+    id: str
+    type_id: str
+    type_name: Optional[str] = None
     title: str
-    status: str | None = None
-    severity: str | None = None
+    status: Optional[str] = None
+    severity: Optional[str] = None
 
 
 class GraphEdge(BaseModel):
-    id: uuid.UUID
-    source_id: uuid.UUID
-    target_id: uuid.UUID
+    id: str
+    source_id: str
+    target_id: str
     link_type: str
 
 
 class GraphResponse(BaseModel):
-    nodes: list[GraphNode]
-    edges: list[GraphEdge]
+    nodes: List[GraphNode]
+    edges: List[GraphEdge]

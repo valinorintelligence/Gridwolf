@@ -40,6 +40,10 @@ ws_manager = ConnectionManager()
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("Gridwolf API starting up")
+    # Initialize database tables
+    from app.core.database import init_db
+    await init_db()
+    logger.info("Database initialized")
     yield
     logger.info("Gridwolf API shutting down")
     for conn in ws_manager.active_connections[:]:

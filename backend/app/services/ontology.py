@@ -1,6 +1,7 @@
+from __future__ import annotations
 import math
-import uuid
 from datetime import datetime, timezone
+from typing import Optional, List
 
 from fastapi import HTTPException, status
 from sqlalchemy import func, select
@@ -29,13 +30,13 @@ from app.schemas.ontology import (
 # --- ObjectType CRUD ---
 
 
-async def list_object_types(db: AsyncSession) -> list[ObjectTypeResponse]:
+async def list_object_types(db: AsyncSession) -> List[ObjectTypeResponse]:
     result = await db.execute(select(ObjectType).order_by(ObjectType.name))
     types = result.scalars().all()
     return [ObjectTypeResponse.model_validate(t) for t in types]
 
 
-async def get_object_type(db: AsyncSession, type_id: uuid.UUID) -> ObjectTypeResponse:
+async def get_object_type(db: AsyncSession, type_id: str) -> ObjectTypeResponse:
     result = await db.execute(select(ObjectType).where(ObjectType.id == type_id))
     obj_type = result.scalar_one_or_none()
     if obj_type is None:
@@ -58,7 +59,7 @@ async def create_object_type(db: AsyncSession, data: ObjectTypeCreate) -> Object
 
 
 async def update_object_type(
-    db: AsyncSession, type_id: uuid.UUID, data: ObjectTypeUpdate
+    db: AsyncSession, type_id: str, data: ObjectTypeUpdate
 ) -> ObjectTypeResponse:
     result = await db.execute(select(ObjectType).where(ObjectType.id == type_id))
     obj_type = result.scalar_one_or_none()
@@ -74,7 +75,7 @@ async def update_object_type(
     return ObjectTypeResponse.model_validate(obj_type)
 
 
-async def delete_object_type(db: AsyncSession, type_id: uuid.UUID) -> None:
+async def delete_object_type(db: AsyncSession, type_id: str) -> None:
     result = await db.execute(select(ObjectType).where(ObjectType.id == type_id))
     obj_type = result.scalar_one_or_none()
     if obj_type is None:
@@ -88,9 +89,9 @@ async def delete_object_type(db: AsyncSession, type_id: uuid.UUID) -> None:
 
 async def list_objects(
     db: AsyncSession,
-    type_id: uuid.UUID | None = None,
-    status_filter: str | None = None,
-    severity: str | None = None,
+    type_id: Optional[str] = None,
+    status_filter: Optional[str] = None,
+    severity: Optional[str] = None,
     page: int = 1,
     page_size: int = 50,
 ) -> ObjectListResponse:
@@ -129,7 +130,7 @@ async def list_objects(
     )
 
 
-async def get_object(db: AsyncSession, object_id: uuid.UUID) -> ObjectResponse:
+async def get_object(db: AsyncSession, object_id: str) -> ObjectResponse:
     result = await db.execute(
         select(ObjectInstance)
         .options(selectinload(ObjectInstance.object_type))
@@ -161,7 +162,7 @@ async def create_object(db: AsyncSession, data: ObjectCreate) -> ObjectResponse:
 
 
 async def update_object(
-    db: AsyncSession, object_id: uuid.UUID, data: ObjectUpdate
+    db: AsyncSession, object_id: str, data: ObjectUpdate
 ) -> ObjectResponse:
     result = await db.execute(
         select(ObjectInstance)
@@ -185,7 +186,7 @@ async def update_object(
     return resp
 
 
-async def delete_object(db: AsyncSession, object_id: uuid.UUID) -> None:
+async def delete_object(db: AsyncSession, object_id: str) -> None:
     result = await db.execute(select(ObjectInstance).where(ObjectInstance.id == object_id))
     obj = result.scalar_one_or_none()
     if obj is None:
@@ -247,7 +248,7 @@ async def create_link(db: AsyncSession, data: LinkCreate) -> LinkResponse:
     return LinkResponse.model_validate(link)
 
 
-async def get_object_links(db: AsyncSession, object_id: uuid.UUID) -> list[LinkResponse]:
+async def get_object_links(db: AsyncSession, object_id: str) -> List[LinkResponse]:
     result = await db.execute(
         select(Link).where((Link.source_id == object_id) | (Link.target_id == object_id))
     )
@@ -259,7 +260,7 @@ async def get_object_links(db: AsyncSession, object_id: uuid.UUID) -> list[LinkR
 
 
 async def get_graph(
-    db: AsyncSession, type_id: uuid.UUID | None = None
+    db: AsyncSession, type_id: Optional[str] = None
 ) -> GraphResponse:
     obj_query = select(ObjectInstance).options(selectinload(ObjectInstance.object_type))
     if type_id:
@@ -312,8 +313,8 @@ async def create_action(db: AsyncSession, data: ActionCreate) -> ActionResponse:
 
 
 async def list_actions(
-    db: AsyncSession, object_type_id: uuid.UUID | None = None
-) -> list[ActionResponse]:
+    db: AsyncSession, object_type_id: Optional[str] = None
+) -> List[ActionResponse]:
     query = select(Action)
     if object_type_id:
         query = query.where(Action.object_type_id == object_type_id)

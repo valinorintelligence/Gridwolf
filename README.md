@@ -11,10 +11,9 @@
 
 <p align="center">
   <a href="https://gridwolf.vercel.app"><strong>Live Demo</strong></a> &middot;
-  <a href="#features">Features</a> &middot;
-  <a href="#screenshots">Screenshots</a> &middot;
-  <a href="#quick-start">Quick Start</a> &middot;
-  <a href="#air-gap-deployment">Air-Gap Deployment</a> &middot;
+  <a href="./QUICKSTART.md"><strong>Quick Start</strong></a> &middot;
+  <a href="./INSTALLATION.md"><strong>Installation</strong></a> &middot;
+  <a href="./FEATURES.md"><strong>Features</strong></a> &middot;
   <a href="#architecture">Architecture</a> &middot;
   <a href="#tech-stack">Tech Stack</a> &middot;
   <a href="#license">License</a>
@@ -44,6 +43,15 @@ Active network scanning in operational technology environments can crash PLCs, t
 
 ---
 
+## 📖 Documentation
+
+- **[🚀 Quick Start](./QUICKSTART.md)** — Get running in 5 minutes
+- **[📦 Installation Guide](./INSTALLATION.md)** — Detailed setup for all platforms
+- **[✨ Features Guide](./FEATURES.md)** — Complete feature documentation with examples
+  - New in v0.9.2: Report Diffing, Live Capture, C2/Beacon Detection, Purdue Violations, Write Paths, System Admin, Investigation Workflows
+
+---
+
 ## Features
 
 ### Network Discovery
@@ -58,7 +66,7 @@ Import one or many PCAP files and Gridwolf extracts every device, connection, an
 
 ### Topology Visualization
 
-Four complementary views to understand your OT network from every angle.
+Five complementary views to understand your OT network from every angle.
 
 | View | Description |
 |------|-------------|
@@ -66,6 +74,7 @@ Four complementary views to understand your OT network from every angle.
 | **Physical** | Switch-port topology reconstructed from LLDP, CDP, and spanning tree data |
 | **Mesh** | Connection matrix showing all device-to-device communication pairs with protocol breakdown |
 | **Timeline** | Temporal scrubber to replay network activity and observe communication patterns over time |
+| **Live Capture** (New) | Real-time topology rendering during active packet capture with progressive device discovery |
 
 Interactive graph powered by Cytoscape.js with pan, zoom, filtering, grouping, and layout algorithms optimized for industrial network structures.
 
@@ -104,12 +113,19 @@ Go beyond IP addresses to understand what each device actually is.
 
 Passive discovery is only the first step. Gridwolf layers security intelligence on top of the network map.
 
+#### Core Capabilities
 - **MITRE ATT&CK for ICS** — 40+ detection rules mapped to ICS-specific tactics and techniques across 11 tactic categories
 - **ICS malware detection** — Signature-based detection for known ICS malware families including FrostyGoop, PIPEDREAM/INCONTROLLER, Industroyer2, TRITON/TRISIS, BlackEnergy, and CrashOverride
 - **CVE matching** — Correlate discovered devices and firmware versions against known ICS vulnerabilities from NVD and ICS-CERT advisories
-- **Purdue Model enforcement** — Alert on unauthorized cross-level communications (e.g., L0 device communicating directly with L4 enterprise network)
 - **Compliance mapping** — Map findings to IEC 62443 zones and conduits, NIST SP 800-82 controls, and NERC CIP requirements
 - **Attack path analysis** — Visualize potential lateral movement chains through the OT network based on discovered connectivity
+
+#### Advanced Threat Detection (New in v0.9.2)
+- **C2/Beacon Detection** — IAT histogram clustering, Shannon entropy DNS analysis, asymmetric flow detection (98%+ confidence)
+- **Purdue Model Violations** — Automated cross-zone communication anomaly detection with ISA-95 model enforcement
+- **Write/Program Access Paths** — Detect dangerous control operations (S7 program uploads, Modbus writes, CIP tag writes)
+- **Baseline Drift Detection** — Compare network snapshots to identify unauthorized changes (new devices, connections, firmware updates)
+- **Investigation Workflows** — Prioritized focus queue for findings with star/share/archive collaboration tools
 
 ### External Tool Integration
 
@@ -135,14 +151,19 @@ Generate deliverables directly from Gridwolf without manual data wrangling.
 - **Filtered PCAP export** — Extract protocol-specific or device-specific traffic into new PCAP files
 - **Communication allowlist** — Generate baseline allowlists with automatic firewall rule generation (iptables, Cisco ACL, Palo Alto)
 
-### Session Management
+### Session Management & Reporting
 
-Assessments span days. Gridwolf keeps your work organized.
+Assessments span days. Gridwolf keeps your work organized and generates professional deliverables.
 
+#### Session Organization
 - **SQLite persistence** — All session data stored locally in a single SQLite database; no external database required for desktop use
 - **.gwf project archives** — Save and restore complete assessment sessions as portable archive files
-- **Baseline drift detection** — Compare current capture against a saved baseline to identify new devices, connections, or protocol changes
 - **Project / engagement management** — Organize multiple assessments by client, site, or engagement with tagging and search
+
+#### Comparison & Reporting (New in v0.9.2)
+- **Report Diffing** — Side-by-side snapshot comparison with node/edge/field-level changes (green for additions, red for removals, amber for modifications)
+- **Baseline drift detection** — Compare current capture against a saved baseline to identify new devices, connections, or protocol changes
+- **Investigation workflows** — Prioritized focus queue for managing and collaborating on security findings
 
 ---
 

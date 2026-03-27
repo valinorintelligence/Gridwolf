@@ -5,413 +5,247 @@
 <h1 align="center">Gridwolf</h1>
 
 <p align="center">
-  <strong>Open-source passive ICS/SCADA network discovery and topology visualization tool</strong><br />
-  <em>A modern successor to NSA's GRASSMARLIN — built for OT security assessments</em>
+  <strong>Passive ICS/SCADA Network Discovery & Topology Visualization</strong><br/>
+  OT Security Assessment Platform for Industrial Control Systems
 </p>
 
 <p align="center">
-  <a href="https://gridwolf.vercel.app"><strong>Live Demo</strong></a> &middot;
-  <a href="./QUICKSTART.md"><strong>Quick Start</strong></a> &middot;
-  <a href="./INSTALLATION.md"><strong>Installation</strong></a> &middot;
-  <a href="./FEATURES.md"><strong>Features</strong></a> &middot;
-  <a href="#architecture">Architecture</a> &middot;
-  <a href="#tech-stack">Tech Stack</a> &middot;
-  <a href="#license">License</a>
-</p>
-
-<p align="center">
-  <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT" />
-  <img src="https://img.shields.io/badge/platform-Web%20%7C%20Desktop-brightgreen" alt="Platform" />
-  <img src="https://img.shields.io/badge/OT%20safe-zero%20packets-critical" alt="OT Safe" />
-  <img src="https://img.shields.io/badge/air--gap-ready-orange" alt="Air-Gap Ready" />
+  <img src="https://img.shields.io/badge/version-0.9.2--alpha-blue" />
+  <img src="https://img.shields.io/badge/ICS%20Protocols-7-orange" />
+  <img src="https://img.shields.io/badge/MITRE%20ATT%26CK-ICS-red" />
+  <img src="https://img.shields.io/badge/license-MIT-green" />
 </p>
 
 ---
 
-## Why Gridwolf?
+## What is Gridwolf?
 
-Active network scanning in operational technology environments can crash PLCs, trip safety systems, and halt production lines. GRASSMARLIN solved this with passive analysis, but NSA archived the project in 2023, leaving it with an aging Java UI and no active maintenance.
+Gridwolf is a **passive** ICS/SCADA network discovery and topology visualization tool designed for OT security assessments. It analyzes captured network traffic (PCAP files or live capture) to automatically identify industrial devices, map communication patterns, detect protocol anomalies, and flag security risks — **without transmitting a single packet** to the monitored network.
 
-**Gridwolf picks up where GRASSMARLIN left off** with a modern stack, deeper protocol support, and security analysis capabilities purpose-built for ICS/SCADA assessments:
-
-- **Zero packets generated** — analyzes existing PCAP captures only; safe for any OT environment
-- **19+ industrial protocols** — from Modbus and DNP3 to PROFINET DCP and IEC 60870-5-104
-- **ICS threat detection** — MITRE ATT&CK for ICS mapping, known malware signatures, CVE correlation
-- **Multiple topology views** — Purdue-layered logical view, switch-level physical view, connection matrix, timeline scrubber
-- **Air-gap native** — single-binary desktop app via Tauri v2 or containerized web deployment, no internet required
-- **Modern DX** — React + TypeScript + Rust, not a Java Swing application from 2015
+> ⚠️ Gridwolf never actively scans or probes the industrial network. All discovery is done by passive traffic analysis only.
 
 ---
 
-## 📖 Documentation
+## Screenshots
 
-- **[🚀 Quick Start](./QUICKSTART.md)** — Get running in 5 minutes
-- **[📦 Installation Guide](./INSTALLATION.md)** — Detailed setup for all platforms
-- **[✨ Features Guide](./FEATURES.md)** — Complete feature documentation with examples
-  - New in v0.9.2: Report Diffing, Live Capture, C2/Beacon Detection, Purdue Violations, Write Paths, System Admin, Investigation Workflows
+### Login & Dashboard
+| Login | Command Center |
+|---|---|
+| ![Login](docs/screenshots/00-login.png) | ![Command Center](docs/screenshots/01-command-center.png) |
 
----
-
-## Features
+### Capture & Ingestion
+| PCAP Analysis | Live Capture | External Tool Import |
+|---|---|---|
+| ![PCAP](docs/screenshots/02-pcap-analysis.png) | ![Live Capture](docs/screenshots/03-live-capture.png) | ![Integrations](docs/screenshots/04-external-tools.png) |
 
 ### Network Discovery
+| Topology | Device Inventory | Protocol Analyzer |
+|---|---|---|
+| ![Topology](docs/screenshots/05-network-topology.png) | ![Devices](docs/screenshots/06-device-inventory.png) | ![Protocols](docs/screenshots/07-protocol-analyzer.png) |
 
-Import one or many PCAP files and Gridwolf extracts every device, connection, and protocol conversation automatically.
+| Purdue Model | Signature Editor |
+|---|---|
+| ![Purdue](docs/screenshots/08-purdue-model.png) | ![Signatures](docs/screenshots/09-signature-editor.png) |
 
-- Multi-PCAP import with merge and deduplication
-- 19+ protocol dissectors covering ICS, building automation, and infrastructure protocols
-- Bidirectional connection tracking with session reconstruction
-- Automatic subnet and VLAN detection
-- Passive OS and firmware fingerprinting from protocol metadata
+### Security & Detection
+| MITRE ATT&CK for ICS | Vulnerability / CVE Matching |
+|---|---|
+| ![MITRE](docs/screenshots/10-mitre-attack.png) | ![CVE](docs/screenshots/11-vulnerability-management.png) |
 
-### Topology Visualization
+| C2 / Beacon Detection | Purdue Violations | Write/Program Paths |
+|---|---|---|
+| ![C2](docs/screenshots/12-c2-beacon-detection.png) | ![Violations](docs/screenshots/13-purdue-violations.png) | ![Write Paths](docs/screenshots/14-write-program-paths.png) |
 
-Five complementary views to understand your OT network from every angle.
+| Baseline Drift | Compliance (IEC/NIST/NERC) |
+|---|---|
+| ![Drift](docs/screenshots/15-baseline-drift.png) | ![Compliance](docs/screenshots/16-compliance.png) |
 
-| View | Description |
-|------|-------------|
-| **Logical (Purdue)** | Devices arranged by ISA-95 / Purdue Model levels (L0 through L5 + DMZ) with cross-level flow analysis |
-| **Physical** | Switch-port topology reconstructed from LLDP, CDP, and spanning tree data |
-| **Mesh** | Connection matrix showing all device-to-device communication pairs with protocol breakdown |
-| **Timeline** | Temporal scrubber to replay network activity and observe communication patterns over time |
-| **Live Capture** (New) | Real-time topology rendering during active packet capture with progressive device discovery |
+### Investigations
+| Focus Queue | Report Diffing |
+|---|---|
+| ![Investigations](docs/screenshots/20-investigations.png) | ![Report Diff](docs/screenshots/21-report-diff.png) |
 
-Interactive graph powered by Cytoscape.js with pan, zoom, filtering, grouping, and layout algorithms optimized for industrial network structures.
-
-### Deep Protocol Analysis
-
-Full-depth dissection of industrial control system protocols, not just port identification.
-
-| Protocol | Analysis Capabilities |
-|----------|----------------------|
-| **Modbus TCP/RTU** | Function code distribution, register read/write maps, exception tracking, anomaly detection |
-| **DNP3** | Object/variation parsing, unsolicited response monitoring, secure authentication analysis |
-| **EtherNet/IP + CIP** | Service tracking, I/O connection monitoring, implicit messaging, identity extraction |
-| **S7comm / S7comm+** | Block access monitoring, PLC program transfer detection, CPU state changes |
-| **BACnet** | Object discovery, COV subscriptions, router analysis, BBMD mapping |
-| **IEC 60870-5-104** | ASDU type parsing, interrogation commands, clock synchronization tracking |
-| **PROFINET DCP** | Device identification, name assignment detection, real-time class analysis |
-| **OPC UA** | Session monitoring, node browsing, certificate validation, security policy analysis |
-| **IEC 61850** | GOOSE message analysis, MMS traffic inspection, report control block monitoring |
-| **LLDP / CDP** | Switch topology reconstruction, neighbor discovery, VLAN assignment |
-| **SNMP** | Community string extraction, MIB walk detection, device inventory enrichment |
-| **ARP / DHCP / DNS** | Network infrastructure mapping, address resolution tracking |
-| **HTTP / HTTPS** | Web HMI identification, firmware update detection, REST API discovery |
-| **Ring Redundancy** | MRP/HRP ring topology detection and fault analysis |
-
-### Device Identification
-
-Go beyond IP addresses to understand what each device actually is.
-
-- **MAC OUI lookup** — Resolve manufacturer from MAC address against IEEE OUI database (offline)
-- **Protocol-specific vendor ID** — Extract vendor, model, and firmware from protocol responses (Modbus Device ID, EtherNet/IP Identity, BACnet I-Am, PROFINET DCP)
-- **Confidence scoring** — Five-level confidence rating (Confirmed, High, Medium, Low, Unknown) based on evidence quality
-- **Infrastructure classification** — Automatically categorize devices as PLC, RTU, HMI, Engineering Workstation, Historian, Switch, Router, Firewall, or Unknown
-- **Purdue level assignment** — Place devices at the correct ISA-95 level based on protocol behavior and communication patterns
-
-### Security Analysis
-
-Passive discovery is only the first step. Gridwolf layers security intelligence on top of the network map.
-
-#### Core Capabilities
-- **MITRE ATT&CK for ICS** — 40+ detection rules mapped to ICS-specific tactics and techniques across 11 tactic categories
-- **ICS malware detection** — Signature-based detection for known ICS malware families including FrostyGoop, PIPEDREAM/INCONTROLLER, Industroyer2, TRITON/TRISIS, BlackEnergy, and CrashOverride
-- **CVE matching** — Correlate discovered devices and firmware versions against known ICS vulnerabilities from NVD and ICS-CERT advisories
-- **Compliance mapping** — Map findings to IEC 62443 zones and conduits, NIST SP 800-82 controls, and NERC CIP requirements
-- **Attack path analysis** — Visualize potential lateral movement chains through the OT network based on discovered connectivity
-
-#### Advanced Threat Detection (New in v0.9.2)
-- **C2/Beacon Detection** — IAT histogram clustering, Shannon entropy DNS analysis, asymmetric flow detection (98%+ confidence)
-- **Purdue Model Violations** — Automated cross-zone communication anomaly detection with ISA-95 model enforcement
-- **Write/Program Access Paths** — Detect dangerous control operations (S7 program uploads, Modbus writes, CIP tag writes)
-- **Baseline Drift Detection** — Compare network snapshots to identify unauthorized changes (new devices, connections, firmware updates)
-- **Investigation Workflows** — Prioritized focus queue for findings with star/share/archive collaboration tools
-
-### External Tool Integration
-
-Gridwolf does not replace your existing tools. It integrates with them.
-
-| Tool | Integration |
-|------|-------------|
-| **Zeek** | Import Zeek connection logs and protocol-specific logs as supplemental data sources |
-| **Suricata** | Import Suricata EVE JSON alerts and correlate with discovered network topology |
-| **Nmap / Masscan** | Import scan results (XML) to enrich passively discovered devices with active scan data |
-| **Wazuh** | Ingest host-based alerts to correlate endpoint activity with network observations |
-| **Siemens SINEMA / TIA Portal** | Import project files for device inventory cross-reference |
-| **Wireshark** | Export filtered PCAPs for deep-dive analysis in Wireshark |
-
-### Reporting and Export
-
-Generate deliverables directly from Gridwolf without manual data wrangling.
-
-- **PDF assessment reports** — Executive summary, device inventory, topology diagrams, findings, and recommendations
-- **CSV / JSON export** — Full device inventory, connection table, and findings in machine-readable formats
-- **SBOM generation** — Software Bill of Materials for discovered firmware and software components
-- **STIX 2.1 export** — Share threat intelligence observations in structured format
-- **Filtered PCAP export** — Extract protocol-specific or device-specific traffic into new PCAP files
-- **Communication allowlist** — Generate baseline allowlists with automatic firewall rule generation (iptables, Cisco ACL, Palo Alto)
-
-### Session Management & Reporting
-
-Assessments span days. Gridwolf keeps your work organized and generates professional deliverables.
-
-#### Session Organization
-- **SQLite persistence** — All session data stored locally in a single SQLite database; no external database required for desktop use
-- **.gwf project archives** — Save and restore complete assessment sessions as portable archive files
-- **Project / engagement management** — Organize multiple assessments by client, site, or engagement with tagging and search
-
-#### Comparison & Reporting (New in v0.9.2)
-- **Report Diffing** — Side-by-side snapshot comparison with node/edge/field-level changes (green for additions, red for removals, amber for modifications)
-- **Baseline drift detection** — Compare current capture against a saved baseline to identify new devices, connections, or protocol changes
-- **Investigation workflows** — Prioritized focus queue for managing and collaborating on security findings
+### Reporting & Administration
+| Assessment Reports | System Admin |
+|---|---|
+| ![Reports](docs/screenshots/22-assessment-reports.png) | ![Admin](docs/screenshots/24-system-admin.png) |
 
 ---
 
-## Screenshots & Visual Tour
+## Key Features
 
-### 📸 Complete Visual Guide
-See **[SCREENSHOTS.md](./SCREENSHOTS.md)** for a comprehensive visual tour of all features with descriptions.
+### 🔍 Passive Network Discovery
+- PCAP file import with 4-stage pipeline: Ingest → Dissect → Topology → Risk
+- Live packet capture with real-time progressive topology rendering
+- Zero active probing — completely safe for production OT environments
+- Sample PCAP library for training and demos
 
-### Core Features
+### 🏭 ICS Protocol Deep Analysis
+| Protocol | Details |
+|---|---|
+| **Modbus TCP** | Function codes, master/slave pairs, write detection |
+| **EtherNet/IP / CIP** | ListIdentity, scanner/adapter mapping |
+| **S7comm (Siemens)** | FC analysis, Program Upload/Download flagging |
+| **DNP3** | Master/outstation, Secure Authentication |
+| **BACnet** | I-Am broadcasts, device discovery |
+| **IEC 104** | APCI frame analysis |
+| **PROFINET** | Device identification |
 
-#### Dashboard & Network Discovery
-| Feature | Screenshot |
-|---------|-----------|
-| **Command Center** (Dashboard) | ![Dashboard](docs/screenshots/01-command-center.png) |
-| **PCAP Import & Analysis** | ![PCAP Analysis](docs/screenshots/02-pcap-analysis.png) |
-| **Network Topology** | ![Topology](docs/screenshots/03-topology.png) |
-| **Device Inventory** | ![Device Inventory](docs/screenshots/04-device-inventory.png) |
-| **Deep Protocol Analysis** | ![Protocol Analysis](docs/screenshots/05-protocol-analysis.png) |
+### 🗺️ Topology Visualization
+- Interactive network graph with Purdue level enforcement
+- Device fingerprinting (OUI, protocol patterns, payload signatures)
+- Confidence scoring (1–5: port → pattern → OUI → payload → deep parse)
+- Vendor identification for 50+ ICS vendors
 
-#### Security & Detection
-| Feature | Screenshot |
-|---------|-----------|
-| **MITRE ATT&CK for ICS** | ![MITRE ATT&CK](docs/screenshots/13-mitre-attck.png) |
-| **CVE Matching** | ![CVE Management](docs/screenshots/14-vulnerability-management.png) |
-| **Compliance (IEC/NIST/NERC)** | ![Compliance](docs/screenshots/15-compliance.png) |
+### 🛡️ Security & Threat Detection
+- **MITRE ATT&CK for ICS** — 40+ detection rules mapped to techniques
+- **CVE Matching** — Real-time OT vulnerability lookup with CVSS scores
+- **C2/Beacon Detection** — IAT histogram clustering, Shannon entropy DNS exfiltration detection, asymmetric flow analysis
+- **Purdue Violation Detection** — Automated cross-zone anomaly detection
+- **Write/Program Access Paths** — Flags dangerous Modbus writes, S7 program downloads
+- **ICS Malware Detection** — Behavioral signatures for FrostyGoop, PIPEDREAM, Industroyer2, TRITON
 
-### 🆕 New Features (v0.9.2)
+### 📊 Compliance & Reporting
+- **IEC 62443** — Zone/Conduit assessment with Security Level targets (SL-T vs SL-A)
+- **NIST SP 800-82** — 8 section assessment with progress tracking
+- **NERC CIP** — 6 standard compliance monitoring
+- **Baseline Drift** — Quantified drift score between sessions
+- **Report Diffing** — Side-by-side snapshot comparison with field-level deltas
+- **PDF Reports** — Professional assessment report generation
+- **STIX 2.1 / SBOM** — Exportable threat intelligence and software inventory
 
-#### Advanced Threat Detection
-| Feature | Description | Screenshot |
-|---------|-------------|-----------|
-| **Live Capture Visualization** | Real-time topology during packet capture with progressive device discovery | ![Live Capture](docs/screenshots/06-live-capture.png) |
-| **C2/Beacon Detection** | IAT clustering, Shannon entropy DNS, asymmetric flow analysis | ![C2 Detection](docs/screenshots/07-c2-detection.png) |
-| **Purdue Violations** | Automated cross-zone communication anomaly detection | ![Purdue Violations](docs/screenshots/08-purdue-violations.png) |
-| **Write/Program Paths** | Detect dangerous control operations (S7 uploads, Modbus writes) | ![Write Paths](docs/screenshots/09-write-paths.png) |
+### 🔗 External Tool Integration
+- **Zeek** — Log import and correlation
+- **Suricata** — Alert import
+- **Nmap / Masscan** — XML scan result import
+- **Wazuh** — Alert and event import
+- **Siemens SINEMA / TIA Portal** — Project import
+- **Wireshark** — PCAP and dissection import
 
-#### Investigation & Reporting
-| Feature | Description | Screenshot |
-|---------|-------------|-----------|
-| **Report Diffing** | Side-by-side snapshot comparison with node/edge/field deltas | ![Report Diffing](docs/screenshots/10-report-diffing.png) |
-| **Focus Queue** | Prioritized investigation workflow with authentication gaps | ![Investigations](docs/screenshots/11-investigations.png) |
-| **Assessment Reports** | Professional PDF generation with custom sections | ![Assessment Reports](docs/screenshots/16-assessment-reports.png) |
-
-#### Administration
-| Feature | Description | Screenshot |
-|---------|-------------|-----------|
-| **System Admin Dashboard** | Real-time CPU, memory, disk, DB monitoring | ![System Admin](docs/screenshots/12-system-admin.png) |
-| **Sessions & Projects** | Assessment organization and management | ![Sessions & Projects](docs/screenshots/17-sessions-projects.png) |
-| **Baseline Drift** | Network change detection and quantification | ![Baseline Drift](docs/screenshots/18-baseline-drift.png) |
-
----
-
-### 📋 Feature Matrix
-
-| Feature | v0.9.2 | Status |
-|---------|--------|--------|
-| PCAP Import (19+ protocols) | ✓ | Stable |
-| **Live Capture** | **✨ NEW** | v0.9.2 |
-| Topology Visualization (4 views) | ✓ | Stable |
-| Device Inventory & Fingerprinting | ✓ | Stable |
-| **C2/Beacon Detection** | **✨ NEW** | v0.9.2 |
-| **Purdue Violations** | **✨ NEW** | v0.9.2 |
-| **Write/Program Paths** | **✨ NEW** | v0.9.2 |
-| **Report Diffing** | **✨ NEW** | v0.9.2 |
-| **Focus Queue** | **✨ NEW** | v0.9.2 |
-| **System Admin** | **✨ NEW** | v0.9.2 |
-| MITRE ATT&CK for ICS (40+ rules) | ✓ | Stable |
-| CVE Matching (1,500+ ICS CVEs) | ✓ | Stable |
-| Compliance (IEC/NIST/NERC) | ✓ | Stable |
-| Assessment Reports (PDF/CSV/SBOM/STIX) | ✓ | Stable |
-| Sessions & Projects | ✓ | Stable |
-| Baseline Drift Detection | ✓ | Stable |
-
-### Security Scorecard
-![Security Scorecard](docs/screenshots/security-scorecard.png)
-
-### AI Copilot
-![AI Copilot](docs/screenshots/ai-copilot.png)
+### 🔬 Investigation Workflows
+- Focus Queue with prioritized targets
+- Authentication gap detection
+- Write path investigation
+- Session & project-based organization for multi-client assessments
 
 ---
 
-## Architecture
-
-```
-┌────────────────────────────────────────────────────────────────────┐
-│                         Gridwolf UI                                │
-│                                                                    │
-│  ┌─────────────┐ ┌──────────────┐ ┌────────────┐ ┌─────────────┐ │
-│  │  Topology    │ │  Protocol    │ │  Purdue    │ │  Security   │ │
-│  │  Views       │ │  Analyzer    │ │  Model     │ │  Analysis   │ │
-│  ├─────────────┤ ├──────────────┤ ├────────────┤ ├─────────────┤ │
-│  │  Device      │ │  Connection  │ │ Compliance │ │  Reporting  │ │
-│  │  Inventory   │ │  Matrix      │ │ Dashboard  │ │  & Export   │ │
-│  └─────────────┘ └──────────────┘ └────────────┘ └─────────────┘ │
-├────────────────────────────────────────────────────────────────────┤
-│            React 18 + TypeScript + Vite 6 + Tailwind v4           │
-│            Cytoscape.js + Recharts + React Flow                   │
-├──────────────────────────────┬─────────────────────────────────────┤
-│   Analysis Engine            │     Tauri v2 Desktop Shell          │
-│  ┌────────────┐ ┌──────────┐│  ┌───────────────────────────────┐  │
-│  │ PCAP       │ │Protocol  ││  │ Native PCAP import            │  │
-│  │ Parser     │ │Dissectors││  │ File system access             │  │
-│  │            │ │(19+)     ││  │ SQLite session storage         │  │
-│  ├────────────┤ ├──────────┤│  │ OS-level network interface     │  │
-│  │ Device     │ │Security  ││  │ Single-binary distribution     │  │
-│  │ Classifier │ │Rules     ││  └───────────────────────────────┘  │
-│  │ (OUI + ID) │ │(ATT&CK) ││                                     │
-│  └────────────┘ └──────────┘│                                     │
-├──────────────────────────────┴─────────────────────────────────────┤
-│   SQLite (session storage)  │  Rust backend (Tauri commands)       │
-│   .gwf archives (portable)  │  PCAP parsing (libpcap / etherparse)│
-└────────────────────────────────────────────────────────────────────┘
-```
-
-### Data Flow
-
-```
-  PCAP Files ──►  Protocol     ──►  Device        ──►  Topology    ──►  Security
-  (imported)      Dissection        Classification      Generation      Analysis
-                  19+ protocols     OUI + vendor ID     4 view types    ATT&CK rules
-                  Session recon     Purdue placement    Purdue layers   CVE matching
-                  Connection map    Confidence score    Physical links  Compliance map
-```
-
----
-
-## Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| **Frontend** | React 18, TypeScript 5, Vite 6, Tailwind CSS 4 |
-| **Visualization** | Cytoscape.js (topology graphs), React Flow (attack paths), Recharts (charts & metrics) |
-| **State Management** | Zustand (client stores), React Query (async data) |
-| **Desktop Runtime** | Tauri v2 (Rust) — single binary, native performance, no Electron overhead |
-| **PCAP Parsing** | Rust with etherparse / libpcap bindings |
-| **Session Storage** | SQLite (embedded, zero-config) |
-| **Reporting** | PDF generation, CSV/JSON/STIX 2.1 export |
-| **CI/CD** | GitHub Actions (lint, type-check, build, test) |
-| **Deployment** | Tauri desktop installer, Docker Compose (web), Air-gap bundle |
-
----
-
-## Quick Start
+## Installation
 
 ### Prerequisites
 
-- Node.js 20+
-- Rust toolchain ([rustup.rs](https://rustup.rs)) for desktop builds
+| Requirement | Version |
+|---|---|
+| Node.js | ≥ 18.0.0 |
+| npm | ≥ 9.0.0 |
+| Git | any |
 
-### Web Development (Frontend Only)
+### Quick Start
 
 ```bash
-# Clone the repository
+# 1. Clone the repository
 git clone https://github.com/valinorintelligence/Gridwolf.git
 cd Gridwolf
 
-# Install dependencies and start dev server
+# 2. Install frontend dependencies
 cd frontend
 npm install
+
+# 3. Start the development server
 npm run dev
-# Open http://localhost:5173
 ```
 
-The web frontend runs standalone with built-in demo data for development and evaluation.
+The app will be available at **http://localhost:5174**
 
-### Desktop Application (Tauri)
+Use the **Demo Login** button on the login page to explore without credentials.
+
+---
+
+### Production Build
 
 ```bash
-# Ensure Rust toolchain is installed
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+cd frontend
 
-# Clone and build
-git clone https://github.com/valinorintelligence/Gridwolf.git
-cd Gridwolf
+# Build for production
+npm run build
 
-# Install frontend dependencies
-cd frontend && npm install && cd ..
-
-# Build and run the desktop app
-cd src-tauri
-cargo tauri dev
+# Preview the production build locally
+npm run preview
 ```
 
-### Docker Compose (Web Deployment)
+Output is in `frontend/dist/` — serve with any static file server (nginx, caddy, etc.).
+
+---
+
+### Docker (Optional)
 
 ```bash
-docker compose up --build
-# Gridwolf UI  → http://localhost:3000
-# API          → http://localhost:8000
+# Build Docker image
+docker build -t gridwolf .
+
+# Run container
+docker run -p 5174:80 gridwolf
 ```
 
 ---
 
-## Air-Gap Deployment
+### Environment Variables
 
-Gridwolf is purpose-built for **disconnected OT environments** where internet access is not available and not desired. Zero external dependencies at runtime.
+Create `frontend/.env.local` for local overrides:
 
-### Deployment Flow
+```env
+# Run in demo mode (uses mock data, enables hash routing for static hosting)
+VITE_DEMO_MODE=true
 
-```
-Internet-Connected Machine              USB / Removable Media        Air-Gapped OT Network
-┌─────────────────────────┐                                         ┌──────────────────────────┐
-│  git clone gridwolf     │                                         │  Industrial PC / Server   │
-│  ./build-bundle.sh      │  ──── gridwolf-bundle.tar.gz ────►     │  ./load-and-run.sh        │
-│  (builds all artifacts) │       + SHA256 checksum file            │  (loads images & starts)  │
-└─────────────────────────┘                                         └──────────────────────────┘
-                                                                     Binds to localhost only
-                                                                     No outbound connections
-                                                                     Runs at Purdue Level 3.5
+# API base URL (for future backend integration)
+VITE_API_URL=http://localhost:8000
 ```
 
-### Build the Bundle (internet-connected machine)
+---
 
-```bash
-cd deploy/airgap
-./build-bundle.sh --tag v1.0.0
-# Output: gridwolf-airgap-v1.0.0.tar.gz + gridwolf-airgap-v1.0.0.sha256
-```
+## Usage Guide
 
-### Deploy (air-gapped target)
+### 1. Import a PCAP
 
-```bash
-# Transfer tarball via USB to the target machine
-# Verify integrity
-sha256sum -c gridwolf-airgap-v1.0.0.sha256
+1. Navigate to **Capture → PCAP Analysis**
+2. Drag and drop a `.pcap` or `.pcapng` file
+3. The 4-stage pipeline runs automatically:
+   - **Ingest** — File validation and metadata extraction
+   - **Dissect** — Protocol identification and packet parsing
+   - **Topology** — Device and connection mapping
+   - **Risk** — Anomaly detection and finding generation
+4. View results in **Topology**, **Device Inventory**, and **Protocol Analysis**
 
-# Deploy
-./load-and-run.sh gridwolf-airgap-v1.0.0.tar.gz
-# Auto-generates cryptographic secrets
-# Loads container images from archive
-# Binds to 127.0.0.1 only
-# Applies resource limits for industrial PCs
-```
+### 2. Start Live Capture
 
-### Update an Existing Deployment
+1. Go to **Capture → Live Capture**
+2. Select the network interface (SPAN port recommended)
+3. Optionally set a BPF filter (e.g., `port 502 or port 102`)
+4. Click **Start** — topology builds progressively in real time
+5. Click **Stop** to finalize and create a session
 
-```bash
-./update-bundle.sh gridwolf-airgap-v1.1.0.tar.gz
-# Backs up session database
-# Loads new images
-# Restarts services with zero data loss
-```
+### 3. Investigate Findings
 
-### Desktop Alternative
+1. **Security & Detection → MITRE ATT&CK** — Review triggered techniques
+2. **Security & Detection → CVE Matching** — Identify vulnerable firmware
+3. **Security & Detection → C2/Beacon Detection** — Check for beaconing or exfiltration
+4. **Security & Detection → Purdue Violations** — Audit cross-zone traffic
+5. **Investigations → Focus Queue** — Prioritized investigation workflow
 
-For the simplest air-gap deployment, use the Tauri desktop build. Copy the single platform-specific binary to the target machine via USB. No containers, no services, no configuration.
+### 4. Generate a Report
 
-See [deploy/airgap/README.md](deploy/airgap/README.md) for the complete air-gap deployment guide including network segmentation recommendations.
+1. Go to **Reporting → Assessment Reports**
+2. Select report type (Full Assessment, Executive Summary, etc.)
+3. Choose sections to include
+4. Fill in client information
+5. Click **Generate** — preview appears in the right panel
+6. Download as PDF, or export STIX / SBOM
+
+### 5. Compare Assessments
+
+1. Go to **Investigations → Report Diffing**
+2. Select **Baseline (Before)** and **Current (After)** snapshots
+3. Review added/removed nodes, field-level changes, and new connections
 
 ---
 
@@ -419,95 +253,50 @@ See [deploy/airgap/README.md](deploy/airgap/README.md) for the complete air-gap 
 
 ```
 Gridwolf/
-├── frontend/                    # React + TypeScript + Vite
+├── frontend/
 │   ├── src/
-│   │   ├── components/
-│   │   │   ├── ui/              # Base UI components (Button, Card, Table, etc.)
-│   │   │   ├── topology/        # Network topology visualization components
-│   │   │   ├── protocol/        # Protocol analysis views
-│   │   │   ├── dashboard/       # Dashboard widget components
-│   │   │   ├── navigation/      # Sidebar, TopBar, CommandPalette
-│   │   │   ├── shared/          # ThemeToggle, SearchBar, Badges
-│   │   │   └── ot/              # OT-specific (AssetFingerprint, PcapImport)
-│   │   ├── pages/               # Page components (topology, protocols, devices, etc.)
-│   │   ├── stores/              # Zustand stores (session, theme, topology, devices)
-│   │   ├── services/            # Analysis engine and API layer
-│   │   ├── hooks/               # Custom React hooks
-│   │   ├── types/               # TypeScript type definitions
-│   │   ├── data/                # Demo data for development and evaluation
-│   │   └── lib/                 # Utilities and constants
-│   └── public/
-├── src-tauri/                   # Tauri v2 desktop shell (Rust)
-│   ├── src/
-│   │   ├── pcap/                # PCAP parsing and protocol dissection
-│   │   ├── analysis/            # Device classification and security rules
-│   │   ├── export/              # Report generation and data export
-│   │   └── commands/            # Tauri IPC command handlers
-│   └── Cargo.toml
-├── deploy/
-│   └── airgap/                  # Air-gap deployment scripts and documentation
-├── docker-compose.yml           # Web deployment stack
-├── .github/workflows/           # CI pipeline
-└── docs/
-    └── screenshots/             # Application screenshots
+│   │   ├── pages/          # All page components
+│   │   ├── components/     # Reusable UI components
+│   │   ├── layouts/        # App and Auth layouts
+│   │   ├── routes/         # React Router configuration
+│   │   ├── lib/            # Constants, utilities
+│   │   └── store/          # Zustand state management
+│   ├── public/             # Static assets
+│   └── vite.config.ts      # Vite configuration (port 5174)
+├── docs/
+│   └── screenshots/        # Application screenshots (27 pages)
+└── scripts/
+    └── take-screenshots.mjs  # Puppeteer screenshot utility
 ```
 
 ---
 
-## Comparison with GRASSMARLIN
+## Technology Stack
 
-| Capability | GRASSMARLIN | Gridwolf |
-|-----------|-------------|----------|
-| **Status** | Archived (2023) | Actively maintained |
-| **UI Framework** | Java Swing | React + TypeScript |
-| **Desktop Runtime** | JVM | Tauri v2 (Rust) — smaller binary, lower memory |
-| **Protocol Count** | ~8 | 19+ |
-| **Topology Views** | 1 (logical) | 4 (logical, physical, mesh, timeline) |
-| **Security Analysis** | None | ATT&CK for ICS, malware detection, CVE matching |
-| **Compliance** | None | IEC 62443, NIST 800-82, NERC CIP |
-| **Export Formats** | Image, CSV | PDF, CSV, JSON, STIX 2.1, PCAP, SBOM, firewall rules |
-| **Session Persistence** | In-memory | SQLite + .gwf portable archives |
-| **Air-Gap Deployment** | Manual | Scripted bundle with integrity verification |
-| **Cross-Platform** | Windows (primary) | Windows, macOS, Linux (web + desktop) |
+| Layer | Technology |
+|---|---|
+| Framework | React 19 + TypeScript |
+| Build Tool | Vite 8 |
+| Styling | Tailwind CSS 4 |
+| State Management | Zustand |
+| Routing | React Router v6 |
+| Visualization | Cytoscape.js (topology), Recharts (analytics) |
+| Icons | Lucide React |
 
 ---
 
-## Use Cases
+## Roadmap
 
-- **OT Security Assessments** — Import PCAPs from a network tap or SPAN port and generate a complete device inventory, topology map, and security findings report without touching the network
-- **ICS Incident Response** — Analyze captured traffic to identify compromised devices, lateral movement, and malware communication patterns
-- **Compliance Audits** — Map discovered network architecture against IEC 62443 zone/conduit requirements, NIST 800-82, or NERC CIP
-- **Network Baseline** — Establish a known-good communication baseline and detect drift over time as devices are added or configurations change
-- **Brownfield Discovery** — Map undocumented legacy OT networks where no accurate inventory exists
-- **Red Team / Pentest** — Passively enumerate OT networks during authorized assessments without risking disruption to operations
-
----
-
-## Contributing
-
-Contributions are welcome. Gridwolf is an open-source project and benefits from community involvement.
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/modbus-deep-inspection`)
-3. Commit your changes (`git commit -m 'Add Modbus register map visualization'`)
-4. Push to the branch (`git push origin feature/modbus-deep-inspection`)
-5. Open a Pull Request
-
-Areas where contributions are especially valuable:
-- Additional protocol dissectors
-- ICS malware signature rules
-- Device fingerprint database expansion
-- Topology layout algorithm improvements
-- Documentation and deployment guides
+- [ ] Backend API (FastAPI/Python) for real PCAP processing
+- [ ] Real Modbus/S7/EtherNet/IP protocol dissection engine
+- [ ] SQLite session persistence
+- [ ] Multi-user role-based access control
+- [ ] Scheduled assessment runs
+- [ ] OPC UA support
+- [ ] PROFINET deep inspection
 
 ---
 
 ## License
 
-MIT License — see [LICENSE](LICENSE) for details.
-
----
-
-<p align="center">
-  <strong>Gridwolf</strong> — Passive ICS network discovery for environments where active scanning is not an option.
-</p>
+MIT © Valinorin Intelligence

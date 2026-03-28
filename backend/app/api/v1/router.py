@@ -9,6 +9,7 @@ from app.api.v1.ics.pcap import router as pcap_router
 from app.api.v1.ics.devices import router as devices_router
 from app.api.v1.ics.sessions import router as sessions_router
 from app.api.v1.ics.findings import router as findings_router
+from app.api.v1.ics.vuln_feed import router as vuln_feed_router
 
 api_v1_router = APIRouter()
 
@@ -23,3 +24,4 @@ api_v1_router.include_router(pcap_router, prefix="/ics")
 api_v1_router.include_router(devices_router, prefix="/ics")
 api_v1_router.include_router(sessions_router, prefix="/ics")
 api_v1_router.include_router(findings_router, prefix="/ics")
+api_v1_router.include_router(vuln_feed_router, prefix="/ics")

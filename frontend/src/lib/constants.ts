@@ -67,6 +67,14 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
+    group: 'Vulnerability Intelligence',
+    items: [
+      { label: 'Vuln Feed', path: '/vuln-feed', icon: 'Shield' },
+      { label: 'Advisory Detail', path: '/advisory-detail', icon: 'FileSearch' },
+      { label: 'My Environment', path: '/my-environment', icon: 'Settings' },
+    ],
+  },
+  {
     group: 'Security & Detection',
     items: [
       { label: 'MITRE ATT&CK', path: '/threats', icon: 'Skull' },

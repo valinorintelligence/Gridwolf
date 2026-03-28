@@ -44,6 +44,9 @@ const PurdueViolations = lazy(() => import('@/pages/PurdueViolations'));
 const WritePaths = lazy(() => import('@/pages/WritePaths'));
 const SystemAdmin = lazy(() => import('@/pages/SystemAdmin'));
 const Investigations = lazy(() => import('@/pages/Investigations'));
+const VulnFeed = lazy(() => import('@/pages/VulnFeed'));
+const AdvisoryDetail = lazy(() => import('@/pages/AdvisoryDetail'));
+const MyEnvironment = lazy(() => import('@/pages/MyEnvironment'));
 
 // ---------------------------------------------------------------------------
 // Suspense wrapper
@@ -128,6 +131,9 @@ export const router = createRouter([
       { path: 'write-paths', element: page(WritePaths) },
       { path: 'report-diff', element: page(ReportDiff) },
       { path: 'investigations', element: page(Investigations) },
+      { path: 'vuln-feed', element: page(VulnFeed) },
+      { path: 'advisory-detail', element: page(AdvisoryDetail) },
+      { path: 'my-environment', element: page(MyEnvironment) },
       { path: 'admin', element: page(SystemAdmin) },
     ],
   },

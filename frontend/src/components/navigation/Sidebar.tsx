@@ -27,10 +27,18 @@ import {
   FileText,
   Download,
   FolderOpen,
+  Radio,
+  Fingerprint,
+  Radar,
+  Zap,
+  GitCompare,
+  Search,
+  FileSearch,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { NAV_GROUPS } from '@/lib/constants';
 import { cn } from '@/lib/cn';
+import GridwolfLogo from '@/components/shared/GridwolfLogo';
 
 const COLLAPSED_KEY = 'gridwolf_sidebar_collapsed';
 
@@ -59,6 +67,14 @@ const iconMap: Record<string, LucideIcon> = {
   FileText,
   Download,
   FolderOpen,
+  Radio,
+  Fingerprint,
+  Radar,
+  Zap,
+  GitCompare,
+  Search,
+  FileSearch,
+  Shield,
 };
 
 interface SidebarProps {
@@ -99,11 +115,11 @@ export default function Sidebar({ onWidthChange }: SidebarProps) {
     >
       {/* Branding */}
       <div className="flex h-14 items-center gap-3 border-b border-border-default px-4">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent/15">
-          <Shield className="h-5 w-5 text-accent" />
+        <div className="shrink-0">
+          <GridwolfLogo size={collapsed ? 28 : 32} />
         </div>
         {!collapsed && (
-          <span className="text-sm font-bold tracking-[0.2em] text-content-primary">
+          <span className="text-sm font-bold tracking-[0.2em] text-gradient">
             GRIDWOLF
           </span>
         )}

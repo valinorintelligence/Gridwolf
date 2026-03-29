@@ -1,74 +1,82 @@
 @import "tailwindcss";
 
-/* Gridwolf Design System */
+/* Gridwolf Design System — Logo-matched Theme */
 
 :root {
-  --bg-primary: #0a0e17;
-  --bg-secondary: #111827;
-  --bg-tertiary: #1f2937;
-  --bg-elevated: #263046;
+  --bg-primary: #080b1a;
+  --bg-secondary: #0d1029;
+  --bg-tertiary: #151937;
+  --bg-elevated: #1e2346;
 
-  --surface-card: #111827;
-  --surface-hover: #1e293b;
-  --surface-active: #263046;
+  --surface-card: #0d1029;
+  --surface-hover: #161b3a;
+  --surface-active: #1e2346;
 
-  --border: #1e293b;
-  --border-hover: #334155;
-  --border-active: #3b82f6;
+  --border: #1a1f3d;
+  --border-hover: #2a2f5a;
+  --border-active: #7c3aed;
 
-  --accent: #3b82f6;
-  --accent-hover: #2563eb;
-  --accent-muted: #1e3a5f;
+  --accent: #7c3aed;
+  --accent-hover: #6d28d9;
+  --accent-muted: #2e1065;
 
-  --content-primary: #f1f5f9;
-  --content-secondary: #94a3b8;
-  --content-tertiary: #64748b;
-  --content-muted: #475569;
+  --accent-cyan: #22d3ee;
+  --accent-magenta: #d946ef;
+  --accent-blue: #3b82f6;
 
-  --severity-critical: #dc2626;
-  --severity-high: #ea580c;
-  --severity-medium: #d97706;
-  --severity-low: #2563eb;
+  --content-primary: #f0f0ff;
+  --content-secondary: #9ca3c7;
+  --content-tertiary: #6b72a0;
+  --content-muted: #4a5080;
+
+  --severity-critical: #ef4444;
+  --severity-high: #f97316;
+  --severity-medium: #eab308;
+  --severity-low: #3b82f6;
   --severity-info: #6b7280;
 
   --type-host: #3b82f6;
-  --type-vulnerability: #dc2626;
+  --type-vulnerability: #ef4444;
   --type-network-flow: #8b5cf6;
-  --type-protocol: #06b6d4;
+  --type-protocol: #22d3ee;
   --type-product: #10b981;
   --type-scanner: #f59e0b;
   --type-attack-path: #ef4444;
   --type-compliance: #6366f1;
   --type-component: #14b8a6;
-  --type-user: #a855f7;
+  --type-user: #d946ef;
 
-  --status-active: #dc2626;
+  --status-active: #ef4444;
   --status-resolved: #10b981;
   --status-mitigated: #3b82f6;
   --status-false-positive: #6b7280;
   --status-risk-accepted: #d97706;
 
+  --gradient-primary: linear-gradient(135deg, #d946ef, #7c3aed, #3b82f6);
+  --gradient-secondary: linear-gradient(135deg, #22d3ee, #3b82f6, #7c3aed);
+  --gradient-accent: linear-gradient(135deg, #d946ef, #22d3ee);
+
   color-scheme: dark;
 }
 
 .light {
-  --bg-primary: #f8fafc;
+  --bg-primary: #f5f5ff;
   --bg-secondary: #ffffff;
-  --bg-tertiary: #f1f5f9;
-  --bg-elevated: #e2e8f0;
+  --bg-tertiary: #ededff;
+  --bg-elevated: #ddddf5;
 
   --surface-card: #ffffff;
-  --surface-hover: #f1f5f9;
-  --surface-active: #e2e8f0;
+  --surface-hover: #f0f0ff;
+  --surface-active: #e0e0f5;
 
-  --border: #e2e8f0;
-  --border-hover: #cbd5e1;
-  --border-active: #3b82f6;
+  --border: #ddddf5;
+  --border-hover: #c5c5e0;
+  --border-active: #7c3aed;
 
-  --content-primary: #0f172a;
-  --content-secondary: #475569;
-  --content-tertiary: #64748b;
-  --content-muted: #94a3b8;
+  --content-primary: #0d1029;
+  --content-secondary: #4a5080;
+  --content-tertiary: #6b72a0;
+  --content-muted: #9ca3c7;
 
   color-scheme: light;
 }
@@ -99,6 +107,25 @@ body {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--content-tertiary);
+}
+
+/* Gradient text utility */
+.text-gradient {
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Glow effects */
+.glow-purple {
+  box-shadow: 0 0 20px rgba(124, 58, 237, 0.3), 0 0 60px rgba(124, 58, 237, 0.1);
+}
+.glow-cyan {
+  box-shadow: 0 0 20px rgba(34, 211, 238, 0.3), 0 0 60px rgba(34, 211, 238, 0.1);
+}
+.glow-magenta {
+  box-shadow: 0 0 20px rgba(217, 70, 239, 0.3), 0 0 60px rgba(217, 70, 239, 0.1);
 }
 
 @theme {

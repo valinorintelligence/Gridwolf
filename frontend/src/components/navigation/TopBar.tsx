@@ -16,7 +16,7 @@ export default function TopBar({ className }: TopBarProps) {
     >
       {/* Left - Breadcrumb placeholder */}
       <div className="flex items-center text-sm text-content-secondary">
-        <span className="font-medium text-content-primary">Gridwolf</span>
+        <span className="font-medium text-gradient">Gridwolf</span>
       </div>
 
       {/* Center - Search */}

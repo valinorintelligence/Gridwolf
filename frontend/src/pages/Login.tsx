@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Shield, LogIn, Zap } from 'lucide-react';
+import { LogIn, Zap } from 'lucide-react';
+import GridwolfLogo from '@/components/shared/GridwolfLogo';
 import { useAuthStore } from '@/stores/authStore';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
@@ -29,19 +30,7 @@ export default function Login() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-bg-primary">
-      <div className="w-full max-w-sm space-y-8">
-        {/* Logo / Brand */}
-        <div className="text-center">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-accent/15">
-            <Shield className="h-8 w-8 text-accent" />
-          </div>
-          <h1 className="mt-4 text-2xl font-bold text-content-primary">Gridwolf</h1>
-          <p className="mt-1 text-sm text-content-secondary">
-            Passive ICS/SCADA Network Discovery
-          </p>
-        </div>
-
+    <div className="w-full max-w-sm space-y-6 mx-auto">
         {/* Login Form */}
         <form
           onSubmit={handleSubmit}
@@ -112,7 +101,6 @@ export default function Login() {
         <p className="text-center text-xs text-content-tertiary">
           Gridwolf v0.1.0
         </p>
-      </div>
     </div>
   );
 }

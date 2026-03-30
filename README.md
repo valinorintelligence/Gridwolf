@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="frontend/public/favicon.svg" width="80" alt="Gridwolf Logo" />
+  <img src="frontend/public/logo.png" width="80" alt="Gridwolf Logo" />
 </p>
 
 <h1 align="center">Gridwolf</h1>

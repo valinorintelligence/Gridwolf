@@ -152,9 +152,9 @@ export default function Investigations() {
               >
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                   {expanded === item.id ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-                  <button onClick={(e) => { e.stopPropagation(); setStarred((s) => new Set([...s].includes(item.id) ? [...s].filter((x) => x !== item.id) : [...s, item.id])); }}>
+                  <span role="button" tabIndex={0} onClick={(e) => { e.stopPropagation(); setStarred((s) => new Set([...s].includes(item.id) ? [...s].filter((x) => x !== item.id) : [...s, item.id])); }} onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.click(); }}>
                     <Star size={12} className={starred.has(item.id) ? 'fill-amber-400 text-amber-400' : 'text-content-tertiary'} />
-                  </button>
+                  </span>
                   <div className="flex items-center gap-2 flex-1 min-w-0">
                     <span className="text-xs px-1.5 py-0.5 rounded bg-bg-secondary text-content-secondary whitespace-nowrap">{item.type}</span>
                     <span className="text-xs text-content-primary font-medium truncate">{item.title}</span>

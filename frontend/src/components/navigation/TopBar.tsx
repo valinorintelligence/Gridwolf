@@ -1,12 +1,29 @@
-import { Bell, Search, ChevronDown, User } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Bell, Search, ChevronDown, User, LogOut, Settings } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import ThemeToggle from '@/components/shared/ThemeToggle';
+import { useAuthStore } from '@/stores/authStore';
+import { useNavigate } from 'react-router-dom';
 
 interface TopBarProps {
   className?: string;
 }
 
 export default function TopBar({ className }: TopBarProps) {
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const { user, logout } = useAuthStore();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
   return (
     <header
       className={cn(
@@ -54,16 +71,32 @@ export default function TopBar({ className }: TopBarProps) {
         {/* Divider */}
         <div className="mx-1 h-6 w-px bg-border-default" />
 
-        {/* User avatar */}
-        <button className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-content-secondary transition-colors hover:bg-surface-hover">
-          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-accent/20 text-accent">
-            <User className="h-4 w-4" />
-          </div>
-          <span className="hidden font-medium text-content-primary sm:inline">
-            Admin
-          </span>
-          <ChevronDown className="h-3 w-3 text-content-tertiary" />
-        </button>
+        {/* User avatar with dropdown */}
+        <div className="relative" ref={menuRef}>
+          <button onClick={() => setUserMenuOpen(!userMenuOpen)} className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-content-secondary transition-colors hover:bg-surface-hover">
+            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-accent/20 text-accent">
+              <User className="h-4 w-4" />
+            </div>
+            <span className="hidden font-medium text-content-primary sm:inline">
+              {user?.fullName || user?.username || 'Admin'}
+            </span>
+            <ChevronDown className="h-3 w-3 text-content-tertiary" />
+          </button>
+          {userMenuOpen && (
+            <div className="absolute right-0 top-full mt-1 w-48 rounded-lg border border-border-default bg-surface-card shadow-lg py-1 z-50">
+              <div className="px-3 py-2 border-b border-border-default">
+                <p className="text-xs font-medium text-content-primary">{user?.fullName || user?.username}</p>
+                <p className="text-[10px] text-content-tertiary">{user?.email}</p>
+              </div>
+              <button onClick={() => { setUserMenuOpen(false); navigate('/settings'); }} className="w-full flex items-center gap-2 px-3 py-2 text-xs text-content-secondary hover:bg-surface-hover">
+                <Settings size={12} /> Settings
+              </button>
+              <button onClick={() => { logout(); navigate('/login'); }} className="w-full flex items-center gap-2 px-3 py-2 text-xs text-red-400 hover:bg-surface-hover">
+                <LogOut size={12} /> Sign Out
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );

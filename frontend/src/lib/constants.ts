@@ -127,10 +127,4 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: 'System Admin', path: '/admin', icon: 'Settings' },
     ],
   },
-  {
-    group: 'AI',
-    items: [
-      { label: 'AI Copilot', path: '/copilot', icon: 'Bot' },
-    ],
-  },
 ];

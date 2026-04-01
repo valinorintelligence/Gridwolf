@@ -1,51 +1,60 @@
-import { BarChart3, TrendingUp, Scan, Server, ShieldAlert } from 'lucide-react';
-// Card available for future use
+import { BarChart3, TrendingUp, Server, ShieldAlert, Radio, Layers } from 'lucide-react';
 import ChartWidget from '@/components/dashboard/ChartWidget';
 import StatCard from '@/components/dashboard/StatCard';
 import { WidgetGrid, WidgetWrapper } from '@/components/dashboard/WidgetGrid';
-import { MOCK_DASHBOARD_STATS } from '@/data/mock';
 
 const VULN_TREND_DATA = [
-  { month: 'Jul', critical: 5, high: 8, medium: 12, low: 3 },
-  { month: 'Aug', critical: 4, high: 9, medium: 14, low: 4 },
-  { month: 'Sep', critical: 6, high: 7, medium: 11, low: 5 },
-  { month: 'Oct', critical: 3, high: 10, medium: 15, low: 4 },
-  { month: 'Nov', critical: 4, high: 6, medium: 13, low: 3 },
-  { month: 'Dec', critical: 3, high: 4, medium: 3, low: 1 },
+  { month: 'Oct', critical: 5, high: 8, medium: 12, low: 3 },
+  { month: 'Nov', critical: 4, high: 9, medium: 14, low: 4 },
+  { month: 'Dec', critical: 6, high: 7, medium: 11, low: 5 },
+  { month: 'Jan', critical: 3, high: 10, medium: 15, low: 4 },
+  { month: 'Feb', critical: 4, high: 6, medium: 13, low: 3 },
+  { month: 'Mar', critical: 3, high: 4, medium: 3, low: 1 },
 ];
 
-const SCAN_FREQ_DATA = [
-  { week: 'W47', sast: 12, dast: 4, sca: 8 },
-  { week: 'W48', sast: 14, dast: 5, sca: 9 },
-  { week: 'W49', sast: 11, dast: 6, sca: 7 },
-  { week: 'W50', sast: 15, dast: 4, sca: 10 },
-  { week: 'W51', sast: 13, dast: 7, sca: 8 },
-  { week: 'W52', sast: 16, dast: 5, sca: 11 },
+const DEVICE_DISCOVERY_DATA = [
+  { month: 'Oct', plcs: 4, hmis: 3, switches: 6, rtus: 2 },
+  { month: 'Nov', plcs: 5, hmis: 4, switches: 7, rtus: 2 },
+  { month: 'Dec', plcs: 6, hmis: 4, switches: 8, rtus: 3 },
+  { month: 'Jan', plcs: 6, hmis: 5, switches: 9, rtus: 3 },
+  { month: 'Feb', plcs: 7, hmis: 5, switches: 10, rtus: 4 },
+  { month: 'Mar', plcs: 8, hmis: 6, switches: 12, rtus: 4 },
 ];
 
-const ASSET_GROWTH_DATA = [
-  { month: 'Jul', hosts: 32, products: 8, components: 42 },
-  { month: 'Aug', hosts: 35, products: 10, components: 48 },
-  { month: 'Sep', hosts: 38, products: 11, components: 55 },
-  { month: 'Oct', hosts: 40, products: 12, components: 61 },
-  { month: 'Nov', hosts: 43, products: 14, components: 68 },
-  { month: 'Dec', hosts: 46, products: 16, components: 72 },
+const PROTOCOL_TRAFFIC_DATA = [
+  { week: 'W9', modbus: 1240, s7comm: 890, dnp3: 340, opcua: 560 },
+  { week: 'W10', modbus: 1180, s7comm: 920, dnp3: 380, opcua: 610 },
+  { week: 'W11', modbus: 1310, s7comm: 870, dnp3: 350, opcua: 580 },
+  { week: 'W12', modbus: 1150, s7comm: 950, dnp3: 400, opcua: 640 },
+  { week: 'W13', modbus: 1280, s7comm: 910, dnp3: 370, opcua: 600 },
+  { week: 'W14', modbus: 1350, s7comm: 940, dnp3: 410, opcua: 670 },
 ];
 
 const REMEDIATION_DATA = [
-  { month: 'Jul', resolved: 8, opened: 12 },
-  { month: 'Aug', resolved: 11, opened: 9 },
-  { month: 'Sep', resolved: 7, opened: 14 },
-  { month: 'Oct', resolved: 13, opened: 8 },
-  { month: 'Nov', resolved: 10, opened: 11 },
-  { month: 'Dec', resolved: 15, opened: 6 },
+  { month: 'Oct', patched: 3, mitigated: 5, unresolved: 14 },
+  { month: 'Nov', patched: 5, mitigated: 7, unresolved: 11 },
+  { month: 'Dec', patched: 4, mitigated: 8, unresolved: 10 },
+  { month: 'Jan', patched: 6, mitigated: 9, unresolved: 8 },
+  { month: 'Feb', patched: 7, mitigated: 10, unresolved: 6 },
+  { month: 'Mar', patched: 9, mitigated: 11, unresolved: 4 },
 ];
 
-const SEVERITY_PIE_DATA = [
-  { name: 'Critical', value: MOCK_DASHBOARD_STATS.severityBreakdown.critical },
-  { name: 'High', value: MOCK_DASHBOARD_STATS.severityBreakdown.high },
-  { name: 'Medium', value: MOCK_DASHBOARD_STATS.severityBreakdown.medium },
-  { name: 'Low', value: MOCK_DASHBOARD_STATS.severityBreakdown.low },
+const PURDUE_ZONE_DATA = [
+  { name: 'L0 - Process', value: 4 },
+  { name: 'L1 - Control', value: 8 },
+  { name: 'L2 - Supervisory', value: 6 },
+  { name: 'L3 - Operations', value: 5 },
+  { name: 'DMZ', value: 3 },
+  { name: 'L4 - Enterprise', value: 4 },
+];
+
+const CAPTURE_SESSION_DATA = [
+  { month: 'Oct', sessions: 4, packets: 12400, duration: 48 },
+  { month: 'Nov', sessions: 6, packets: 18600, duration: 72 },
+  { month: 'Dec', sessions: 5, packets: 15200, duration: 60 },
+  { month: 'Jan', sessions: 7, packets: 21800, duration: 84 },
+  { month: 'Feb', sessions: 8, packets: 24100, duration: 96 },
+  { month: 'Mar', sessions: 9, packets: 28400, duration: 108 },
 ];
 
 export default function MetricsAnalytics() {
@@ -57,17 +66,17 @@ export default function MetricsAnalytics() {
           <BarChart3 className="h-5 w-5" />
         </div>
         <div>
-          <h1 className="text-xl font-bold text-content-primary">Metrics & Analytics</h1>
-          <p className="text-sm text-content-secondary">Comprehensive security metrics, trends, and operational analytics</p>
+          <h1 className="text-xl font-bold text-content-primary">OT Metrics & Analytics</h1>
+          <p className="text-sm text-content-secondary">Operational technology security trends, device discovery, and protocol analytics</p>
         </div>
       </div>
 
       {/* Key Metrics Summary */}
       <div className="grid grid-cols-4 gap-4">
-        <StatCard icon={<ShieldAlert className="h-5 w-5" />} label="Total Vulnerabilities" value={MOCK_DASHBOARD_STATS.severityBreakdown.critical + MOCK_DASHBOARD_STATS.severityBreakdown.high + MOCK_DASHBOARD_STATS.severityBreakdown.medium + MOCK_DASHBOARD_STATS.severityBreakdown.low} severity="high" />
-        <StatCard icon={<Server className="h-5 w-5" />} label="Monitored Assets" value={MOCK_DASHBOARD_STATS.totalObjects} trend={{ value: 7, direction: 'up' }} />
-        <StatCard icon={<Scan className="h-5 w-5" />} label="Scans This Week" value={284} trend={{ value: 15, direction: 'up' }} />
-        <StatCard icon={<TrendingUp className="h-5 w-5" />} label="Fix Rate" value="71%" trend={{ value: 4, direction: 'up' }} />
+        <StatCard icon={<ShieldAlert className="h-5 w-5" />} label="Open Advisories" value={24} severity="high" />
+        <StatCard icon={<Server className="h-5 w-5" />} label="OT Devices Discovered" value={30} trend={{ value: 12, direction: 'up' }} />
+        <StatCard icon={<Radio className="h-5 w-5" />} label="ICS Protocols Seen" value={7} trend={{ value: 2, direction: 'up' }} />
+        <StatCard icon={<Layers className="h-5 w-5" />} label="Purdue Violations" value={3} trend={{ value: 25, direction: 'down' }} />
       </div>
 
       {/* Charts Grid */}
@@ -75,7 +84,7 @@ export default function MetricsAnalytics() {
         <WidgetWrapper colSpan={8}>
           <ChartWidget
             type="area"
-            title="Vulnerability Trends"
+            title="Vulnerability Trends (ICS Advisories)"
             data={VULN_TREND_DATA}
             dataKeys={[
               { key: 'critical', color: '#ef4444', name: 'Critical' },
@@ -91,13 +100,15 @@ export default function MetricsAnalytics() {
         <WidgetWrapper colSpan={4}>
           <ChartWidget
             type="donut"
-            title="Current Severity Distribution"
-            data={SEVERITY_PIE_DATA}
+            title="Devices by Purdue Zone"
+            data={PURDUE_ZONE_DATA}
             dataKeys={[
               { key: 'value', color: '#ef4444' },
               { key: 'value', color: '#f97316' },
               { key: 'value', color: '#f59e0b' },
               { key: 'value', color: '#3b82f6' },
+              { key: 'value', color: '#8b5cf6' },
+              { key: 'value', color: '#10b981' },
             ]}
             height={300}
           />
@@ -106,12 +117,13 @@ export default function MetricsAnalytics() {
         <WidgetWrapper colSpan={6}>
           <ChartWidget
             type="bar"
-            title="Scan Frequency by Type"
-            data={SCAN_FREQ_DATA}
+            title="ICS Protocol Traffic (Sessions/Week)"
+            data={PROTOCOL_TRAFFIC_DATA}
             dataKeys={[
-              { key: 'sast', color: '#8b5cf6', name: 'SAST' },
-              { key: 'dast', color: '#06b6d4', name: 'DAST' },
-              { key: 'sca', color: '#10b981', name: 'SCA' },
+              { key: 'modbus', color: '#8b5cf6', name: 'Modbus TCP' },
+              { key: 's7comm', color: '#06b6d4', name: 'S7comm' },
+              { key: 'dnp3', color: '#f59e0b', name: 'DNP3' },
+              { key: 'opcua', color: '#10b981', name: 'OPC UA' },
             ]}
             xAxisKey="week"
             height={280}
@@ -121,26 +133,42 @@ export default function MetricsAnalytics() {
         <WidgetWrapper colSpan={6}>
           <ChartWidget
             type="line"
-            title="Remediation Velocity"
+            title="Remediation Progress"
             data={REMEDIATION_DATA}
             dataKeys={[
-              { key: 'resolved', color: '#10b981', name: 'Resolved' },
-              { key: 'opened', color: '#ef4444', name: 'Opened' },
+              { key: 'patched', color: '#10b981', name: 'Patched' },
+              { key: 'mitigated', color: '#f59e0b', name: 'Mitigated' },
+              { key: 'unresolved', color: '#ef4444', name: 'Unresolved' },
             ]}
             xAxisKey="month"
             height={280}
           />
         </WidgetWrapper>
 
-        <WidgetWrapper colSpan={12}>
+        <WidgetWrapper colSpan={6}>
           <ChartWidget
             type="area"
-            title="Asset Inventory Growth"
-            data={ASSET_GROWTH_DATA}
+            title="Device Discovery Over Time"
+            data={DEVICE_DISCOVERY_DATA}
             dataKeys={[
-              { key: 'hosts', color: '#3b82f6', name: 'Hosts' },
-              { key: 'products', color: '#10b981', name: 'Products' },
-              { key: 'components', color: '#14b8a6', name: 'Components' },
+              { key: 'plcs', color: '#3b82f6', name: 'PLCs' },
+              { key: 'hmis', color: '#10b981', name: 'HMIs' },
+              { key: 'switches', color: '#14b8a6', name: 'Switches' },
+              { key: 'rtus', color: '#f59e0b', name: 'RTUs' },
+            ]}
+            xAxisKey="month"
+            height={260}
+          />
+        </WidgetWrapper>
+
+        <WidgetWrapper colSpan={6}>
+          <ChartWidget
+            type="bar"
+            title="Capture Sessions & Packets"
+            data={CAPTURE_SESSION_DATA}
+            dataKeys={[
+              { key: 'sessions', color: '#8b5cf6', name: 'Sessions' },
+              { key: 'duration', color: '#06b6d4', name: 'Duration (hrs)' },
             ]}
             xAxisKey="month"
             height={260}

@@ -1,11 +1,29 @@
-import { Outlet } from 'react-router-dom';
+import { Outlet, Navigate } from 'react-router-dom';
 import { useState, useEffect, useCallback } from 'react';
 import Sidebar from '@/components/navigation/Sidebar';
 import TopBar from '@/components/navigation/TopBar';
 import CommandPalette from '@/components/navigation/CommandPalette';
 import { Toaster } from 'react-hot-toast';
+import { useAuthStore } from '@/stores/authStore';
 
 export function AppLayout() {
+  const { isAuthenticated, isLoading, loadUser } = useAuthStore();
+
+  useEffect(() => {
+    loadUser();
+  }, [loadUser]);
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-bg-primary">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
   const [cmdOpen, setCmdOpen] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(64);
 

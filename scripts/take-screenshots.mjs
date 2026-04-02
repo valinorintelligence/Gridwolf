@@ -5,7 +5,7 @@ import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const outDir = join(__dirname, '..', 'docs', 'screenshots');
-const baseUrl = 'http://localhost:5174';
+const baseUrl = 'http://localhost:5176';
 
 const pages = [
   // Auth
@@ -55,11 +55,13 @@ const pages = [
   // Administration
   { path: '/admin', name: '24-system-admin', wait: 1500 },
 
-  // AI
-  { path: '/copilot', name: '25-ai-copilot', wait: 1500 },
+  // Vulnerability Intelligence
+  { path: '/vuln-feed', name: '25-vuln-feed', wait: 1500 },
+  { path: '/my-environment', name: '26-my-environment', wait: 1500 },
 
-  // Attack Paths
-  { path: '/attack-paths', name: '26-attack-paths', wait: 1500 },
+  // Additional
+  { path: '/sbom', name: '27-sbom', wait: 1500 },
+  { path: '/timeline', name: '28-timeline', wait: 1500 },
 ];
 
 async function main() {

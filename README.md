@@ -5,17 +5,25 @@
 <h1 align="center">Gridwolf</h1>
 
 <p align="center">
-  <strong>Passive ICS/SCADA Network Discovery & Security Assessment Platform</strong><br/>
-  Full-Stack OT Security Tool with Real PCAP Processing, Protocol Dissection & Threat Detection
+  <strong>Passive ICS/SCADA Network Discovery, Vulnerability Intelligence & Security Assessment Platform</strong><br/>
+  Full-Stack OT Security Tool with Real PCAP Processing, Protocol Dissection, Threat Detection & ICS Advisory Feed
 </p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/version-1.0.0--beta-blue" />
   <img src="https://img.shields.io/badge/ICS%20Protocols-6%20Deep%20Parsers-orange" />
   <img src="https://img.shields.io/badge/MITRE%20ATT%26CK-ICS-red" />
+  <img src="https://img.shields.io/badge/ICS%20Advisories-7%20Sources-purple" />
   <img src="https://img.shields.io/badge/Backend-FastAPI%20%2B%20Scapy-green" />
   <img src="https://img.shields.io/badge/Frontend-React%2019%20%2B%20TypeScript-61dafb" />
   <img src="https://img.shields.io/badge/license-MIT-green" />
+</p>
+
+<p align="center">
+  <a href="https://gridwolf.net">Website</a> &middot;
+  <a href="#screenshots">Screenshots</a> &middot;
+  <a href="#installation">Installation</a> &middot;
+  <a href="#key-features">Features</a>
 </p>
 
 ---
@@ -24,7 +32,7 @@
 
 Gridwolf is a **fully functional** passive ICS/SCADA network discovery and security assessment platform. It analyzes captured network traffic (PCAP files) to automatically identify industrial devices, map communication patterns, detect protocol anomalies, perform C2/beacon detection, match CVEs, and generate professional assessment reports — **without transmitting a single packet** to the monitored network.
 
-Unlike tools that are just dashboards on top of mock data, Gridwolf has a **real processing backend** powered by Scapy, with deep packet inspection for 6 ICS protocols, a C2 beacon detection engine, NVD CVE integration, and PDF report generation.
+Unlike tools that are just dashboards on top of mock data, Gridwolf has a **real processing backend** powered by Scapy, with deep packet inspection for 6 ICS protocols, a C2 beacon detection engine, NVD CVE integration, ICS vulnerability intelligence from 7 advisory sources, and PDF report generation.
 
 > **Gridwolf never actively scans or probes the industrial network. All discovery is done by passive traffic analysis only.**
 
@@ -35,7 +43,7 @@ Unlike tools that are just dashboards on top of mock data, Gridwolf has a **real
 ```
 ┌────────────────────────────────────────────────────────────────┐
 │                    Frontend (React 19 + Vite)                  │
-│  27 Pages · Topology Graph · Protocol Analysis · Dark Theme    │
+│  30+ Pages · Topology Graph · Protocol Analysis · Dark Theme   │
 ├────────────────────────────────────────────────────────────────┤
 │                         REST API                               │
 ├────────────────────────────────────────────────────────────────┤
@@ -47,10 +55,15 @@ Unlike tools that are just dashboards on top of mock data, Gridwolf has a **real
 │  │          │ │              │ │ Asymmetric)│ │ Offline DB)│  │
 │  └──────────┘ └──────────────┘ └────────────┘ └────────────┘  │
 │  ┌──────────┐ ┌──────────────┐ ┌────────────┐                 │
-│  │  Report  │ │   Device     │ │   Risk     │                 │
-│  │Generator │ │ Classifier   │ │Assessment  │                 │
-│  │(PDF/HTML)│ │(Purdue/OUI)  │ │  Engine    │                 │
+│  │  Vuln    │ │   Device     │ │   Risk     │                 │
+│  │  Feed    │ │ Classifier   │ │Assessment  │                 │
+│  │(7 Source)│ │(Purdue/OUI)  │ │  Engine    │                 │
 │  └──────────┘ └──────────────┘ └────────────┘                 │
+│  ┌──────────┐                                                  │
+│  │  Report  │                                                  │
+│  │Generator │                                                  │
+│  │(PDF/HTML)│                                                  │
+│  └──────────┘                                                  │
 ├────────────────────────────────────────────────────────────────┤
 │              SQLite Database (aiosqlite)                        │
 │  17 Tables · Sessions · Devices · Connections · Findings       │
@@ -80,6 +93,11 @@ Unlike tools that are just dashboards on top of mock data, Gridwolf has a **real
 |---|---|
 | ![Purdue](docs/screenshots/08-purdue-model.png) | ![Signatures](docs/screenshots/09-signature-editor.png) |
 
+### Vulnerability Intelligence (NEW)
+| ICS/OT Vuln Feed | My Environment |
+|---|---|
+| ![Vuln Feed](docs/screenshots/25-vuln-feed.png) | ![My Environment](docs/screenshots/26-my-environment.png) |
+
 ### Security & Detection
 | MITRE ATT&CK for ICS | Vulnerability / CVE Matching |
 |---|---|
@@ -93,15 +111,20 @@ Unlike tools that are just dashboards on top of mock data, Gridwolf has a **real
 |---|---|
 | ![Drift](docs/screenshots/15-baseline-drift.png) | ![Compliance](docs/screenshots/16-compliance.png) |
 
+### Analytics & Metrics
+| OT Metrics & Analytics | Security Scorecard | Timeline |
+|---|---|---|
+| ![Metrics](docs/screenshots/18-metrics.png) | ![Scorecard](docs/screenshots/17-security-scorecard.png) | ![Timeline](docs/screenshots/28-timeline.png) |
+
 ### Investigations
 | Focus Queue | Report Diffing |
 |---|---|
 | ![Investigations](docs/screenshots/20-investigations.png) | ![Report Diff](docs/screenshots/21-report-diff.png) |
 
 ### Reporting & Administration
-| Assessment Reports | System Admin |
-|---|---|
-| ![Reports](docs/screenshots/22-assessment-reports.png) | ![Admin](docs/screenshots/24-system-admin.png) |
+| Assessment Reports | SBOM | System Admin |
+|---|---|---|
+| ![Reports](docs/screenshots/22-assessment-reports.png) | ![SBOM](docs/screenshots/27-sbom.png) | ![Admin](docs/screenshots/24-system-admin.png) |
 
 ---
 
@@ -116,6 +139,27 @@ Gridwolf includes a **fully functional backend** — not just a UI prototype. Wh
 3. **Classifies** — Assigns device types, Purdue levels, vendors (38 OUI prefixes)
 4. **Detects** — Runs C2 beacon detection, Purdue violation checks, write path analysis
 5. **Stores** — Persists all results in SQLite with 17 normalized tables
+
+### ICS/OT Vulnerability Intelligence Feed
+
+Real-time advisory aggregation from **7 OT-specific sources** with CVSS v3.1 + CISA KEV + EPSS enrichment:
+
+| Source | Coverage |
+|---|---|
+| **CISA ICS-CERT** | All ICS advisories |
+| **Siemens ProductCERT** | SIMATIC, SCALANCE, SINEMA |
+| **Schneider Electric** | Modicon, EcoStruxure, Magelis |
+| **Rockwell Automation** | ControlLogix, CompactLogix, FactoryTalk |
+| **ABB** | Ability, Symphony, ASPECT |
+| **Moxa** | EDR, EDS Series, ioLogik |
+| **CERT@VDE** | German industrial automation |
+
+**Features:**
+- 4-tier urgency classification: **Act Now** / **Plan Patch** / **Monitor** / **Low Risk**
+- Environment personalization — select your vendors and sectors for matched alerts
+- EPSS probability scoring for exploit likelihood
+- CISA KEV flagging for known exploited vulnerabilities
+- CSV export for compliance reporting
 
 ### ICS Protocol Deep Packet Inspection
 
@@ -163,7 +207,7 @@ Three independent detection methods run on every session:
 - **Default Credential Detection** — Checks for common ICS default passwords
 - **Baseline Drift** — Quantified drift score between assessment sessions
 
-### 40+ REST API Endpoints
+### 50+ REST API Endpoints
 
 | Category | Endpoints | Description |
 |---|---|---|
@@ -173,6 +217,7 @@ Three independent detection methods run on every session:
 | **Sessions** | 6 | CRUD + projects |
 | **Findings** | 4 | List, stats, status update |
 | **CVE** | 2 | Search NVD, match devices |
+| **Vuln Feed** | 10 | Advisories, stats, sources, export, environment config |
 | **Reports** | 3 | Generate, download, list |
 | **Ontology** | 4 | Types, graph, CRUD |
 | **Dashboard** | 3 | Stats, saved dashboards |
@@ -275,7 +320,23 @@ curl http://localhost:8000/api/v1/ics/devices/topology?session_id={session_id}
 curl http://localhost:8000/api/v1/ics/devices/stats?session_id={session_id}
 ```
 
-### 3. Review Security Findings
+### 3. Check ICS Vulnerability Advisories
+
+```bash
+# List all advisories
+curl http://localhost:8000/api/v1/ics/advisories/
+
+# Get advisory stats
+curl http://localhost:8000/api/v1/ics/advisories/stats
+
+# Match advisories against session devices
+curl http://localhost:8000/api/v1/ics/advisories/matched?session_id={session_id}
+
+# Export to CSV
+curl http://localhost:8000/api/v1/ics/advisories/export/csv
+```
+
+### 4. Review Security Findings
 
 ```bash
 # List findings by severity
@@ -288,7 +349,7 @@ curl http://localhost:8000/api/v1/ics/findings/cve/match-devices?session_id={ses
 curl http://localhost:8000/api/v1/ics/findings/cve/search?keyword=siemens+s7
 ```
 
-### 4. Generate Assessment Report
+### 5. Generate Assessment Report
 
 ```bash
 curl -X POST http://localhost:8000/api/v1/ics/findings/reports/generate \
@@ -307,16 +368,17 @@ curl -X POST http://localhost:8000/api/v1/ics/findings/reports/generate \
 
 | Layer | Technology | Purpose |
 |---|---|---|
-| **Frontend** | React 19 + TypeScript + Vite 8 | 27-page SPA with dark-first design |
-| **Styling** | Tailwind CSS 4 | Palantir-inspired dense UI |
+| **Frontend** | React 19 + TypeScript + Vite 8 | 30+ page SPA with dark-first design |
+| **Styling** | Tailwind CSS 4 | Navy/purple/cyan/magenta OT-focused theme |
 | **State** | Zustand | Client-side state management |
 | **Visualization** | Cytoscape.js + Recharts | Topology graphs + analytics |
-| **Backend** | FastAPI (async) | 40+ REST API endpoints |
+| **Backend** | FastAPI (async) | 50+ REST API endpoints |
 | **PCAP Engine** | Scapy | Deep packet inspection |
 | **Database** | SQLite (aiosqlite) / PostgreSQL | 17 normalized tables |
-| **Auth** | JWT (python-jose) + bcrypt | Token-based authentication |
+| **Auth** | JWT (python-jose) + bcrypt | Token-based authentication with route guards |
 | **Reports** | WeasyPrint / HTML | Professional PDF generation |
 | **CVE Data** | NVD API v2.0 + offline DB | Vulnerability matching |
+| **Vuln Intel** | 7 ICS advisory sources | CVSS + KEV + EPSS enrichment |
 
 ---
 
@@ -326,12 +388,12 @@ curl -X POST http://localhost:8000/api/v1/ics/findings/reports/generate \
 Gridwolf/
 ├── frontend/                          # React SPA
 │   ├── src/
-│   │   ├── pages/                     # 27 page components
+│   │   ├── pages/                     # 30+ page components
 │   │   ├── components/                # Reusable UI components
-│   │   ├── layouts/                   # App and Auth layouts
+│   │   ├── layouts/                   # App and Auth layouts (with route guards)
 │   │   ├── routes/                    # React Router configuration
 │   │   ├── lib/                       # Constants, utilities
-│   │   └── store/                     # Zustand state management
+│   │   └── stores/                    # Zustand state management
 │   └── vite.config.ts
 ├── backend/                           # FastAPI backend
 │   └── app/
@@ -345,22 +407,26 @@ Gridwolf/
 │       │   ├── protocol_parsers.py    # 6 ICS protocol deep parsers
 │       │   ├── c2_detector.py         # C2 beacon/exfiltration detection
 │       │   ├── cve_lookup.py          # NVD API + offline CVE database
+│       │   ├── vuln_feed.py           # ICS advisory feed engine (7 sources)
 │       │   └── report_generator.py    # PDF/HTML report generation
 │       ├── schemas/                   # Pydantic v2 validation
 │       ├── services/                  # Business logic
 │       └── api/v1/                    # REST API routers
 │           ├── auth.py                # Authentication endpoints
-│           ├── ics/                    # ICS-specific endpoints
+│           ├── ics/                   # ICS-specific endpoints
 │           │   ├── pcap.py            # PCAP upload & processing
 │           │   ├── devices.py         # Device inventory & topology
 │           │   ├── sessions.py        # Session & project management
-│           │   └── findings.py        # Findings, CVE, reports
+│           │   ├── findings.py        # Findings, CVE, reports
+│           │   └── vuln_feed.py       # Vulnerability advisory feed (10 endpoints)
 │           ├── ontology.py            # Object type management
 │           ├── objects.py             # Object CRUD
 │           ├── dashboard.py           # Dashboard stats
 │           └── scanners.py            # External tool import
+├── landing/                           # Static landing page (gridwolf.net)
+│   └── index.html                     # Waitlist + feature showcase
 ├── docs/
-│   └── screenshots/                   # 27 application screenshots
+│   └── screenshots/                   # 29 application screenshots
 └── scripts/
     └── take-screenshots.mjs           # Puppeteer screenshot utility
 ```

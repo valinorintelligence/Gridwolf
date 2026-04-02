@@ -8,8 +8,8 @@ const outDir = join(__dirname, '..', 'docs', 'screenshots');
 const baseUrl = 'http://localhost:5176';
 
 const pages = [
-  // Auth
-  { path: '/login', name: '00-login', wait: 1500 },
+  // Auth (taken before login)
+  { path: '/login', name: '00-login', wait: 1500, noAuth: true },
 
   // Overview
   { path: '/', name: '01-command-center', wait: 2000 },
@@ -75,18 +75,26 @@ async function main() {
 
   const page = await browser.newPage();
 
-  // Try to bypass login via demo mode
+  // ---- Step 1: Take login screenshot first ----
+  console.log('📸 Capturing 00-login...');
   await page.goto(`${baseUrl}/login`, { waitUntil: 'networkidle0', timeout: 15000 });
-  await new Promise((r) => setTimeout(r, 1000));
+  await new Promise((r) => setTimeout(r, 1500));
+  await page.screenshot({ path: join(outDir, '00-login.png'), fullPage: false });
+  console.log('   ✅ Saved 00-login.png');
 
-  // Click demo login button if present
+  // ---- Step 2: Set demo token in localStorage before clicking demo login ----
+  await page.evaluate(() => {
+    localStorage.setItem('gridwolf_token', 'demo-token');
+  });
+
+  // Click demo login button
   try {
     const buttons = await page.$$('button');
     for (const btn of buttons) {
       const text = await page.evaluate((el) => el.textContent, btn);
       if (text && text.toLowerCase().includes('demo')) {
         await btn.click();
-        await new Promise((r) => setTimeout(r, 1500));
+        await new Promise((r) => setTimeout(r, 2000));
         console.log('✅ Clicked demo login');
         break;
       }
@@ -95,15 +103,52 @@ async function main() {
     console.log('⚠️  No demo button found, proceeding anyway');
   }
 
-  let successCount = 0;
+  // Verify we're logged in
+  const currentUrl = page.url();
+  console.log(`📍 Current URL after login: ${currentUrl}`);
+
+  let successCount = 1; // login already done
   let failCount = 0;
 
-  for (const { path, name, wait } of pages) {
-    const url = `${baseUrl}${path}`;
-    console.log(`📸 Capturing ${name} (${url})...`);
+  // ---- Step 3: Navigate to each page using client-side routing ----
+  for (const { path, name, wait, noAuth } of pages) {
+    if (noAuth) continue; // login already captured
+
+    console.log(`📸 Capturing ${name} (${path})...`);
     try {
-      await page.goto(url, { waitUntil: 'networkidle0', timeout: 15000 });
+      // Use client-side navigation to preserve auth state
+      await page.evaluate((p) => {
+        window.history.pushState({}, '', p);
+        window.dispatchEvent(new PopStateEvent('popstate'));
+      }, path);
+
       await new Promise((r) => setTimeout(r, wait));
+
+      // Verify we're not redirected to login
+      const pageUrl = page.url();
+      if (pageUrl.includes('/login')) {
+        console.log('   ⚠️  Redirected to login, re-authenticating...');
+        await page.evaluate(() => {
+          localStorage.setItem('gridwolf_token', 'demo-token');
+        });
+        // Click demo login again
+        const buttons = await page.$$('button');
+        for (const btn of buttons) {
+          const text = await page.evaluate((el) => el.textContent, btn);
+          if (text && text.toLowerCase().includes('demo')) {
+            await btn.click();
+            await new Promise((r) => setTimeout(r, 2000));
+            break;
+          }
+        }
+        // Navigate again
+        await page.evaluate((p) => {
+          window.history.pushState({}, '', p);
+          window.dispatchEvent(new PopStateEvent('popstate'));
+        }, path);
+        await new Promise((r) => setTimeout(r, wait));
+      }
+
       await page.screenshot({
         path: join(outDir, `${name}.png`),
         fullPage: false,

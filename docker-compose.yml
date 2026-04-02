@@ -1,30 +1,8 @@
+# Gridwolf - Simple Docker Setup (SQLite, no external dependencies)
+# Usage: docker compose up --build
+# UI: http://localhost:3000  |  API: http://localhost:8000/docs
+
 services:
-  postgres:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: gridwolf
-      POSTGRES_PASSWORD: gridwolf
-      POSTGRES_DB: gridwolf
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U gridwolf"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   backend:
     build:
       context: ./backend
@@ -32,17 +10,18 @@ services:
     ports:
       - "8000:8000"
     environment:
-      GRIDWOLF_DATABASE_URL: postgresql+asyncpg://gridwolf:gridwolf@postgres:5432/gridwolf
-      GRIDWOLF_REDIS_URL: redis://redis:6379/0
-      GRIDWOLF_SECRET_KEY: change-me-in-production
-      GRIDWOLF_CORS_ORIGINS: '["http://localhost:5173","http://localhost:3000"]'
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      GRIDWOLF_DATABASE_URL: "sqlite+aiosqlite:///./data/gridwolf.db"
+      GRIDWOLF_SECRET_KEY: "gridwolf-local-dev-key"
+      GRIDWOLF_CORS_ORIGINS: '["http://localhost:3000","http://localhost:5173","http://localhost:5174"]'
+      GRIDWOLF_DEBUG: "true"
     volumes:
-      - ./backend:/app
+      - gridwolf_data:/app/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/docs')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
   frontend:
     build:
@@ -51,22 +30,8 @@ services:
     ports:
       - "3000:80"
     depends_on:
-      - backend
-
-  celery-worker:
-    build:
-      context: ./backend
-      dockerfile: ../Dockerfile.backend
-    command: celery -A app.celery_app worker --loglevel=info
-    environment:
-      GRIDWOLF_DATABASE_URL: postgresql+asyncpg://gridwolf:gridwolf@postgres:5432/gridwolf
-      GRIDWOLF_REDIS_URL: redis://redis:6379/0
-      GRIDWOLF_SECRET_KEY: change-me-in-production
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
+      backend:
         condition: service_healthy
 
 volumes:
-  postgres_data:
+  gridwolf_data:

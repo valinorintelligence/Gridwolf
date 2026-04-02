@@ -1,0 +1,74 @@
+# Gridwolf - Production Docker Setup (PostgreSQL + Redis)
+# Usage: docker compose -f docker-compose.prod.yml up --build
+# UI: http://localhost:3000  |  API: http://localhost:8000/docs
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: gridwolf
+      POSTGRES_PASSWORD: gridwolf
+      POSTGRES_DB: gridwolf
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gridwolf"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: ../Dockerfile.backend
+    ports:
+      - "8000:8000"
+    environment:
+      GRIDWOLF_DATABASE_URL: postgresql+asyncpg://gridwolf:gridwolf@postgres:5432/gridwolf
+      GRIDWOLF_REDIS_URL: redis://redis:6379/0
+      GRIDWOLF_SECRET_KEY: change-me-in-production
+      GRIDWOLF_CORS_ORIGINS: '["http://localhost:3000"]'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: ../Dockerfile.frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+  celery-worker:
+    build:
+      context: ./backend
+      dockerfile: ../Dockerfile.backend
+    command: celery -A app.celery_app worker --loglevel=info
+    environment:
+      GRIDWOLF_DATABASE_URL: postgresql+asyncpg://gridwolf:gridwolf@postgres:5432/gridwolf
+      GRIDWOLF_REDIS_URL: redis://redis:6379/0
+      GRIDWOLF_SECRET_KEY: change-me-in-production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

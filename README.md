@@ -227,16 +227,73 @@ Three independent detection methods run on every session:
 
 ## Installation
 
-### Prerequisites
+### Option 1: Docker (Recommended — Linux & macOS)
 
-| Requirement | Version | Purpose |
-|---|---|---|
-| Python | >= 3.9 | Backend |
-| Node.js | >= 18.0 | Frontend |
-| npm | >= 9.0 | Frontend |
-| Git | any | Version control |
+The fastest way to get Gridwolf running. No Python or Node.js installation needed.
 
-### Quick Start (Full Stack)
+```bash
+# Clone and start
+git clone https://github.com/valinorintelligence/Gridwolf.git
+cd Gridwolf
+docker compose up --build
+
+# That's it! Open http://localhost:3000
+```
+
+| Service | URL |
+|---|---|
+| **Frontend** | http://localhost:3000 |
+| **API Docs** | http://localhost:8000/docs |
+| **Login** | Click "Demo Login" — no credentials needed |
+
+```bash
+# Stop
+docker compose down
+
+# Production setup (PostgreSQL + Redis + Celery worker)
+docker compose -f docker-compose.prod.yml up --build
+```
+
+### Option 2: One-Click Installer (macOS / Linux)
+
+Single command that auto-detects Docker or falls back to native install:
+
+```bash
+# Run directly from GitHub
+curl -fsSL https://raw.githubusercontent.com/valinorintelligence/Gridwolf/main/scripts/install.sh | bash
+
+# Or clone first, then run
+git clone https://github.com/valinorintelligence/Gridwolf.git
+cd Gridwolf
+bash scripts/install.sh
+```
+
+The installer will:
+1. Detect Docker → use containerized setup (preferred)
+2. No Docker → install Python + Node.js dependencies natively
+3. Start both backend and frontend
+4. Open your browser automatically
+
+### Option 3: Windows (.bat Launcher)
+
+```powershell
+# PowerShell one-liner
+git clone https://github.com/valinorintelligence/Gridwolf.git
+cd Gridwolf
+
+# Option A: Double-click gridwolf.bat in File Explorer
+# Option B: Run from PowerShell
+.\scripts\install.ps1
+```
+
+**`gridwolf.bat`** — Double-click to launch. Auto-detects Docker Desktop or falls back to native Python + Node.js. Opens browser when ready. Press any key to stop.
+
+> **Prerequisites for native (non-Docker) install:**
+> - [Python 3.9+](https://python.org/downloads/) (check "Add to PATH" during install)
+> - [Node.js 18+](https://nodejs.org/) (LTS recommended)
+> - [Git](https://git-scm.com/download/win)
+
+### Option 4: Manual Setup
 
 ```bash
 # 1. Clone the repository

@@ -127,7 +127,7 @@ export default function PcapImport() {
             <Upload size={40} className="mx-auto text-content-tertiary mb-3" />
             <p className="text-content-primary font-medium">Drop PCAP/PCAPNG files here</p>
             <p className="text-xs text-content-tertiary mt-1">or click to browse &middot; up to 500 MB per file &middot; multiple files supported</p>
-            <a href="/sample-capture.pcap" download="gridwolf-sample-ics-capture.pcap" className="inline-flex items-center gap-1.5 mt-3 px-3 py-1.5 rounded-md border border-accent/30 bg-accent/10 text-xs font-medium text-accent hover:bg-accent/20 transition-colors">
+            <a href={`${import.meta.env.BASE_URL}sample-capture.pcap`} download="gridwolf-sample-ics-capture.pcap" className="inline-flex items-center gap-1.5 mt-3 px-3 py-1.5 rounded-md border border-accent/30 bg-accent/10 text-xs font-medium text-accent hover:bg-accent/20 transition-colors">
               <Download size={12} /> Download Sample ICS PCAP (163 packets &middot; Modbus, S7comm, DNP3, CIP)
             </a>
             <input

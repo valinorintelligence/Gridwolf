@@ -20,6 +20,7 @@
 </p>
 
 <p align="center">
+  <a href="https://valinorintelligence.github.io/Gridwolf/"><strong>🔴 Live Demo</strong></a> &middot;
   <a href="https://gridwolf.net">Website</a> &middot;
   <a href="#screenshots">Screenshots</a> &middot;
   <a href="#installation">Installation</a> &middot;

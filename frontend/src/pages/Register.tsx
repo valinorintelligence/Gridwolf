@@ -40,13 +40,15 @@ export default function Register() {
   const isStep1Valid = fullName.trim().length > 0 && email.includes('@') && organization.trim().length > 0;
   const isStep2Valid = passwordStrength === PASSWORD_RULES.length && passwordsMatch && agreedToTerms;
 
+  const isDemoMode = import.meta.env.VITE_DEMO_MODE === 'true';
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
 
     try {
-      // In demo mode, just create the user locally and log them in
+      // In demo mode (and currently always), log in as demo user
       demoLogin();
       navigate('/');
     } catch {
@@ -70,6 +72,16 @@ export default function Register() {
           <h1 className="mt-4 text-2xl font-bold text-content-primary">Create Account</h1>
           <p className="mt-1 text-sm text-content-secondary">Passive ICS/SCADA Network Discovery</p>
         </div>
+
+        {/* Demo mode banner */}
+        {isDemoMode && (
+          <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-center">
+            <p className="text-xs font-semibold text-amber-400">Live Demo Mode</p>
+            <p className="text-[11px] text-amber-400/80 mt-0.5">
+              Registration will log you into the demo account — explore all features with pre-loaded ICS data.
+            </p>
+          </div>
+        )}
 
         {/* Step indicator */}
         <div className="flex items-center gap-2 px-2">

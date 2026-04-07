@@ -13,9 +13,17 @@ export default function Login() {
   const { login, demoLogin, isLoading } = useAuthStore();
   const navigate = useNavigate();
 
+  const isDemoMode = import.meta.env.VITE_DEMO_MODE === 'true';
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    // In demo mode (GitHub Pages), always use demo login — no backend available
+    if (isDemoMode) {
+      demoLogin();
+      navigate('/');
+      return;
+    }
     try {
       await login(email, password);
       navigate('/');
@@ -31,6 +39,16 @@ export default function Login() {
 
   return (
     <div className="w-full max-w-sm space-y-6 mx-auto">
+        {/* Demo mode banner */}
+        {isDemoMode && (
+          <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-center">
+            <p className="text-xs font-semibold text-amber-400">Live Demo Mode</p>
+            <p className="text-[11px] text-amber-400/80 mt-0.5">
+              No backend required — click Demo Login or enter any credentials to explore.
+            </p>
+          </div>
+        )}
+
         {/* Login Form */}
         <form
           onSubmit={handleSubmit}
@@ -40,7 +58,7 @@ export default function Login() {
             <Input
               label="Email"
               type="email"
-              placeholder="operator@gridwolf.io"
+              placeholder={isDemoMode ? 'Any email works in demo mode' : 'operator@gridwolf.io'}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -48,7 +66,7 @@ export default function Login() {
             <Input
               label="Password"
               type="password"
-              placeholder="Enter password"
+              placeholder={isDemoMode ? 'Any password works in demo mode' : 'Enter password'}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required

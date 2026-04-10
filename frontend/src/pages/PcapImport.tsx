@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   FileSearch, Upload, Radio, BookOpen, Play, Pause, Square, ChevronRight,
   Check, Trash2, Eye, RefreshCw, HardDrive, Filter,
-  Download, AlertTriangle, Zap, Server, Activity, Shield, Network, Info
+  Download, AlertTriangle, Zap, Server, Activity, Shield, Network, Info, XCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { api } from '@/services/api';
 
 const DEMO_RESULT = {
   filename: 'gridwolf-sample-ics-capture.pcap',
@@ -81,33 +82,102 @@ const SAMPLE_LIBRARY = [
 // ---------------------------------------------------------------------------
 export default function PcapImport() {
   const [tab, setTab] = useState<'import' | 'live' | 'library'>('import');
-  const [files, setFiles] = useState<{ name: string; size: string }[]>([]);
+  const [files, setFiles] = useState<{ name: string; size: string; raw?: File }[]>([]);
   const [analyzing, setAnalyzing] = useState(false);
   const [pipelineStep, setPipelineStep] = useState(-1);
   const [showDemoResult, setShowDemoResult] = useState(false);
+  const [analysisError, setAnalysisError] = useState('');
+  const [realResult, setRealResult] = useState<null | {
+    sessionId: string; devices: any[]; findings: any[]; protocols: string[]; packets: number;
+  }>(null);
   const [liveCapturing, setLiveCapturing] = useState(false);
   const [livePaused, setLivePaused] = useState(false);
   const [liveIface, setLiveIface] = useState('eth0');
   const [liveBpf, setLiveBpf] = useState('');
   const [liveDuration, setLiveDuration] = useState('15min');
   const [dragOver, setDragOver] = useState(false);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const navigate = useNavigate();
   const isDemoMode = import.meta.env.VITE_DEMO_MODE === 'true';
 
-  const startAnalysis = () => {
+  const startAnalysis = async () => {
     setAnalyzing(true);
     setShowDemoResult(false);
+    setRealResult(null);
+    setAnalysisError('');
     setPipelineStep(0);
-    let step = 0;
-    const iv = setInterval(() => {
-      step++;
-      if (step >= 4) {
-        clearInterval(iv);
-        setAnalyzing(false);
-        if (isDemoMode) setShowDemoResult(true);
-      }
-      setPipelineStep(step);
-    }, 1500);
+
+    if (isDemoMode) {
+      // Demo mode: simulate pipeline then show mock results
+      let step = 0;
+      const iv = setInterval(() => {
+        step++;
+        if (step >= 4) {
+          clearInterval(iv);
+          setAnalyzing(false);
+          setShowDemoResult(true);
+        }
+        setPipelineStep(step);
+      }, 1500);
+      return;
+    }
+
+    // Real mode: upload PCAP to backend
+    const rawFile = files[0]?.raw;
+    if (!rawFile) { setAnalyzing(false); return; }
+
+    try {
+      setPipelineStep(0); // Ingest
+      const formData = new FormData();
+      formData.append('file', rawFile);
+      const { data: upload } = await api.post('/ics/pcap/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      const pcapId: string = upload.pcap_id;
+      const sessionId: string = upload.session_id;
+      setPipelineStep(1); // Dissect
+
+      // Poll for completion
+      pollRef.current = setInterval(async () => {
+        try {
+          const { data: status } = await api.get(`/ics/pcap/status/${pcapId}`);
+          if (status.status === 'completed') {
+            clearInterval(pollRef.current!);
+            setPipelineStep(2); // Topology
+            setTimeout(async () => {
+              setPipelineStep(3); // Risk
+              // Fetch devices and findings for this session
+              const [devRes, findRes] = await Promise.all([
+                api.get(`/ics/devices/?session_id=${sessionId}`),
+                api.get(`/ics/findings/?session_id=${sessionId}`),
+              ]);
+              const protocols = Object.keys(status.protocol_summary || {});
+              setRealResult({
+                sessionId,
+                devices: devRes.data,
+                findings: findRes.data,
+                protocols,
+                packets: status.packet_count || 0,
+              });
+              setPipelineStep(4);
+              setAnalyzing(false);
+            }, 1000);
+          } else if (status.status === 'failed') {
+            clearInterval(pollRef.current!);
+            setAnalysisError(status.error_message || 'Analysis failed');
+            setAnalyzing(false);
+          }
+        } catch {
+          clearInterval(pollRef.current!);
+          setAnalysisError('Lost connection to backend');
+          setAnalyzing(false);
+        }
+      }, 2000);
+    } catch (err: any) {
+      setAnalysisError(err?.response?.data?.detail || 'Upload failed');
+      setAnalyzing(false);
+    }
   };
 
   const tabs = [
@@ -167,7 +237,7 @@ export default function PcapImport() {
             onDrop={(e) => {
               e.preventDefault();
               setDragOver(false);
-              const dropped = Array.from(e.dataTransfer.files).map((f) => ({ name: f.name, size: (f.size / 1024 / 1024).toFixed(1) + ' MB' }));
+              const dropped = Array.from(e.dataTransfer.files).map((f) => ({ name: f.name, size: (f.size / 1024 / 1024).toFixed(1) + ' MB', raw: f }));
               setFiles((prev) => [...prev, ...dropped]);
             }}
             className={`border-2 border-dashed rounded-xl p-10 text-center transition-colors ${
@@ -187,7 +257,7 @@ export default function PcapImport() {
               className="hidden"
               id="pcap-input"
               onChange={(e) => {
-                const selected = Array.from(e.target.files || []).map((f) => ({ name: f.name, size: (f.size / 1024 / 1024).toFixed(1) + ' MB' }));
+                const selected = Array.from(e.target.files || []).map((f) => ({ name: f.name, size: (f.size / 1024 / 1024).toFixed(1) + ' MB', raw: f }));
                 setFiles((prev) => [...prev, ...selected]);
               }}
             />
@@ -359,6 +429,105 @@ export default function PcapImport() {
                 <Button variant="outline" size="md" onClick={() => navigate('/reports')} icon={<Download size={14} />}>
                   Download Report
                 </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Analysis error */}
+          {analysisError && (
+            <div className="flex items-start gap-3 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3">
+              <XCircle size={16} className="text-red-400 mt-0.5 shrink-0" />
+              <div>
+                <p className="text-xs font-semibold text-red-400">Analysis Failed</p>
+                <p className="text-[11px] text-red-400/80 mt-0.5">{analysisError}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Real backend results */}
+          {realResult && (
+            <div className="space-y-4 rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Check size={18} className="text-emerald-400" />
+                  <p className="text-sm font-semibold text-content-primary">Analysis Complete</p>
+                </div>
+                <div className="flex gap-3 text-[11px] text-content-tertiary">
+                  <span>{realResult.packets.toLocaleString()} packets</span>
+                  <span>·</span>
+                  <span>Session {realResult.sessionId.slice(0, 8)}</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-4 gap-3">
+                {[
+                  { label: 'Devices Found', value: String(realResult.devices.length), color: 'text-accent' },
+                  { label: 'Protocols', value: String(realResult.protocols.length), color: 'text-blue-400' },
+                  { label: 'Findings', value: String(realResult.findings.length), color: 'text-amber-400' },
+                  { label: 'Critical', value: String(realResult.findings.filter((f: any) => f.severity === 'critical').length), color: 'text-red-400' },
+                ].map(s => (
+                  <div key={s.label} className="rounded-lg border border-border-default bg-surface-card p-3 text-center">
+                    <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
+                    <p className="text-[10px] text-content-tertiary mt-1">{s.label}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="rounded-lg border border-border-default bg-surface-card overflow-hidden">
+                  <div className="px-3 py-2 border-b border-border-default flex items-center gap-1.5">
+                    <Server size={13} className="text-accent" />
+                    <p className="text-xs font-semibold text-content-primary">Discovered Devices</p>
+                  </div>
+                  <div className="divide-y divide-border-default max-h-64 overflow-y-auto">
+                    {realResult.devices.length === 0
+                      ? <p className="px-3 py-4 text-xs text-content-tertiary text-center">No devices discovered</p>
+                      : realResult.devices.map((d: any) => (
+                        <div key={d.id} className="px-3 py-2">
+                          <p className="text-xs font-medium text-content-primary">{d.ip_address} <span className="text-content-tertiary font-normal">— {d.device_type}</span></p>
+                          <p className="text-[10px] text-content-tertiary">{d.vendor || 'Unknown'} · {d.purdue_level}</p>
+                          <div className="flex gap-1 mt-1 flex-wrap">
+                            {(d.protocols || []).map((p: string) => (
+                              <span key={p} className="px-1.5 py-0.5 rounded text-[9px] bg-accent/15 text-accent">{p}</span>
+                            ))}
+                          </div>
+                        </div>
+                      ))
+                    }
+                  </div>
+                </div>
+
+                <div className="rounded-lg border border-border-default bg-surface-card overflow-hidden">
+                  <div className="px-3 py-2 border-b border-border-default flex items-center gap-1.5">
+                    <Shield size={13} className="text-amber-400" />
+                    <p className="text-xs font-semibold text-content-primary">Security Findings</p>
+                  </div>
+                  <div className="divide-y divide-border-default max-h-64 overflow-y-auto">
+                    {realResult.findings.length === 0
+                      ? <p className="px-3 py-4 text-xs text-content-tertiary text-center">No findings detected</p>
+                      : realResult.findings.map((f: any) => (
+                        <div key={f.id} className="px-3 py-2">
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="text-xs text-content-primary leading-snug">{f.title}</p>
+                            <span className={`shrink-0 px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                              f.severity === 'critical' ? 'bg-red-500/20 text-red-400' :
+                              f.severity === 'high' ? 'bg-orange-500/20 text-orange-400' :
+                              f.severity === 'medium' ? 'bg-amber-500/20 text-amber-400' :
+                              'bg-blue-500/20 text-blue-400'
+                            }`}>{f.severity}</span>
+                          </div>
+                          {f.mitre_technique && <p className="text-[10px] text-content-tertiary mt-0.5">MITRE {f.mitre_technique}</p>}
+                        </div>
+                      ))
+                    }
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <Button variant="primary" size="md" onClick={() => navigate('/network')} icon={<Network size={14} />}>View Network Topology</Button>
+                <Button variant="outline" size="md" onClick={() => navigate('/vulnerabilities')} icon={<Shield size={14} />}>View Findings</Button>
+                <Button variant="outline" size="md" onClick={() => navigate('/reports')} icon={<Download size={14} />}>Download Report</Button>
               </div>
             </div>
           )}

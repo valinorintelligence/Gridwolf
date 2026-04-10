@@ -1,10 +1,38 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   FileSearch, Upload, Radio, BookOpen, Play, Pause, Square, ChevronRight,
   Check, Trash2, Eye, RefreshCw, HardDrive, Filter,
-  Download, AlertTriangle, Zap, Server, Activity
+  Download, AlertTriangle, Zap, Server, Activity, Shield, Network, Info
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+
+const DEMO_RESULT = {
+  filename: 'gridwolf-sample-ics-capture.pcap',
+  packets: 163,
+  duration: '00:04:12',
+  devices: [
+    { ip: '192.168.1.10', mac: 'DE:AD:BE:EF:01:10', role: 'PLC', vendor: 'Siemens', protocols: ['S7comm', 'LLDP'], zone: 'Level 1 – Control' },
+    { ip: '192.168.1.20', mac: 'DE:AD:BE:EF:01:20', role: 'HMI', vendor: 'Wonderware', protocols: ['Modbus TCP', 'HTTP'], zone: 'Level 2 – Supervisory' },
+    { ip: '192.168.1.30', mac: 'DE:AD:BE:EF:01:30', role: 'RTU', vendor: 'ABB', protocols: ['DNP3', 'IEC 104'], zone: 'Level 1 – Control' },
+    { ip: '10.0.0.5',     mac: 'DE:AD:BE:EF:00:05', role: 'Engineering WS', vendor: 'Unknown', protocols: ['S7comm', 'HTTP'], zone: 'Level 3 – Operations' },
+    { ip: '192.168.1.1',  mac: 'DE:AD:BE:EF:01:01', role: 'Switch', vendor: 'Cisco', protocols: ['LLDP', 'SNMP'], zone: 'Level 2 – Supervisory' },
+  ],
+  protocols: [
+    { name: 'Modbus TCP', packets: 48, color: 'bg-blue-500' },
+    { name: 'S7comm', packets: 36, color: 'bg-purple-500' },
+    { name: 'DNP3', packets: 29, color: 'bg-emerald-500' },
+    { name: 'EtherNet/IP', packets: 22, color: 'bg-amber-500' },
+    { name: 'HTTP/SNMP', packets: 28, color: 'bg-red-400' },
+  ],
+  findings: [
+    { severity: 'Critical', title: 'Plaintext Modbus writes to PLC coils', cve: null, mitre: 'T0831' },
+    { severity: 'High', title: 'SNMP community string "public" detected', cve: 'CVE-2023-1234', mitre: 'T0842' },
+    { severity: 'High', title: 'Purdue zone violation: Engineering WS (L3) → PLC (L1) direct', cve: null, mitre: 'T0886' },
+    { severity: 'Medium', title: 'S7comm SZL enumeration (device fingerprinting)', cve: null, mitre: 'T0888' },
+    { severity: 'Low', title: 'C2 beacon pattern detected (periodic 30s interval)', cve: null, mitre: 'T0885' },
+  ],
+};
 
 // ---------------------------------------------------------------------------
 // Mock data
@@ -56,20 +84,28 @@ export default function PcapImport() {
   const [files, setFiles] = useState<{ name: string; size: string }[]>([]);
   const [analyzing, setAnalyzing] = useState(false);
   const [pipelineStep, setPipelineStep] = useState(-1);
+  const [showDemoResult, setShowDemoResult] = useState(false);
   const [liveCapturing, setLiveCapturing] = useState(false);
   const [livePaused, setLivePaused] = useState(false);
   const [liveIface, setLiveIface] = useState('eth0');
   const [liveBpf, setLiveBpf] = useState('');
   const [liveDuration, setLiveDuration] = useState('15min');
   const [dragOver, setDragOver] = useState(false);
+  const navigate = useNavigate();
+  const isDemoMode = import.meta.env.VITE_DEMO_MODE === 'true';
 
   const startAnalysis = () => {
     setAnalyzing(true);
+    setShowDemoResult(false);
     setPipelineStep(0);
     let step = 0;
     const iv = setInterval(() => {
       step++;
-      if (step >= 4) { clearInterval(iv); setAnalyzing(false); }
+      if (step >= 4) {
+        clearInterval(iv);
+        setAnalyzing(false);
+        if (isDemoMode) setShowDemoResult(true);
+      }
       setPipelineStep(step);
     }, 1500);
   };
@@ -110,6 +146,20 @@ export default function PcapImport() {
       {/* ============ IMPORT TAB ============ */}
       {tab === 'import' && (
         <div className="space-y-6">
+
+          {/* Demo mode notice */}
+          {isDemoMode && (
+            <div className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3">
+              <Info size={16} className="text-amber-400 mt-0.5 shrink-0" />
+              <div>
+                <p className="text-xs font-semibold text-amber-400">Live Demo — Simulated Analysis</p>
+                <p className="text-[11px] text-amber-400/80 mt-0.5">
+                  Upload any PCAP (or use the sample below) and click <strong>Start Analysis Pipeline</strong> to see a simulated ICS discovery result with real findings, devices, and protocol breakdown. Full backend processing requires self-hosted install.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Drop zone */}
           <div
             onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
@@ -194,6 +244,121 @@ export default function PcapImport() {
                     {i < 3 && <ChevronRight size={14} className="text-content-tertiary shrink-0" />}
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* Demo analysis results */}
+          {showDemoResult && (
+            <div className="space-y-4 rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Check size={18} className="text-emerald-400" />
+                  <p className="text-sm font-semibold text-content-primary">Analysis Complete — {DEMO_RESULT.filename}</p>
+                </div>
+                <div className="flex gap-3 text-[11px] text-content-tertiary">
+                  <span>{DEMO_RESULT.packets} packets</span>
+                  <span>·</span>
+                  <span>{DEMO_RESULT.duration} duration</span>
+                </div>
+              </div>
+
+              {/* Summary stats */}
+              <div className="grid grid-cols-4 gap-3">
+                {[
+                  { label: 'Devices Found', value: String(DEMO_RESULT.devices.length), color: 'text-accent' },
+                  { label: 'Protocols', value: String(DEMO_RESULT.protocols.length), color: 'text-blue-400' },
+                  { label: 'Findings', value: String(DEMO_RESULT.findings.length), color: 'text-amber-400' },
+                  { label: 'Critical', value: String(DEMO_RESULT.findings.filter(f => f.severity === 'Critical').length), color: 'text-red-400' },
+                ].map(s => (
+                  <div key={s.label} className="rounded-lg border border-border-default bg-surface-card p-3 text-center">
+                    <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
+                    <p className="text-[10px] text-content-tertiary mt-1">{s.label}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                {/* Devices */}
+                <div className="rounded-lg border border-border-default bg-surface-card overflow-hidden">
+                  <div className="px-3 py-2 border-b border-border-default flex items-center gap-1.5">
+                    <Server size={13} className="text-accent" />
+                    <p className="text-xs font-semibold text-content-primary">Discovered Devices</p>
+                  </div>
+                  <div className="divide-y divide-border-default">
+                    {DEMO_RESULT.devices.map(d => (
+                      <div key={d.ip} className="px-3 py-2 flex items-center justify-between">
+                        <div>
+                          <p className="text-xs font-medium text-content-primary">{d.ip} <span className="text-content-tertiary font-normal">— {d.role}</span></p>
+                          <p className="text-[10px] text-content-tertiary">{d.vendor} · {d.zone}</p>
+                        </div>
+                        <div className="flex gap-1 flex-wrap justify-end max-w-[120px]">
+                          {d.protocols.map(p => (
+                            <span key={p} className="px-1.5 py-0.5 rounded text-[9px] bg-accent/15 text-accent">{p}</span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Findings */}
+                <div className="rounded-lg border border-border-default bg-surface-card overflow-hidden">
+                  <div className="px-3 py-2 border-b border-border-default flex items-center gap-1.5">
+                    <Shield size={13} className="text-amber-400" />
+                    <p className="text-xs font-semibold text-content-primary">Security Findings</p>
+                  </div>
+                  <div className="divide-y divide-border-default">
+                    {DEMO_RESULT.findings.map((f, i) => (
+                      <div key={i} className="px-3 py-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-xs text-content-primary leading-snug">{f.title}</p>
+                          <span className={`shrink-0 px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                            f.severity === 'Critical' ? 'bg-red-500/20 text-red-400' :
+                            f.severity === 'High' ? 'bg-orange-500/20 text-orange-400' :
+                            f.severity === 'Medium' ? 'bg-amber-500/20 text-amber-400' :
+                            'bg-blue-500/20 text-blue-400'
+                          }`}>{f.severity}</span>
+                        </div>
+                        <p className="text-[10px] text-content-tertiary mt-0.5">MITRE {f.mitre}{f.cve ? ` · ${f.cve}` : ''}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Protocol breakdown */}
+              <div className="rounded-lg border border-border-default bg-surface-card p-4">
+                <div className="flex items-center gap-1.5 mb-3">
+                  <Network size={13} className="text-blue-400" />
+                  <p className="text-xs font-semibold text-content-primary">Protocol Distribution</p>
+                </div>
+                <div className="flex h-3 rounded-full overflow-hidden gap-0.5 mb-2">
+                  {DEMO_RESULT.protocols.map(p => (
+                    <div key={p.name} className={`${p.color} opacity-80`} style={{ width: `${(p.packets / DEMO_RESULT.packets) * 100}%` }} />
+                  ))}
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  {DEMO_RESULT.protocols.map(p => (
+                    <div key={p.name} className="flex items-center gap-1.5">
+                      <div className={`w-2 h-2 rounded-full ${p.color}`} />
+                      <span className="text-[11px] text-content-secondary">{p.name}</span>
+                      <span className="text-[11px] text-content-tertiary">{p.packets} pkts</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <Button variant="primary" size="md" onClick={() => navigate('/network')} icon={<Network size={14} />}>
+                  View Network Topology
+                </Button>
+                <Button variant="outline" size="md" onClick={() => navigate('/vulnerabilities')} icon={<Shield size={14} />}>
+                  View Findings
+                </Button>
+                <Button variant="outline" size="md" onClick={() => navigate('/reports')} icon={<Download size={14} />}>
+                  Download Report
+                </Button>
               </div>
             </div>
           )}

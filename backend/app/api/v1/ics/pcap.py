@@ -34,6 +34,26 @@ async def upload_pcap(
     if not file.filename.endswith((".pcap", ".pcapng", ".cap")):
         raise HTTPException(400, "Invalid file type. Supported: .pcap, .pcapng, .cap")
 
+    # Read file content and validate before saving
+    content = await file.read()
+
+    if len(content) < 24:
+        raise HTTPException(400, f"File is too small ({len(content)} bytes) — not a valid capture file")
+
+    # Validate magic bytes
+    magic = content[:4]
+    valid_magics = {
+        b'\xd4\xc3\xb2\xa1', b'\xa1\xb2\xc3\xd4',  # pcap LE/BE
+        b'\x4d\x3c\xb2\xa1', b'\xa1\xb2\x3c\x4d',  # pcap nanosecond
+        b'\x0a\x0d\x0d\x0a',                          # pcapng
+    }
+    if magic not in valid_magics:
+        raise HTTPException(
+            400,
+            f"Not a valid PCAP/PCAPNG file (got header: {magic.hex()}). "
+            f"The file may be corrupted. Please re-export from Wireshark.",
+        )
+
     # Create session if not provided
     if not session_id:
         session = Session(
@@ -50,13 +70,18 @@ async def upload_pcap(
         if not session:
             raise HTTPException(404, f"Session {session_id} not found")
 
-    # Save file
+    # Save validated file
     file_id = str(uuid.uuid4())
     filepath = UPLOAD_DIR / f"{file_id}_{file.filename}"
 
-    content = await file.read()
     with open(filepath, "wb") as f:
         f.write(content)
+
+    # Verify the saved file matches what we received
+    saved_size = os.path.getsize(filepath)
+    if saved_size != len(content):
+        logger.error(f"File size mismatch: received {len(content)}, saved {saved_size}")
+        raise HTTPException(500, "File save verification failed — disk may be full")
 
     # Create PCAP record
     pcap_record = PcapFile(

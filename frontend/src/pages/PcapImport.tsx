@@ -138,8 +138,10 @@ export default function PcapImport() {
       setPipelineStep(0); // Ingest
       const formData = new FormData();
       formData.append('file', rawFile);
+      // Use undefined Content-Type so the browser sets multipart/form-data
+      // with the correct boundary (the api instance defaults to JSON).
       const { data: upload } = await api.post('/ics/pcap/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+        headers: { 'Content-Type': undefined },
       });
 
       const pcapId: string = upload.pcap_id;

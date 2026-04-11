@@ -6,6 +6,7 @@ Pipeline: Ingest → Dissect → Topology → Risk
 """
 
 import os
+import struct
 import logging
 from datetime import datetime, timezone
 from typing import Optional
@@ -14,8 +15,23 @@ from collections import defaultdict
 try:
     from scapy.all import rdpcap, PcapReader, sniff, IP, TCP, UDP, Ether, DNS, DNSQR, Raw
     SCAPY_AVAILABLE = True
+    # pcapng support (Scapy 2.5+)
+    try:
+        from scapy.utils import PcapNgReader
+        PCAPNG_AVAILABLE = True
+    except ImportError:
+        PCAPNG_AVAILABLE = False
 except ImportError:
     SCAPY_AVAILABLE = False
+    PCAPNG_AVAILABLE = False
+
+# Valid PCAP/PCAPNG magic bytes
+PCAP_MAGIC_LE = b'\xd4\xc3\xb2\xa1'      # pcap little-endian
+PCAP_MAGIC_BE = b'\xa1\xb2\xc3\xd4'      # pcap big-endian
+PCAP_MAGIC_NS_LE = b'\x4d\x3c\xb2\xa1'   # pcap nanosecond LE
+PCAP_MAGIC_NS_BE = b'\xa1\xb2\x3c\x4d'   # pcap nanosecond BE
+PCAPNG_MAGIC = b'\x0a\x0d\x0d\x0a'        # pcapng Section Header Block
+VALID_PCAP_MAGICS = {PCAP_MAGIC_LE, PCAP_MAGIC_BE, PCAP_MAGIC_NS_LE, PCAP_MAGIC_NS_BE}
 
 from app.engine.protocol_parsers import (
     parse_modbus, parse_s7comm, parse_enip, parse_dnp3,
@@ -47,26 +63,30 @@ class PcapProcessor:
         if not os.path.exists(filepath):
             raise FileNotFoundError(f"PCAP file not found: {filepath}")
 
-        logger.info(f"Processing PCAP: {filepath}")
-
-        # Stage 1: Ingest
+        # Stage 1: Ingest — validate file before processing
         file_size = os.path.getsize(filepath)
+        if file_size < 24:
+            raise RuntimeError(f"PCAP file too small ({file_size} bytes) — not a valid capture")
 
-        # Use PcapReader for large files to avoid memory issues
-        try:
-            reader = PcapReader(filepath)
-            for pkt in reader:
-                self._process_packet(pkt)
-            reader.close()
-        except Exception as e:
-            logger.error(f"Error reading PCAP: {e}")
-            # Fall back to rdpcap for smaller files
-            try:
-                packets = rdpcap(filepath)
-                for pkt in packets:
-                    self._process_packet(pkt)
-            except Exception as e2:
-                raise RuntimeError(f"Failed to read PCAP file: {e2}")
+        # Check magic bytes to determine format
+        with open(filepath, "rb") as fh:
+            magic = fh.read(4)
+
+        is_pcapng = (magic == PCAPNG_MAGIC)
+        is_pcap = (magic in VALID_PCAP_MAGICS)
+
+        if not is_pcap and not is_pcapng:
+            raise RuntimeError(
+                f"Not a valid PCAP/PCAPNG file (magic: {magic.hex()}). "
+                f"File may be corrupted during upload."
+            )
+
+        logger.info(f"Processing {'pcapng' if is_pcapng else 'pcap'}: {filepath} ({file_size:,} bytes)")
+
+        # Read packets using the appropriate reader
+        self._read_packets(filepath, file_size, is_pcapng)
+
+        logger.info(f"Parsed {self.packet_count} packets, {len(self.devices)} devices")
 
         # Stage 4: Risk assessment
         self._run_risk_assessment()
@@ -83,6 +103,59 @@ class PcapProcessor:
             "findings": self.findings,
             "protocol_summary": dict(self.protocol_summary),
         }
+
+    def _read_packets(self, filepath: str, file_size: int, is_pcapng: bool):
+        """Read packets from a PCAP or PCAPNG file using the best available reader."""
+        # Strategy: try streaming reader first, then fall back to rdpcap
+        readers_to_try = []
+
+        if is_pcapng:
+            if PCAPNG_AVAILABLE:
+                readers_to_try.append(("PcapNgReader", lambda: PcapNgReader(filepath)))
+            # rdpcap in Scapy 2.5+ handles pcapng too
+            readers_to_try.append(("rdpcap", None))
+        else:
+            # For pcap: stream large files, load small ones
+            if file_size > 10 * 1024 * 1024:  # > 10 MB
+                readers_to_try.append(("PcapReader", lambda: PcapReader(filepath)))
+            readers_to_try.append(("rdpcap", None))
+
+        last_error = None
+        for reader_name, reader_factory in readers_to_try:
+            # Reset state before each attempt to prevent duplicates
+            self.devices.clear()
+            self.connections.clear()
+            self.protocol_events.clear()
+            self.findings.clear()
+            self.packet_count = 0
+            self.start_time = None
+            self.end_time = None
+            self.protocol_summary.clear()
+
+            try:
+                if reader_factory:
+                    logger.info(f"Trying {reader_name}...")
+                    reader = reader_factory()
+                    for pkt in reader:
+                        self._process_packet(pkt)
+                    reader.close()
+                else:
+                    logger.info(f"Trying rdpcap (loads entire file into memory)...")
+                    packets = rdpcap(filepath)
+                    for pkt in packets:
+                        self._process_packet(pkt)
+
+                logger.info(f"{reader_name} succeeded: {self.packet_count} packets")
+                return  # success
+            except Exception as e:
+                last_error = e
+                logger.warning(f"{reader_name} failed: {e}")
+                continue
+
+        raise RuntimeError(
+            f"Could not read capture file with any parser. "
+            f"Last error: {last_error}"
+        )
 
     def _process_packet(self, pkt):
         """Process a single packet — Stage 2 (Dissect) + Stage 3 (Topology)."""

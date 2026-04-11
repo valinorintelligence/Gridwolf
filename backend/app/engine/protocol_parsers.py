@@ -15,16 +15,29 @@ logger = logging.getLogger(__name__)
 
 ICS_PORTS = {
     502: "modbus",
+    503: "modbus",
+    802: "modbus",          # Modbus alternate
     102: "s7comm",
+    5026: "s7comm",         # Siemens S7 routing / SIMATIC NET
     44818: "enip",
     2222: "enip",
     20000: "dnp3",
+    19999: "dnp3",          # DNP3 alternate
     47808: "bacnet",
     2404: "iec104",
     4840: "opcua",
     4843: "opcua",
     161: "snmp",
     162: "snmp",
+    34962: "profinet",      # PROFINET RT
+    34963: "profinet",      # PROFINET RT
+    34964: "profinet",      # PROFINET Context Manager
+    1089: "ff-hsE",         # FOUNDATION Fieldbus HSE
+    1090: "ff-hsE",
+    1091: "ff-hsE",
+    18245: "gdsf",          # GE SRTP / GDS
+    789: "trivial-file",    # Trivial File Transfer (ICS firmware)
+    2111: "dsatp",          # DSATP (Emerson/Fisher)
 }
 
 # ─── OUI Vendor Database (common ICS vendors) ──────────
@@ -81,32 +94,57 @@ def identify_protocol(dport: int, sport: int, payload: bytes) -> str:
     if sport in ICS_PORTS:
         return ICS_PORTS[sport]
 
-    # Payload-based heuristics
+    # Payload-based heuristics for non-standard ports
     if len(payload) >= 7:
         # Modbus TCP: Transaction ID (2) + Protocol ID (2, always 0x0000) + Length (2) + Unit ID (1)
-        if payload[2:4] == b'\x00\x00' and dport == 502:
-            return "modbus"
+        if payload[2:4] == b'\x00\x00':
+            # Validate length field matches actual payload
+            try:
+                modbus_len = struct.unpack_from(">H", payload, 4)[0]
+                if 1 <= modbus_len <= 254 and len(payload) >= 6 + modbus_len:
+                    return "modbus"
+            except struct.error:
+                pass
 
-        # S7comm: TPKT header (0x03, 0x00)
-        if payload[0:2] == b'\x03\x00':
-            return "s7comm"
+        # S7comm: TPKT header (0x03, 0x00) + valid length
+        if payload[0:2] == b'\x03\x00' and len(payload) >= 4:
+            try:
+                tpkt_len = struct.unpack_from(">H", payload, 2)[0]
+                if 7 <= tpkt_len <= len(payload):
+                    return "s7comm"
+            except struct.error:
+                pass
 
-        # EtherNet/IP: encapsulation header
+        # EtherNet/IP: encapsulation header with valid command
         if len(payload) >= 24:
-            cmd = struct.unpack_from("<H", payload, 0)[0]
-            if cmd in (0x0004, 0x0063, 0x0065, 0x006F, 0x0070):
-                return "enip"
+            try:
+                cmd = struct.unpack_from("<H", payload, 0)[0]
+                if cmd in (0x0004, 0x0063, 0x0065, 0x0066, 0x006F, 0x0070):
+                    return "enip"
+            except struct.error:
+                pass
 
         # DNP3: start bytes 0x0564
         if payload[0:2] == b'\x05\x64':
             return "dnp3"
 
-        # IEC 104: start byte 0x68
+        # IEC 104: start byte 0x68 with valid APDU length
         if payload[0] == 0x68 and len(payload) >= 6:
-            return "iec104"
+            apdu_len = payload[1]
+            if 4 <= apdu_len <= 253:
+                return "iec104"
+
+        # BACnet/IP: BVLC type 0x81
+        if payload[0] == 0x81 and len(payload) >= 4:
+            try:
+                bvlc_len = struct.unpack_from(">H", payload, 2)[0]
+                if bvlc_len <= len(payload):
+                    return "bacnet"
+            except struct.error:
+                pass
 
     # HTTP/HTTPS
-    if dport in (80, 8080, 8443):
+    if dport in (80, 8080):
         return "http"
     if dport in (443, 8443):
         return "https"

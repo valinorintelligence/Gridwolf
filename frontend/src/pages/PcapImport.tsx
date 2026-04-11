@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   FileSearch, Upload, Radio, BookOpen, Play, Pause, Square, ChevronRight,
@@ -97,8 +97,16 @@ export default function PcapImport() {
   const [liveDuration, setLiveDuration] = useState('15min');
   const [dragOver, setDragOver] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollErrorCount = useRef(0);
   const navigate = useNavigate();
   const isDemoMode = import.meta.env.VITE_DEMO_MODE === 'true';
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, []);
 
   const startAnalysis = async () => {
     setAnalyzing(true);
@@ -138,11 +146,30 @@ export default function PcapImport() {
       const sessionId: string = upload.session_id;
       setPipelineStep(1); // Dissect
 
-      // Poll for completion
+      // Poll for completion (retry up to 90 times = ~3 min for large PCAPs)
+      const MAX_POLL_ERRORS = 5;
+      const MAX_POLL_ATTEMPTS = 90;
+      let pollAttempts = 0;
+      pollErrorCount.current = 0;
+      let completionHandled = false;
+
       pollRef.current = setInterval(async () => {
+        if (completionHandled) return;
+        pollAttempts++;
+
+        if (pollAttempts > MAX_POLL_ATTEMPTS) {
+          clearInterval(pollRef.current!);
+          setAnalysisError('Analysis timed out — the PCAP may be too large. Check backend logs.');
+          setAnalyzing(false);
+          return;
+        }
+
         try {
           const { data: status } = await api.get(`/ics/pcap/status/${pcapId}`);
-          if (status.status === 'completed') {
+          pollErrorCount.current = 0; // reset on success
+
+          if (status.status === 'completed' && !completionHandled) {
+            completionHandled = true;
             clearInterval(pollRef.current!);
             setPipelineStep(2); // Topology
             setTimeout(async () => {
@@ -164,14 +191,19 @@ export default function PcapImport() {
               setAnalyzing(false);
             }, 1000);
           } else if (status.status === 'failed') {
+            completionHandled = true;
             clearInterval(pollRef.current!);
             setAnalysisError(status.error_message || 'Analysis failed');
             setAnalyzing(false);
           }
         } catch {
-          clearInterval(pollRef.current!);
-          setAnalysisError('Lost connection to backend');
-          setAnalyzing(false);
+          pollErrorCount.current++;
+          // Only give up after multiple consecutive failures
+          if (pollErrorCount.current >= MAX_POLL_ERRORS) {
+            clearInterval(pollRef.current!);
+            setAnalysisError('Lost connection to backend after multiple retries');
+            setAnalyzing(false);
+          }
         }
       }, 2000);
     } catch (err: any) {

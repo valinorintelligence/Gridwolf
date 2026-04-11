@@ -5,6 +5,7 @@ PCAP Upload & Analysis API endpoints.
 
 import os
 import uuid
+import asyncio
 import logging
 from pathlib import Path
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, BackgroundTasks
@@ -89,9 +90,10 @@ async def _process_pcap_task(pcap_id: str, filepath: str, session_id: str):
 
     async with async_session_factory() as db:
         try:
-            # Process PCAP
+            # Process PCAP — run in thread pool to avoid blocking the
+            # async event loop (Scapy parsing is synchronous / CPU-bound).
             processor = PcapProcessor()
-            results = processor.process_file(filepath)
+            results = await asyncio.to_thread(processor.process_file, filepath)
 
             # Update PCAP record
             result = await db.execute(select(PcapFile).where(PcapFile.id == pcap_id))

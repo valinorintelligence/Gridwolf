@@ -1,14 +1,17 @@
 # Build stage
 FROM node:20-alpine AS builder
 WORKDIR /app
-COPY package*.json ./
-RUN npm ci
-COPY . .
-RUN npm run build
+# Copy root workspace files (npm workspaces — lock file is at root)
+COPY package.json package-lock.json ./
+COPY frontend/package.json ./frontend/
+RUN npm ci --workspace=frontend
+# Copy frontend source and build
+COPY frontend/ ./frontend/
+RUN npm run build --workspace=frontend
 
 # Production stage
 FROM nginx:alpine
-COPY --from=builder /app/dist /usr/share/nginx/html
-COPY ../nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=builder /app/frontend/dist /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]

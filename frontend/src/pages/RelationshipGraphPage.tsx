@@ -1,17 +1,53 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { GitFork, Filter } from 'lucide-react';
 import { RelationshipGraph } from '@/components/ontology/RelationshipGraph';
 import { Card, CardHeader, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { MOCK_GRAPH_DATA, OBJECT_TYPE_DEFINITIONS } from '@/data/mock';
+import { api } from '@/services/api';
+import type { GraphData, GraphNode, GraphEdge, ObjectTypeDefinition } from '@/types/ontology';
 
 export default function RelationshipGraphPage() {
   const [showFilters, setShowFilters] = useState(false);
-  const [enabledTypes, setEnabledTypes] = useState<Set<string>>(
-    () => new Set(OBJECT_TYPE_DEFINITIONS.map((t) => t.name))
-  );
+  const [graphData, setGraphData] = useState<GraphData>({ nodes: [], edges: [] });
+  const [typeDefinitions, setTypeDefinitions] = useState<ObjectTypeDefinition[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [enabledTypes, setEnabledTypes] = useState<Set<string>>(new Set());
   const [layout, setLayout] = useState<string>('cose');
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const [graphRes, typesRes] = await Promise.all([
+          api.get('/ontology/graph').catch(() => ({ data: { nodes: [], edges: [] } })),
+          api.get('/ontology/types').catch(() => ({ data: [] })),
+        ]);
+        const gd = graphRes.data ?? { nodes: [], edges: [] };
+        const nodes = (gd.nodes ?? []).map((n: Record<string, unknown>) => ({
+          id: String(n.id ?? ''),
+          label: String(n.label ?? n.id ?? ''),
+          type: String(n.type ?? 'default'),
+          color: String(n.color ?? '#8b5cf6'),
+        })) as GraphNode[];
+        const edges = (gd.edges ?? []).map((e: Record<string, unknown>) => ({
+          id: String(e.id ?? `${e.source}-${e.target}`),
+          source: String(e.source ?? ''),
+          target: String(e.target ?? ''),
+          label: String(e.label ?? ''),
+        })) as GraphEdge[];
+        setGraphData({ nodes, edges });
+        const types = Array.isArray(typesRes.data) ? typesRes.data : typesRes.data?.results ?? [];
+        setTypeDefinitions(types as ObjectTypeDefinition[]);
+        setEnabledTypes(new Set((types as ObjectTypeDefinition[]).map((t) => t.name)));
+      } catch {
+        setGraphData({ nodes: [], edges: [] });
+        setTypeDefinitions([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, []);
 
   const toggleType = (typeName: string) => {
     setEnabledTypes((prev) => {
@@ -27,15 +63,31 @@ export default function RelationshipGraphPage() {
 
   // Filter graph data based on selected types
   const filteredGraphData = useMemo(() => {
-    const filteredNodes = MOCK_GRAPH_DATA.nodes.filter((n) =>
-      enabledTypes.has(n.type)
-    );
+    const filteredNodes = graphData.nodes.filter((n) => enabledTypes.has(n.type));
     const nodeIds = new Set(filteredNodes.map((n) => n.id));
-    const filteredEdges = MOCK_GRAPH_DATA.edges.filter(
+    const filteredEdges = graphData.edges.filter(
       (e) => nodeIds.has(e.source) && nodeIds.has(e.target)
     );
     return { nodes: filteredNodes, edges: filteredEdges };
-  }, [enabledTypes]);
+  }, [enabledTypes, graphData]);
+
+  if (loading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (graphData.nodes.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20">
+        <GitFork className="h-12 w-12 text-content-muted" />
+        <h2 className="mt-4 text-lg font-semibold text-content-primary">No Data Yet</h2>
+        <p className="mt-1 text-sm text-content-secondary">The relationship graph will populate once objects and their connections are discovered.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -92,24 +144,24 @@ export default function RelationshipGraphPage() {
           <Card className="w-60 shrink-0">
             <CardHeader title="Object Types" />
             <CardContent className="space-y-2">
-              {OBJECT_TYPE_DEFINITIONS.map((typeDef) => (
+              {typeDefinitions.map((typeDef) => (
                 <label
-                  key={typeDef.id}
+                  key={String(typeDef.id)}
                   className="flex cursor-pointer items-center gap-2 text-sm"
                 >
                   <input
                     type="checkbox"
-                    checked={enabledTypes.has(typeDef.name)}
-                    onChange={() => toggleType(typeDef.name)}
+                    checked={enabledTypes.has(String(typeDef.name ?? ''))}
+                    onChange={() => toggleType(String(typeDef.name ?? ''))}
                     className="accent-accent"
                   />
                   <span
                     className="h-2.5 w-2.5 rounded-full"
-                    style={{ backgroundColor: typeDef.color }}
+                    style={{ backgroundColor: String(typeDef.color ?? '#6b7280') }}
                   />
-                  <span className="text-content-primary">{typeDef.name}</span>
+                  <span className="text-content-primary">{String(typeDef.name ?? '')}</span>
                   <span className="ml-auto text-xs text-content-tertiary">
-                    {MOCK_GRAPH_DATA.nodes.filter((n) => n.type === typeDef.name).length}
+                    {graphData.nodes.filter((n) => n.type === typeDef.name).length}
                   </span>
                 </label>
               ))}
@@ -118,7 +170,7 @@ export default function RelationshipGraphPage() {
                 <button
                   type="button"
                   onClick={() =>
-                    setEnabledTypes(new Set(OBJECT_TYPE_DEFINITIONS.map((t) => t.name)))
+                    setEnabledTypes(new Set(typeDefinitions.map((t) => t.name)))
                   }
                   className="text-xs text-accent hover:underline"
                 >

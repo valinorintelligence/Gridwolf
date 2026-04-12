@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Upload, FileUp, FileCheck, Clock, CheckCircle, XCircle, AlertCircle,
   File, Monitor, Shield, Terminal, Bug, Cpu, Radar, Eye,
   Loader2, AlertTriangle, ExternalLink,
 } from 'lucide-react';
+import { api } from '@/services/api';
 import { Card, CardHeader, CardContent } from '@/components/ui/Card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
 import { Tabs, TabList, Tab, TabPanel } from '@/components/ui/Tabs';
@@ -73,40 +74,7 @@ function stageIndex(stage: PcapStage): number {
   return PCAP_STAGES.findIndex((s) => s.key === stage);
 }
 
-// ---------------------------------------------------------------------------
-// Mock PCAP files
-// ---------------------------------------------------------------------------
-
-const MOCK_PCAP_FILES: PcapFile[] = [
-  {
-    id: 'pcap-001',
-    filename: 'plant_floor_capture_20260320.pcapng',
-    size: '248.6 MB',
-    packets: 1_842_310,
-    status: 'complete',
-    currentStage: 'create_topology',
-    stageProgress: 100,
-    results: { devicesDiscovered: 47, connectionsFound: 312, protocolsIdentified: 8, newDevices: 12, knownDevices: 35 },
-  },
-  {
-    id: 'pcap-002',
-    filename: 'scada_dmz_tap.pcap',
-    size: '89.2 MB',
-    packets: 634_500,
-    status: 'processing',
-    currentStage: 'identify_protocols',
-    stageProgress: 62,
-  },
-  {
-    id: 'pcap-003',
-    filename: 'substation_serial_20260318.pcapng',
-    size: '512.1 MB',
-    packets: 4_210_800,
-    status: 'queued',
-    currentStage: 'upload',
-    stageProgress: 0,
-  },
-];
+// PCAP files are now fetched from the API
 
 // ---------------------------------------------------------------------------
 // Mock import history
@@ -296,7 +264,39 @@ function ToolCard({ name, description, icon, formats, accept, status, warning, c
 
 export default function ScanImport() {
   const [pcapDragging, setPcapDragging] = useState(false);
-  const [pcapFiles] = useState<PcapFile[]>(MOCK_PCAP_FILES);
+  const [pcapFiles, setPcapFiles] = useState<PcapFile[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchPcapFiles() {
+      try {
+        const res = await api.get('/ics/pcap/list').catch(() => ({ data: [] }));
+        const data = Array.isArray(res.data) ? res.data : res.data?.results ?? [];
+        const mapped: PcapFile[] = data.map((p: Record<string, unknown>) => ({
+          id: String(p.pcap_id ?? p.id ?? ''),
+          filename: String(p.filename ?? ''),
+          size: String(p.file_size ?? '0 B'),
+          packets: Number(p.packet_count ?? 0),
+          status: (String(p.status ?? 'queued') as PcapFileStatus),
+          currentStage: 'create_topology' as PcapStage,
+          stageProgress: p.status === 'complete' ? 100 : p.status === 'processing' ? 50 : 0,
+          results: p.status === 'complete' ? {
+            devicesDiscovered: 0,
+            connectionsFound: 0,
+            protocolsIdentified: typeof p.protocol_summary === 'object' && p.protocol_summary ? Object.keys(p.protocol_summary).length : 0,
+            newDevices: 0,
+            knownDevices: 0,
+          } : undefined,
+        }));
+        setPcapFiles(mapped);
+      } catch {
+        setPcapFiles([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchPcapFiles();
+  }, []);
 
   const completedPcaps = pcapFiles.filter((f) => f.status === 'complete').length;
   const totalDevices = pcapFiles.reduce((sum, f) => sum + (f.results?.devicesDiscovered ?? 0), 0);

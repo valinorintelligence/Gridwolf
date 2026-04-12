@@ -1,25 +1,11 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { History, Filter, Calendar } from 'lucide-react';
 import { Card, CardHeader, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Select } from '@/components/ui/Select';
 import SearchBar from '@/components/shared/SearchBar';
 import TimelineWidget from '@/components/dashboard/TimelineWidget';
-import { MOCK_DASHBOARD_STATS } from '@/data/mock';
-
-const ALL_EVENTS = [
-  ...MOCK_DASHBOARD_STATS.recentEvents,
-  { id: 'evt-006', objectId: 'cc-002', objectTitle: 'NIST 800-82 - Access Control', objectType: 'ComplianceControl', action: 'compliance_check_failed', details: { framework: 'NIST-800-82' }, timestamp: '2024-12-14T10:00:00Z' },
-  { id: 'evt-007', objectId: 'h-001', objectTitle: 'PLC-SIEMENS-01', objectType: 'Host', action: 'scan_initiated', details: { scanner: 'Nessus' }, timestamp: '2024-12-13T22:00:00Z' },
-  { id: 'evt-008', objectId: 'v-007', objectTitle: 'Weak TLS Configuration on SCADA Server', objectType: 'Vulnerability', action: 'status_changed', details: { from: 'active', to: 'mitigated' }, timestamp: '2024-12-12T15:00:00Z' },
-  { id: 'evt-009', objectId: 'u-001', objectTitle: 'jchen (OT Admin)', objectType: 'Identity', action: 'login', details: { source: '10.1.3.15' }, timestamp: '2024-12-12T08:30:00Z' },
-  { id: 'evt-010', objectId: 'sc-002', objectTitle: 'Trivy SCA', objectType: 'Scanner', action: 'scan_completed', details: { findings: 128 }, timestamp: '2024-12-11T04:00:00Z' },
-  { id: 'evt-011', objectId: 'ap-002', objectTitle: 'Compromised EWS - Historian Data Exfil', objectType: 'AttackPath', action: 'risk_recalculated', details: { previousScore: 72, newScore: 78 }, timestamp: '2024-12-10T09:00:00Z' },
-  { id: 'evt-012', objectId: 'cmp-001', objectTitle: 'lodash', objectType: 'Component', action: 'vulnerability_detected', details: { cve: 'CVE-2024-38876' }, timestamp: '2024-12-09T16:30:00Z' },
-  { id: 'evt-013', objectId: 'h-006', objectTitle: 'FIREWALL-DMZ-01', objectType: 'Host', action: 'config_changed', details: { field: 'ACL rules' }, timestamp: '2024-12-08T11:00:00Z' },
-  { id: 'evt-014', objectId: 'v-006', objectTitle: 'Outdated OpenSSL on Engineering Workstation', objectType: 'Vulnerability', action: 'assigned', details: { assignee: 'asmith' }, timestamp: '2024-12-07T09:15:00Z' },
-  { id: 'evt-015', objectId: 'pr-001', objectTitle: 'SCADA HMI Platform', objectType: 'Product', action: 'updated', details: { field: 'version' }, timestamp: '2024-12-06T14:00:00Z' },
-];
+import { api } from '@/services/api';
 
 const EVENT_TYPES = [
   { value: 'all', label: 'All Events' },
@@ -60,13 +46,66 @@ function formatDetails(details?: Record<string, unknown>): string {
     .join(', ');
 }
 
+interface TimelineEvent {
+  id: string;
+  objectId: string;
+  objectTitle: string;
+  objectType: string;
+  action: string;
+  details?: Record<string, unknown>;
+  timestamp: string;
+}
+
 export default function Timeline() {
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [objectTypeFilter, setObjectTypeFilter] = useState('all');
+  const [allEvents, setAllEvents] = useState<TimelineEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const [findingsRes, sessionsRes] = await Promise.all([
+          api.get('/ics/findings/').catch(() => ({ data: [] })),
+          api.get('/ics/sessions/').catch(() => ({ data: [] })),
+        ]);
+        const findings = Array.isArray(findingsRes.data) ? findingsRes.data : findingsRes.data?.results ?? [];
+        const sessions = Array.isArray(sessionsRes.data) ? sessionsRes.data : sessionsRes.data?.results ?? [];
+
+        const events: TimelineEvent[] = [
+          ...findings.map((f: Record<string, unknown>, i: number) => ({
+            id: `finding-${f.id ?? i}`,
+            objectId: String(f.id ?? ''),
+            objectTitle: String(f.title ?? 'Finding'),
+            objectType: String(f.finding_type ?? 'Vulnerability'),
+            action: 'finding_created',
+            details: { severity: f.severity },
+            timestamp: String(f.created_at ?? new Date().toISOString()),
+          })),
+          ...sessions.map((s: Record<string, unknown>, i: number) => ({
+            id: `session-${s.id ?? i}`,
+            objectId: String(s.id ?? ''),
+            objectTitle: String(s.name ?? 'Session'),
+            objectType: 'Session',
+            action: 'session_created',
+            details: { device_count: s.device_count },
+            timestamp: String(s.created_at ?? new Date().toISOString()),
+          })),
+        ];
+        events.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        setAllEvents(events);
+      } catch {
+        setAllEvents([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, []);
 
   const filtered = useMemo(() => {
-    return ALL_EVENTS.filter((evt) => {
+    return allEvents.filter((evt) => {
       if (typeFilter !== 'all' && evt.action !== typeFilter) return false;
       if (objectTypeFilter !== 'all' && evt.objectType !== objectTypeFilter) return false;
       if (search) {
@@ -84,6 +123,24 @@ export default function Timeline() {
     objectType: (evt.objectType ?? '').toLowerCase(),
     objectTitle: evt.objectTitle ?? '',
   }));
+
+  if (loading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (allEvents.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20">
+        <History className="h-12 w-12 text-content-muted" />
+        <h2 className="mt-4 text-lg font-semibold text-content-primary">No Data Yet</h2>
+        <p className="mt-1 text-sm text-content-secondary">Timeline events will appear here as findings and sessions are created.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Layers, X, Server, ShieldAlert, ArrowDown, ArrowUp, Shield } from 'lucide-react';
 import { Card, CardHeader, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
-import { MOCK_OBJECTS } from '@/data/mock';
+import { api } from '@/services/api';
 import { PURDUE_LEVELS } from '@/lib/constants';
 import { cn } from '@/lib/cn';
 import type { OntologyObject } from '@/types/ontology';
@@ -42,17 +42,7 @@ interface CrossLevelFlow {
   targetIp: string;
 }
 
-const CROSS_LEVEL_FLOWS: CrossLevelFlow[] = [
-  { id: 'clf-001', sourceLevel: 'L2', targetLevel: 'L1', protocol: 'Modbus/TCP', description: 'SCADA polling PLC registers', authorized: true, sourceIp: '10.1.2.50', targetIp: '10.1.1.10' },
-  { id: 'clf-002', sourceLevel: 'L2', targetLevel: 'L1', protocol: 'EtherNet/IP', description: 'HMI reading PLC tags', authorized: true, sourceIp: '10.1.2.20', targetIp: '10.1.1.10' },
-  { id: 'clf-003', sourceLevel: 'L2', targetLevel: 'L1', protocol: 'DNP3', description: 'SCADA polling RTU', authorized: true, sourceIp: '10.1.2.50', targetIp: '192.168.1.50' },
-  { id: 'clf-004', sourceLevel: 'L3', targetLevel: 'L1', protocol: 'S7comm', description: 'EWS programming PLC', authorized: true, sourceIp: '10.1.3.15', targetIp: '10.1.1.10' },
-  { id: 'clf-005', sourceLevel: 'L3', targetLevel: 'L2', protocol: 'OPC UA', description: 'Historian collecting SCADA data', authorized: true, sourceIp: '10.1.4.100', targetIp: '10.1.2.50' },
-  { id: 'clf-006', sourceLevel: 'L0', targetLevel: 'L2', protocol: 'BACnet/IP', description: 'IoT gateway sending sensor data', authorized: true, sourceIp: '192.168.1.200', targetIp: '10.1.2.50' },
-  { id: 'clf-007', sourceLevel: 'L0', targetLevel: 'L4', protocol: 'HTTPS', description: 'ALERT: Sensor gateway reaching enterprise network', authorized: false, sourceIp: '192.168.1.200', targetIp: '10.100.1.50' },
-  { id: 'clf-008', sourceLevel: 'L5', targetLevel: 'L2', protocol: 'RDP', description: 'ALERT: External IP accessing SCADA directly (bypassing DMZ)', authorized: false, sourceIp: '203.0.113.45', targetIp: '10.1.2.50' },
-  { id: 'clf-009', sourceLevel: 'L1', targetLevel: 'L4', protocol: 'TCP/443', description: 'ALERT: PLC attempting outbound connection to enterprise zone', authorized: false, sourceIp: '10.1.1.10', targetIp: '10.100.1.100' },
-];
+// Cross-level flows will be derived from device data when available
 
 // ---------------------------------------------------------------------------
 // Zone boundaries
@@ -83,7 +73,7 @@ function isUnauthorizedCrossLevel(flow: CrossLevelFlow): boolean {
 // Side Panel
 // ---------------------------------------------------------------------------
 
-function AssetDetailPanel({ asset, onClose }: { asset: OntologyObject; onClose: () => void }) {
+function AssetDetailPanel({ asset, onClose, crossLevelFlows }: { asset: OntologyObject; onClose: () => void; crossLevelFlows: CrossLevelFlow[] }) {
   const props = asset.properties;
   return (
     <div className="fixed right-0 top-0 z-50 h-screen w-96 border-l border-border-default bg-surface-card shadow-2xl overflow-y-auto">
@@ -129,7 +119,7 @@ function AssetDetailPanel({ asset, onClose }: { asset: OntologyObject; onClose: 
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-widest text-content-tertiary mb-2">Cross-Level Flows</p>
           <div className="space-y-1.5">
-            {CROSS_LEVEL_FLOWS.filter(
+            {crossLevelFlows.filter(
               (f) => f.sourceIp === String(props.ip) || f.targetIp === String(props.ip)
             ).map((f) => (
               <div
@@ -156,11 +146,52 @@ function AssetDetailPanel({ asset, onClose }: { asset: OntologyObject; onClose: 
 
 export default function PurdueModel() {
   const [selectedAsset, setSelectedAsset] = useState<OntologyObject | null>(null);
+  const [devices, setDevices] = useState<OntologyObject[]>([]);
+  const [crossLevelFlows, setCrossLevelFlows] = useState<CrossLevelFlow[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const hosts = useMemo(
-    () => MOCK_OBJECTS.filter((o) => o.typeId === 'type-host'),
-    []
-  );
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const res = await api.get('/ics/devices/').catch(() => ({ data: [] }));
+        const devs = Array.isArray(res.data) ? res.data : res.data?.results ?? [];
+        // Map API devices to OntologyObject-like shape
+        const mapped: OntologyObject[] = devs.map((d: Record<string, unknown>, i: number) => ({
+          id: String(d.id ?? `dev-${i}`),
+          typeId: 'type-host',
+          typeName: 'Host',
+          title: String(d.hostname ?? d.device_type ?? `Device ${i + 1}`),
+          status: 'active',
+          severity: undefined,
+          properties: {
+            ip: d.ip_address ?? '',
+            hostname: d.hostname ?? '',
+            vendor: d.vendor ?? '',
+            model: d.model ?? '',
+            os: d.os ?? '',
+            purdueLevel: d.purdue_level != null ? `L${d.purdue_level}` : 'Unknown',
+            lastSeen: d.last_seen ?? '',
+            protocols: d.protocols ?? [],
+          },
+          createdAt: String(d.created_at ?? new Date().toISOString()),
+          updatedAt: String(d.updated_at ?? new Date().toISOString()),
+        }));
+        setDevices(mapped);
+
+        // Derive cross-level flows from device protocols if available
+        const flows: CrossLevelFlow[] = [];
+        // For now, no mock flows - will be populated from real data
+        setCrossLevelFlows(flows);
+      } catch {
+        setDevices([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, []);
+
+  const hosts = devices;
 
   const hostsByLevel = useMemo(() => {
     const groups: Record<string, OntologyObject[]> = {};
@@ -172,18 +203,32 @@ export default function PurdueModel() {
   }, [hosts]);
 
   const unauthorizedFlows = useMemo(
-    () => CROSS_LEVEL_FLOWS.filter((f) => !f.authorized),
-    []
+    () => crossLevelFlows.filter((f) => !f.authorized),
+    [crossLevelFlows]
   );
 
   const statusColor = (host: OntologyObject) => {
-    const vulnCount = MOCK_OBJECTS.filter(
-      (o) => o.typeId === 'type-vuln' && (o.severity === 'critical' || o.severity === 'high')
-    ).length;
     if (host.status !== 'active') return 'border-content-tertiary bg-surface-hover';
-    if (vulnCount > 0) return 'border-amber-500 bg-amber-500/10';
     return 'border-emerald-500 bg-emerald-500/10';
   };
+
+  if (loading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (hosts.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20">
+        <Layers className="h-12 w-12 text-content-muted" />
+        <h2 className="mt-4 text-lg font-semibold text-content-primary">No Data Yet</h2>
+        <p className="mt-1 text-sm text-content-secondary">Devices will appear on the Purdue Model once they are discovered via PCAP import or network scanning.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -237,7 +282,7 @@ export default function PurdueModel() {
               <Shield className="h-5 w-5 text-emerald-400" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-content-primary">{CROSS_LEVEL_FLOWS.filter((f) => f.authorized).length}</p>
+              <p className="text-2xl font-bold text-content-primary">{crossLevelFlows.filter((f) => f.authorized).length}</p>
               <p className="text-xs text-content-secondary">Authorized Flows</p>
             </div>
           </CardContent>
@@ -322,9 +367,9 @@ export default function PurdueModel() {
                     )}
 
                     {/* Inter-level flows from this level */}
-                    {CROSS_LEVEL_FLOWS.filter((f) => f.sourceLevel === levelKey).length > 0 && (
+                    {crossLevelFlows.filter((f) => f.sourceLevel === levelKey).length > 0 && (
                       <div className="mt-3 ml-[68px] flex flex-wrap gap-2">
-                        {CROSS_LEVEL_FLOWS.filter((f) => f.sourceLevel === levelKey).map((f) => (
+                        {crossLevelFlows.filter((f) => f.sourceLevel === levelKey).map((f) => (
                           <div
                             key={f.id}
                             className={cn(
@@ -416,7 +461,7 @@ export default function PurdueModel() {
                 </tr>
               </thead>
               <tbody className="[&>tr:last-child]:border-0">
-                {CROSS_LEVEL_FLOWS.map((f) => (
+                {crossLevelFlows.map((f) => (
                   <tr
                     key={f.id}
                     className={cn(
@@ -464,7 +509,7 @@ export default function PurdueModel() {
 
       {/* Asset Detail Side Panel */}
       {selectedAsset && (
-        <AssetDetailPanel asset={selectedAsset} onClose={() => setSelectedAsset(null)} />
+        <AssetDetailPanel asset={selectedAsset} onClose={() => setSelectedAsset(null)} crossLevelFlows={crossLevelFlows} />
       )}
     </div>
   );

@@ -1,54 +1,63 @@
-import { useState, useMemo } from 'react';
-import { Route, AlertTriangle, Crosshair, Target, ChevronRight } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { Route, AlertTriangle, Crosshair, Target } from 'lucide-react';
 import { Card, CardHeader, CardContent } from '@/components/ui/Card';
 import StatCard from '@/components/dashboard/StatCard';
 import SeverityBadge from '@/components/shared/SeverityBadge';
-// Badge and Button available for future use
-import { MOCK_OBJECTS, MOCK_LINKS } from '@/data/mock';
+import { api } from '@/services/api';
 import { cn } from '@/lib/cn';
 
-// Simulated attack path step details
-const ATTACK_PATH_STEPS: Record<string, { step: number; label: string; nodeId: string; technique: string }[]> = {
-  'ap-001': [
-    { step: 1, label: 'External Reconnaissance', nodeId: 'h-006', technique: 'T0883 - Internet Scanning' },
-    { step: 2, label: 'Exploit DMZ Firewall', nodeId: 'h-006', technique: 'T0866 - Exploitation of Remote Services' },
-    { step: 3, label: 'Pivot to SCADA Server', nodeId: 'h-007', technique: 'T0867 - Lateral Tool Transfer' },
-    { step: 4, label: 'Exploit Auth Bypass (CVE-2024-38876)', nodeId: 'h-001', technique: 'T0819 - Exploit Public-Facing App' },
-    { step: 5, label: 'PLC Takeover via Modbus', nodeId: 'h-001', technique: 'T0831 - Manipulation of Control' },
-  ],
-  'ap-002': [
-    { step: 1, label: 'Compromise Engineering Workstation', nodeId: 'h-003', technique: 'T0886 - Remote Services' },
-    { step: 2, label: 'Exploit Insecure Deserialization', nodeId: 'h-004', technique: 'T0891 - Hardcoded Credentials' },
-    { step: 3, label: 'Exfiltrate Historian Data', nodeId: 'h-004', technique: 'T0882 - Theft of Operational Info' },
-  ],
-  'ap-003': [
-    { step: 1, label: 'Rogue IoT Device on L0', nodeId: 'h-008', technique: 'T0848 - Rogue Master' },
-    { step: 2, label: 'SNMP Reconnaissance', nodeId: 'h-006', technique: 'T0846 - Remote System Discovery' },
-    { step: 3, label: 'Exploit Default SNMP Community', nodeId: 'h-006', technique: 'T0859 - Valid Accounts' },
-    { step: 4, label: 'Lateral Movement to L2', nodeId: 'h-007', technique: 'T0867 - Lateral Tool Transfer' },
-  ],
-};
+interface Finding {
+  id: string;
+  title: string;
+  severity: string;
+  finding_type: string;
+  status: string;
+  created_at: string;
+  description?: string;
+  cvss_score?: number;
+  cve_id?: string;
+}
 
 export default function AttackPaths() {
   const [selectedPathId, setSelectedPathId] = useState<string | null>(null);
+  const [findings, setFindings] = useState<Finding[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const attackPaths = useMemo(
-    () => MOCK_OBJECTS.filter((o) => o.typeId === 'type-attack-path'),
-    []
-  );
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const res = await api.get('/ics/findings/').catch(() => ({ data: [] }));
+        const data = Array.isArray(res.data) ? res.data : res.data?.results ?? [];
+        setFindings(data);
+      } catch {
+        setFindings([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, []);
 
-  // Exploited vulns for selected path
-  const exploitedVulns = useMemo(() => {
-    if (!selectedPathId) return [];
-    const exploitLinks = MOCK_LINKS.filter(
-      (l) => l.sourceId === selectedPathId && l.linkType === 'EXPLOITS'
-    );
-    const vulnIds = new Set(exploitLinks.map((l) => l.targetId));
-    return MOCK_OBJECTS.filter((o) => vulnIds.has(o.id));
-  }, [selectedPathId]);
+  const attackPaths = useMemo(() => findings.map((f) => ({
+    id: String(f.id),
+    typeId: 'type-attack-path',
+    typeName: 'Finding',
+    title: f.title ?? 'Finding',
+    status: f.status ?? 'active',
+    severity: f.severity,
+    properties: {
+      riskScore: f.cvss_score ?? (f.severity === 'critical' ? 95 : f.severity === 'high' ? 75 : f.severity === 'medium' ? 50 : 25),
+      steps: 0,
+      blastRadius: 0,
+      findingType: f.finding_type,
+    },
+    createdAt: f.created_at,
+  })), [findings]);
+
+  // No exploited vulns from API (flat findings list)
+  const exploitedVulns: Record<string, unknown>[] = [];
 
   const selectedPath = attackPaths.find((ap) => ap.id === selectedPathId);
-  const steps = selectedPathId ? ATTACK_PATH_STEPS[selectedPathId] ?? [] : [];
 
   // Stats
   const avgRiskScore = useMemo(() => {
@@ -62,6 +71,24 @@ export default function AttackPaths() {
     () => attackPaths.reduce((sum, ap) => sum + Number(ap.properties.blastRadius ?? 0), 0),
     [attackPaths]
   );
+
+  if (loading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (attackPaths.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20">
+        <Route className="h-12 w-12 text-content-muted" />
+        <h2 className="mt-4 text-lg font-semibold text-content-primary">No Data Yet</h2>
+        <p className="mt-1 text-sm text-content-secondary">Security findings and attack paths will appear here after scanning your environment.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -141,8 +168,8 @@ export default function AttackPaths() {
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-content-primary">{ap.title}</p>
                   <div className="mt-1 flex items-center gap-3 text-xs text-content-secondary">
-                    <span>{String(ap.properties.steps)} steps</span>
-                    <span>Blast: {String(ap.properties.blastRadius)} assets</span>
+                    <span>{String(ap.properties.findingType ?? '')}</span>
+                    <span>{ap.status}</span>
                   </div>
                 </div>
 
@@ -192,64 +219,26 @@ export default function AttackPaths() {
                 </CardContent>
               </Card>
 
-              {/* Steps visualization */}
+              {/* Finding details */}
               <Card>
-                <CardHeader title="Attack Steps" />
-                <CardContent className="space-y-0">
-                  {steps.map((step, idx) => {
-                    const targetHost = MOCK_OBJECTS.find((o) => o.id === step.nodeId);
-                    return (
-                      <div key={step.step} className="relative flex items-start gap-3 pb-4 last:pb-0">
-                        {/* Connector line */}
-                        {idx < steps.length - 1 && (
-                          <div className="absolute left-[15px] top-8 h-full w-px bg-border-default" />
-                        )}
-                        {/* Step number */}
-                        <div className="relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 border-red-500/50 bg-red-500/20 text-xs font-bold text-red-400">
-                          {step.step}
-                        </div>
-                        {/* Step content */}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-content-primary">{step.label}</p>
-                          <p className="text-xs text-content-tertiary">{step.technique}</p>
-                          {targetHost && (
-                            <div className="mt-1 flex items-center gap-1.5 text-xs text-content-secondary">
-                              <ChevronRight size={10} />
-                              <span>{targetHost.title}</span>
-                              <span className="text-content-muted">({String(targetHost.properties.ip)})</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
+                <CardHeader title="Finding Details" />
+                <CardContent>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="text-content-secondary">Type:</span>
+                      <span className="text-content-primary">{String(selectedPath.properties.findingType ?? '--')}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-content-secondary">Created:</span>
+                      <span className="text-content-primary">{selectedPath.createdAt ? new Date(selectedPath.createdAt).toLocaleString() : '--'}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-content-secondary">Status:</span>
+                      <span className="text-content-primary">{selectedPath.status}</span>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
-
-              {/* Exploited vulnerabilities */}
-              {exploitedVulns.length > 0 && (
-                <Card>
-                  <CardHeader title="Exploited Vulnerabilities" />
-                  <CardContent className="space-y-2">
-                    {exploitedVulns.map((vuln) => (
-                      <div
-                        key={vuln.id}
-                        className="flex items-center gap-3 rounded-md border border-border-default bg-surface-hover px-3 py-2"
-                      >
-                        <span className="font-mono text-xs text-content-secondary">
-                          {String(vuln.properties.cveId ?? '--')}
-                        </span>
-                        <span className="flex-1 text-sm font-medium text-content-primary">
-                          {vuln.title}
-                        </span>
-                        <span className="font-mono text-xs font-semibold text-orange-400">
-                          CVSS {String(vuln.properties.cvssScore ?? '--')}
-                        </span>
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
-              )}
             </div>
           ) : (
             <Card className="flex flex-col items-center justify-center py-20">

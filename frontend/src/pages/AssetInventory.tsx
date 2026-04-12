@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Server, Monitor, Cpu, Shield } from 'lucide-react';
 import { Card, CardHeader, CardContent } from '@/components/ui/Card';
 import StatCard from '@/components/dashboard/StatCard';
@@ -6,36 +6,60 @@ import SearchBar from '@/components/shared/SearchBar';
 import { ObjectTable } from '@/components/ontology/ObjectTable';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { MOCK_OBJECTS, OBJECT_TYPE_DEFINITIONS } from '@/data/mock';
-// import { SEVERITY_ORDER } from '@/lib/constants';
+import { api } from '@/services/api';
+import type { OntologyObject, ObjectTypeDefinition } from '@/types/ontology';
 
 export default function AssetInventory() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [objects, setObjects] = useState<OntologyObject[]>([]);
+  const [typeDefinitions, setTypeDefinitions] = useState<ObjectTypeDefinition[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const [objRes, typesRes] = await Promise.all([
+          api.get('/objects/').catch(() => ({ data: [] })),
+          api.get('/ontology/types').catch(() => ({ data: [] })),
+        ]);
+        const objs = Array.isArray(objRes.data) ? objRes.data : objRes.data?.results ?? [];
+        const types = Array.isArray(typesRes.data) ? typesRes.data : typesRes.data?.results ?? [];
+        setObjects(objs as OntologyObject[]);
+        setTypeDefinitions(types as ObjectTypeDefinition[]);
+      } catch {
+        setObjects([]);
+        setTypeDefinitions([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, []);
 
   const hosts = useMemo(
-    () => MOCK_OBJECTS.filter((o) => o.typeId === 'type-host'),
-    []
+    () => objects.filter((o) => o.typeId === 'type-host'),
+    [objects]
   );
 
   const products = useMemo(
-    () => MOCK_OBJECTS.filter((o) => o.typeId === 'type-product'),
-    []
+    () => objects.filter((o) => o.typeId === 'type-product'),
+    [objects]
   );
 
   const scanners = useMemo(
-    () => MOCK_OBJECTS.filter((o) => o.typeId === 'type-scanner'),
-    []
+    () => objects.filter((o) => o.typeId === 'type-scanner'),
+    [objects]
   );
 
   const components = useMemo(
-    () => MOCK_OBJECTS.filter((o) => o.typeId === 'type-component'),
-    []
+    () => objects.filter((o) => o.typeId === 'type-component'),
+    [objects]
   );
 
   const hostTypeDef = useMemo(
-    () => OBJECT_TYPE_DEFINITIONS.find((t) => t.id === 'type-host'),
-    []
+    () => typeDefinitions.find((t) => t.id === 'type-host'),
+    [typeDefinitions]
   );
 
   // Filter hosts
@@ -43,13 +67,15 @@ export default function AssetInventory() {
     let result = hosts;
     if (search.trim()) {
       const q = search.toLowerCase();
-      result = result.filter(
-        (h) =>
+      result = result.filter((h) => {
+        const props = h.properties ?? {};
+        return (
           h.title.toLowerCase().includes(q) ||
-          String(h.properties.ip ?? '').toLowerCase().includes(q) ||
-          String(h.properties.hostname ?? '').toLowerCase().includes(q) ||
-          String(h.properties.vendor ?? '').toLowerCase().includes(q)
-      );
+          String(props.ip ?? '').toLowerCase().includes(q) ||
+          String(props.hostname ?? '').toLowerCase().includes(q) ||
+          String(props.vendor ?? '').toLowerCase().includes(q)
+        );
+      });
     }
     if (statusFilter !== 'all') {
       result = result.filter((h) => h.status === statusFilter);
@@ -61,11 +87,30 @@ export default function AssetInventory() {
   const vendorCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const host of hosts) {
-      const vendor = String(host.properties.vendor ?? 'Unknown');
+      const props = host.properties ?? {};
+      const vendor = String(props.vendor ?? 'Unknown');
       counts[vendor] = (counts[vendor] ?? 0) + 1;
     }
     return counts;
   }, [hosts]);
+
+  if (loading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (objects.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20">
+        <Server className="h-12 w-12 text-content-muted" />
+        <h2 className="mt-4 text-lg font-semibold text-content-primary">No Data Yet</h2>
+        <p className="mt-1 text-sm text-content-secondary">Assets will appear here once data has been imported or devices discovered via network scanning.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

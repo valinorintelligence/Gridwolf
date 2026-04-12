@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Boxes } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { useOntologyStore } from '@/stores/ontologyStore';
@@ -6,10 +6,8 @@ import SearchBar from '@/components/shared/SearchBar';
 import { ObjectTable } from '@/components/ontology/ObjectTable';
 import { Card, CardHeader, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
-import {
-  OBJECT_TYPE_DEFINITIONS,
-  MOCK_OBJECTS,
-} from '@/data/mock';
+import { api } from '@/services/api';
+import type { OntologyObject, ObjectTypeDefinition } from '@/types/ontology';
 import {
   Server,
   ShieldAlert,
@@ -30,25 +28,50 @@ const ICON_MAP: Record<string, LucideIcon> = {
 
 export default function OntologyExplorer() {
   const { selectedTypeId, selectType, searchQuery, setSearch } = useOntologyStore();
+  const [objects, setObjects] = useState<OntologyObject[]>([]);
+  const [typeDefinitions, setTypeDefinitions] = useState<ObjectTypeDefinition[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const [objRes, typesRes] = await Promise.all([
+          api.get('/objects/').catch(() => ({ data: [] })),
+          api.get('/ontology/types').catch(() => ({ data: [] })),
+        ]);
+        const objs = Array.isArray(objRes.data) ? objRes.data : objRes.data?.results ?? [];
+        const types = Array.isArray(typesRes.data) ? typesRes.data : typesRes.data?.results ?? [];
+        setObjects(objs as OntologyObject[]);
+        setTypeDefinitions(types as ObjectTypeDefinition[]);
+      } catch {
+        setObjects([]);
+        setTypeDefinitions([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, []);
 
   // Count objects per type
   const typeCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    for (const obj of MOCK_OBJECTS) {
-      counts[obj.typeId] = (counts[obj.typeId] ?? 0) + 1;
+    for (const obj of objects) {
+      const typeId = String(obj.typeId ?? '');
+      counts[typeId] = (counts[typeId] ?? 0) + 1;
     }
     return counts;
-  }, []);
+  }, [objects]);
 
   // Current type definition
   const currentTypeDef = useMemo(
-    () => OBJECT_TYPE_DEFINITIONS.find((t) => t.id === selectedTypeId),
-    [selectedTypeId]
+    () => typeDefinitions.find((t) => t.id === selectedTypeId),
+    [selectedTypeId, typeDefinitions]
   );
 
   // Filtered objects
   const filteredObjects = useMemo(() => {
-    let objs = MOCK_OBJECTS;
+    let objs = objects;
     if (selectedTypeId) {
       objs = objs.filter((o) => o.typeId === selectedTypeId);
     }
@@ -56,14 +79,32 @@ export default function OntologyExplorer() {
       const q = searchQuery.toLowerCase();
       objs = objs.filter(
         (o) =>
-          o.title.toLowerCase().includes(q) ||
-          Object.values(o.properties).some((v) =>
+          String(o.title ?? '').toLowerCase().includes(q) ||
+          (o.properties && typeof o.properties === 'object' && Object.values(o.properties as Record<string, unknown>).some((v) =>
             String(v ?? '').toLowerCase().includes(q)
-          )
+          ))
       );
     }
     return objs;
-  }, [selectedTypeId, searchQuery]);
+  }, [selectedTypeId, searchQuery, objects]);
+
+  if (loading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (objects.length === 0 && typeDefinitions.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20">
+        <Boxes className="h-12 w-12 text-content-muted" />
+        <h2 className="mt-4 text-lg font-semibold text-content-primary">No Data Yet</h2>
+        <p className="mt-1 text-sm text-content-secondary">Objects will appear here once data has been imported or discovered.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -79,7 +120,7 @@ export default function OntologyExplorer() {
           </p>
         </div>
         <Badge variant="info" className="ml-auto">
-          {MOCK_OBJECTS.length} objects
+          {objects.length} objects
         </Badge>
       </div>
 
@@ -105,19 +146,19 @@ export default function OntologyExplorer() {
           >
             <Boxes size={16} />
             <span className="flex-1 font-medium">All Types</span>
-            <span className="text-xs text-content-tertiary">{MOCK_OBJECTS.length}</span>
+            <span className="text-xs text-content-tertiary">{objects.length}</span>
           </button>
 
-          {OBJECT_TYPE_DEFINITIONS.map((typeDef) => {
-            const Icon = ICON_MAP[typeDef.icon] ?? Component;
-            const count = typeCounts[typeDef.id] ?? 0;
+          {typeDefinitions.map((typeDef) => {
+            const Icon = ICON_MAP[String(typeDef.icon ?? '')] ?? Component;
+            const count = typeCounts[String(typeDef.id ?? '')] ?? 0;
             const isSelected = selectedTypeId === typeDef.id;
 
             return (
               <button
-                key={typeDef.id}
+                key={String(typeDef.id)}
                 type="button"
-                onClick={() => selectType(typeDef.id)}
+                onClick={() => selectType(String(typeDef.id))}
                 className={cn(
                   'flex w-full items-center gap-3 rounded-md border px-3 py-2.5 text-left transition-colors',
                   isSelected
@@ -127,16 +168,16 @@ export default function OntologyExplorer() {
               >
                 <span
                   className="flex h-7 w-7 shrink-0 items-center justify-center rounded"
-                  style={{ color: typeDef.color, backgroundColor: `${typeDef.color}20` }}
+                  style={{ color: String(typeDef.color ?? '#6b7280'), backgroundColor: `${String(typeDef.color ?? '#6b7280')}20` }}
                 >
                   <Icon size={15} />
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className={cn('text-sm font-medium', isSelected ? 'text-accent' : 'text-content-primary')}>
-                    {typeDef.name}
+                    {String(typeDef.name ?? '')}
                   </p>
                   <p className="truncate text-[11px] text-content-tertiary">
-                    {typeDef.description}
+                    {String(typeDef.description ?? '')}
                   </p>
                 </div>
                 <span className="shrink-0 text-xs font-semibold text-content-secondary">

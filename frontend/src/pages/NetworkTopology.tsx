@@ -8,10 +8,9 @@ import { Card, CardHeader, CardContent } from '@/components/ui/Card';
 import { Tabs, TabList, Tab, TabPanel } from '@/components/ui/Tabs';
 import { Badge } from '@/components/ui/Badge';
 import StatCard from '@/components/dashboard/StatCard';
-import { MOCK_OBJECTS } from '@/data/mock';
 import { PURDUE_LEVELS } from '@/lib/constants';
 import { cn } from '@/lib/cn';
-import type { OntologyObject as _OntologyObject } from '@/types/ontology';
+import { api } from '@/services/api';
 
 // ---------------------------------------------------------------------------
 // Purdue level colors
@@ -28,7 +27,7 @@ const LEVEL_COLORS: Record<string, string> = {
 };
 
 // ---------------------------------------------------------------------------
-// Topology mock data (augments MOCK_OBJECTS)
+// Topology types — data loaded from backend API
 // ---------------------------------------------------------------------------
 
 interface TopoNode {
@@ -52,7 +51,7 @@ interface TopoEdge {
   protocol: string;
   packets: number;
   bytes: number;
-  observed: boolean; // true = observed, false = inferred
+  observed: boolean;
   firstSeen: string;
 }
 
@@ -70,80 +69,11 @@ function getSubnet(ip: string): string {
   return `${parts[0]}.${parts[1]}.${parts[2]}.0/24`;
 }
 
-const hosts = MOCK_OBJECTS.filter((o) => o.typeId === 'type-host');
-const flows = MOCK_OBJECTS.filter((o) => o.typeId === 'type-flow');
+// Module-level mutable state — populated by fetchTopologyData()
+let TOPO_NODES: TopoNode[] = [];
+let ALL_EDGES: TopoEdge[] = [];
+let SWITCHES: SwitchNode[] = [];
 
-const TOPO_NODES: TopoNode[] = hosts.map((h, i) => ({
-  id: h.id,
-  ip: String(h.properties.ip),
-  hostname: String(h.properties.hostname ?? ''),
-  label: h.title,
-  purdueLevel: String(h.properties.purdueLevel ?? 'Unknown'),
-  subnet: getSubnet(String(h.properties.ip)),
-  vendor: String(h.properties.vendor ?? ''),
-  model: String(h.properties.model ?? ''),
-  deviceType: h.title.includes('PLC') ? 'PLC' : h.title.includes('HMI') ? 'HMI' :
-    h.title.includes('RTU') ? 'RTU' : h.title.includes('EWS') ? 'Engineering WS' :
-    h.title.includes('SCADA') ? 'SCADA Server' : h.title.includes('HISTORIAN') ? 'Historian' :
-    h.title.includes('FIREWALL') ? 'Firewall' : h.title.includes('SENSOR') ? 'IoT Gateway' : 'Server',
-  x: 100 + (i % 4) * 200,
-  y: 80 + Math.floor(i / 4) * 160,
-}));
-
-const TOPO_EDGES: TopoEdge[] = flows.map((f, i) => {
-  const srcNode = TOPO_NODES.find((n) => n.ip === String(f.properties.srcIp));
-  const dstNode = TOPO_NODES.find((n) => n.ip === String(f.properties.dstIp));
-  return {
-    id: f.id,
-    source: srcNode?.id ?? '',
-    target: dstNode?.id ?? '',
-    protocol: String(f.properties.protocol),
-    packets: Number(f.properties.packets ?? 0),
-    bytes: Number(f.properties.bytes ?? 0),
-    observed: true,
-    firstSeen: new Date(Date.now() - (6 - i) * 3600000).toISOString(),
-  };
-}).filter((e) => e.source && e.target);
-
-// Add inferred edges
-const INFERRED_EDGES: TopoEdge[] = [
-  { id: 'ie-001', source: 'h-001', target: 'h-005', protocol: 'Modbus/TCP', packets: 120, bytes: 9600, observed: false, firstSeen: new Date(Date.now() - 2 * 3600000).toISOString() },
-  { id: 'ie-002', source: 'h-006', target: 'h-007', protocol: 'HTTPS', packets: 45, bytes: 32000, observed: false, firstSeen: new Date(Date.now() - 1 * 3600000).toISOString() },
-];
-
-const ALL_EDGES = [...TOPO_EDGES, ...INFERRED_EDGES];
-
-// Switches for Physical View
-const SWITCHES: SwitchNode[] = [
-  {
-    id: 'sw-001', name: 'OT-CORE-SW01', vendor: 'Cisco', model: 'IE-4010-4S24P',
-    ports: 16,
-    connections: [
-      { port: 1, deviceId: 'h-001', speed: '100Mbps' },
-      { port: 2, deviceId: 'h-002', speed: '1Gbps' },
-      { port: 5, deviceId: 'h-005', speed: '100Mbps' },
-      { port: 8, deviceId: 'h-008', speed: '100Mbps' },
-    ],
-  },
-  {
-    id: 'sw-002', name: 'OT-DIST-SW01', vendor: 'Siemens', model: 'SCALANCE X308-2M',
-    ports: 12,
-    connections: [
-      { port: 1, deviceId: 'h-007', speed: '1Gbps' },
-      { port: 3, deviceId: 'h-003', speed: '1Gbps' },
-      { port: 4, deviceId: 'h-004', speed: '1Gbps' },
-    ],
-  },
-  {
-    id: 'sw-003', name: 'DMZ-FW-SW01', vendor: 'HP', model: 'Aruba 2930F-8G',
-    ports: 8,
-    connections: [
-      { port: 1, deviceId: 'h-006', speed: '1Gbps' },
-    ],
-  },
-];
-
-// Connection matrix data
 interface MatrixCell {
   sourceIp: string;
   destIp: string;
@@ -151,16 +81,8 @@ interface MatrixCell {
   packets: number;
   bytes: number;
 }
+let MATRIX_DATA: MatrixCell[] = [];
 
-const MATRIX_DATA: MatrixCell[] = flows.map((f) => ({
-  sourceIp: String(f.properties.srcIp),
-  destIp: String(f.properties.dstIp),
-  protocol: String(f.properties.protocol),
-  packets: Number(f.properties.packets ?? 0),
-  bytes: Number(f.properties.bytes ?? 0),
-}));
-
-// Timeline events
 interface TimelineEvent {
   id: string;
   timestamp: string;
@@ -169,29 +91,96 @@ interface TimelineEvent {
   edgeId?: string;
   label: string;
 }
+let TIMELINE_EVENTS: TimelineEvent[] = [];
 
-const TIMELINE_EVENTS: TimelineEvent[] = [
-  ...TOPO_NODES.map((n, i) => ({
-    id: `te-node-${i}`,
-    timestamp: new Date(Date.now() - (TOPO_NODES.length - i) * 7200000).toISOString(),
-    type: 'node_discovered' as const,
-    nodeId: n.id,
-    label: `Discovered ${n.label} (${n.ip})`,
-  })),
-  ...ALL_EDGES.map((e, i) => ({
-    id: `te-edge-${i}`,
-    timestamp: e.firstSeen,
-    type: 'edge_established' as const,
-    edgeId: e.id,
-    label: `Connection: ${e.protocol} flow established`,
-  })),
-].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+let ALL_PROTOCOLS: string[] = [];
+let ALL_SUBNETS: string[] = [];
+let ALL_LEVELS: string[] = [];
 
-// Unique values for filters
-const ALL_PROTOCOLS = [...new Set(ALL_EDGES.map((e) => e.protocol))];
-const ALL_SUBNETS = [...new Set(TOPO_NODES.map((n) => n.subnet))];
-const ALL_LEVELS = [...new Set(TOPO_NODES.map((n) => n.purdueLevel))];
-const _ALL_IPS = [...new Set(TOPO_NODES.map((n) => n.ip))];
+async function fetchTopologyData(): Promise<boolean> {
+  try {
+    const [topoRes, devicesRes] = await Promise.allSettled([
+      api.get('/ics/devices/topology'),
+      api.get('/ics/devices/'),
+    ]);
+
+    const topo = topoRes.status === 'fulfilled' ? topoRes.value.data : { nodes: [], edges: [] };
+    const devices = devicesRes.status === 'fulfilled' ? devicesRes.value.data : [];
+
+    if (topo.nodes.length === 0 && devices.length === 0) return false;
+
+    // Build nodes from topology or devices
+    const rawNodes = topo.nodes.length > 0 ? topo.nodes : devices;
+    TOPO_NODES = rawNodes.map((n: Record<string, unknown>, i: number) => ({
+      id: (n.id || `node-${i}`) as string,
+      ip: (n.ip || n.ip_address || '') as string,
+      hostname: (n.hostname || n.label || '') as string,
+      label: (n.label || n.hostname || n.ip || n.ip_address || `Device ${i + 1}`) as string,
+      purdueLevel: (n.purdue_level || n.purdueLevel || 'UNKNOWN') as string,
+      subnet: getSubnet((n.ip || n.ip_address || '0.0.0.0') as string),
+      vendor: (n.vendor || '') as string,
+      model: (n.model || '') as string,
+      deviceType: (n.type || n.device_type || 'UNKNOWN') as string,
+      x: 100 + (i % 4) * 200,
+      y: 80 + Math.floor(i / 4) * 160,
+    }));
+
+    // Build edges
+    ALL_EDGES = (topo.edges || []).map((e: Record<string, unknown>, i: number) => ({
+      id: `edge-${i}`,
+      source: (e.source || '') as string,
+      target: (e.target || '') as string,
+      protocol: (e.protocol || '') as string,
+      packets: (e.packet_count || 0) as number,
+      bytes: (e.byte_count || 0) as number,
+      observed: true,
+      firstSeen: new Date().toISOString(),
+    })).filter((e: TopoEdge) => e.source && e.target);
+
+    // Matrix data from edges
+    MATRIX_DATA = ALL_EDGES.map((e) => {
+      const src = TOPO_NODES.find((n) => n.id === e.source);
+      const dst = TOPO_NODES.find((n) => n.id === e.target);
+      return {
+        sourceIp: src?.ip ?? e.source,
+        destIp: dst?.ip ?? e.target,
+        protocol: e.protocol,
+        packets: e.packets,
+        bytes: e.bytes,
+      };
+    });
+
+    // Timeline events
+    TIMELINE_EVENTS = [
+      ...TOPO_NODES.map((n, i) => ({
+        id: `te-node-${i}`,
+        timestamp: new Date(Date.now() - (TOPO_NODES.length - i) * 7200000).toISOString(),
+        type: 'node_discovered' as const,
+        nodeId: n.id,
+        label: `Discovered ${n.label} (${n.ip})`,
+      })),
+      ...ALL_EDGES.map((e, i) => ({
+        id: `te-edge-${i}`,
+        timestamp: e.firstSeen,
+        type: 'edge_established' as const,
+        edgeId: e.id,
+        label: `Connection: ${e.protocol} flow established`,
+      })),
+    ].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+    // Filters
+    ALL_PROTOCOLS = [...new Set(ALL_EDGES.map((e) => e.protocol).filter(Boolean))];
+    ALL_SUBNETS = [...new Set(TOPO_NODES.map((n) => n.subnet))];
+    ALL_LEVELS = [...new Set(TOPO_NODES.map((n) => n.purdueLevel))];
+
+    // Switches — empty for now (no backend endpoint)
+    SWITCHES = [];
+
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Toolbar
@@ -990,9 +979,18 @@ function TimelineView() {
 // ---------------------------------------------------------------------------
 
 export default function NetworkTopology() {
+  const [loading, setLoading] = useState(true);
+  const [hasData, setHasData] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [zoom, setZoom] = useState(1);
   const [selectedNode, setSelectedNode] = useState<TopoNode | null>(null);
+
+  useEffect(() => {
+    fetchTopologyData().then((ok) => {
+      setHasData(ok);
+      setLoading(false);
+    });
+  }, []);
 
   // Filters
   const [protocolFilters, setProtocolFilters] = useState<Set<string>>(new Set());
@@ -1032,6 +1030,36 @@ export default function NetworkTopology() {
     // Placeholder: in production, would use html-to-image or canvas export
     alert('Export to PNG: functionality available when Cytoscape.js is integrated');
   }, []);
+
+  if (loading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (!hasData) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent/15">
+            <Network className="h-5 w-5 text-accent" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-content-primary">Network Topology</h1>
+            <p className="text-xs text-content-secondary">ICS/SCADA network topology visualization and analysis</p>
+          </div>
+        </div>
+        <div className="rounded-lg border border-border-default bg-surface-card p-12 text-center">
+          <Network className="mx-auto h-12 w-12 text-content-tertiary mb-4" />
+          <h2 className="text-lg font-semibold text-content-primary mb-2">No Topology Data</h2>
+          <p className="text-sm text-content-secondary mb-4">Upload a PCAP file to discover network topology.</p>
+          <a href="/pcap" className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent/90">Go to PCAP Analysis</a>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

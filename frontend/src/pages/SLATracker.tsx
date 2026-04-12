@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Clock, AlertTriangle, CheckCircle, Timer } from 'lucide-react';
 import { Card, CardHeader, CardContent } from '@/components/ui/Card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
@@ -6,7 +6,7 @@ import { Select } from '@/components/ui/Select';
 import StatCard from '@/components/dashboard/StatCard';
 import ChartWidget from '@/components/dashboard/ChartWidget';
 import SeverityBadge from '@/components/shared/SeverityBadge';
-import { MOCK_OBJECTS } from '@/data/mock';
+import { api } from '@/services/api';
 import { cn } from '@/lib/cn';
 
 type SLAStatus = 'within' | 'approaching' | 'breached';
@@ -24,36 +24,6 @@ interface VulnSLA {
 
 const SLA_LIMITS: Record<string, number> = { critical: 7, high: 30, medium: 90, low: 180 };
 
-const vulns = MOCK_OBJECTS.filter((o) => o.typeId === 'type-vuln' && o.status !== 'resolved');
-
-const VULN_SLAS: VulnSLA[] = vulns.map((v, i) => {
-  const sev = (v.severity as string) || 'medium';
-  const slaDays = SLA_LIMITS[sev] || 90;
-  const daysOpen = [5, 74, 91, 118, 173, 189, 196, 267, 22][i] ?? 30;
-  const daysRemaining = slaDays - daysOpen;
-  const slaStatus: SLAStatus = daysRemaining < 0 ? 'breached' : daysRemaining <= Math.ceil(slaDays * 0.2) ? 'approaching' : 'within';
-  const assignees = ['jchen', 'asmith', 'jchen', 'asmith', 'jchen', 'asmith', 'jchen', 'asmith', 'jchen'];
-  return {
-    id: v.id,
-    title: v.title,
-    severity: sev as VulnSLA['severity'],
-    slaStatus,
-    daysOpen,
-    slaDays,
-    daysRemaining,
-    assignee: assignees[i] || 'unassigned',
-  };
-});
-
-const SLA_TIMELINE = [
-  { month: 'Jul', within: 82, approaching: 12, breached: 6 },
-  { month: 'Aug', within: 78, approaching: 14, breached: 8 },
-  { month: 'Sep', within: 75, approaching: 16, breached: 9 },
-  { month: 'Oct', within: 80, approaching: 13, breached: 7 },
-  { month: 'Nov', within: 77, approaching: 15, breached: 8 },
-  { month: 'Dec', within: 74, approaching: 17, breached: 9 },
-];
-
 const slaStatusStyles: Record<SLAStatus, { label: string; className: string }> = {
   within: { label: 'Within SLA', className: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' },
   approaching: { label: 'Approaching', className: 'bg-amber-500/15 text-amber-400 border-amber-500/30' },
@@ -62,15 +32,86 @@ const slaStatusStyles: Record<SLAStatus, { label: string; className: string }> =
 
 export default function SLATracker() {
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [vulnSLAs, setVulnSLAs] = useState<VulnSLA[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [slaTimeline, setSlaTimeline] = useState<{ month: string; within: number; approaching: number; breached: number }[]>([]);
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const res = await api.get('/ics/findings/').catch(() => ({ data: [] }));
+        const findings = Array.isArray(res.data) ? res.data : res.data?.results ?? [];
+        const now = new Date();
+
+        const slas: VulnSLA[] = findings
+          .filter((f: Record<string, unknown>) => f.status !== 'resolved')
+          .map((f: Record<string, unknown>) => {
+            const sev = String(f.severity ?? 'medium');
+            const slaDays = SLA_LIMITS[sev] ?? 90;
+            const createdAt = f.created_at ? new Date(String(f.created_at)) : now;
+            const daysOpen = Math.max(0, Math.floor((now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24)));
+            const daysRemaining = slaDays - daysOpen;
+            const slaStatus: SLAStatus = daysRemaining < 0 ? 'breached' : daysRemaining <= Math.ceil(slaDays * 0.2) ? 'approaching' : 'within';
+            return {
+              id: String(f.id ?? ''),
+              title: String(f.title ?? 'Finding'),
+              severity: sev as VulnSLA['severity'],
+              slaStatus,
+              daysOpen,
+              slaDays,
+              daysRemaining,
+              assignee: String(f.assignee ?? 'unassigned'),
+            };
+          });
+
+        setVulnSLAs(slas);
+
+        // Build a simple timeline from current counts
+        const withinC = slas.filter((s) => s.slaStatus === 'within').length;
+        const approachingC = slas.filter((s) => s.slaStatus === 'approaching').length;
+        const breachedC = slas.filter((s) => s.slaStatus === 'breached').length;
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const currentMonth = now.getMonth();
+        const timeline = [];
+        for (let i = 5; i >= 0; i--) {
+          const mIdx = (currentMonth - i + 12) % 12;
+          timeline.push({ month: months[mIdx], within: withinC, approaching: approachingC, breached: breachedC });
+        }
+        setSlaTimeline(timeline);
+      } catch {
+        setVulnSLAs([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, []);
 
   const filtered = useMemo(() => {
-    if (filterStatus === 'all') return VULN_SLAS;
-    return VULN_SLAS.filter((v) => v.slaStatus === filterStatus);
-  }, [filterStatus]);
+    if (filterStatus === 'all') return vulnSLAs;
+    return vulnSLAs.filter((v) => v.slaStatus === filterStatus);
+  }, [filterStatus, vulnSLAs]);
 
-  const breachedCount = VULN_SLAS.filter((v) => v.slaStatus === 'breached').length;
-  const approachingCount = VULN_SLAS.filter((v) => v.slaStatus === 'approaching').length; void approachingCount;
-  const withinCount = VULN_SLAS.filter((v) => v.slaStatus === 'within').length;
+  const breachedCount = vulnSLAs.filter((v) => v.slaStatus === 'breached').length;
+  const withinCount = vulnSLAs.filter((v) => v.slaStatus === 'within').length;
+
+  if (loading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (vulnSLAs.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20">
+        <Clock className="h-12 w-12 text-content-muted" />
+        <h2 className="mt-4 text-lg font-semibold text-content-primary">No Data Yet</h2>
+        <p className="mt-1 text-sm text-content-secondary">SLA tracking will begin once security findings are generated from scans and assessments.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -157,7 +198,7 @@ export default function SLATracker() {
           <ChartWidget
             type="bar"
             title="SLA Performance Trend"
-            data={SLA_TIMELINE}
+            data={slaTimeline}
             dataKeys={[
               { key: 'within', color: '#10b981', name: 'Within SLA' },
               { key: 'approaching', color: '#f59e0b', name: 'Approaching' },

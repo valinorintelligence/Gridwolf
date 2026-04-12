@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 
 export default function Login() {
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const { login, demoLogin, isLoading } = useAuthStore();
@@ -25,10 +25,10 @@ export default function Login() {
       return;
     }
     try {
-      await login(email, password);
+      await login(username, password);
       navigate('/');
     } catch {
-      setError('Invalid credentials. Try the demo login instead.');
+      setError('Invalid username or password.');
     }
   };
 
@@ -56,11 +56,11 @@ export default function Login() {
         >
           <div className="space-y-4">
             <Input
-              label="Email"
-              type="email"
-              placeholder={isDemoMode ? 'Any email works in demo mode' : 'operator@gridwolf.io'}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              label="Username"
+              type="text"
+              placeholder={isDemoMode ? 'Any username works in demo mode' : 'Enter username'}
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
               required
             />
             <Input

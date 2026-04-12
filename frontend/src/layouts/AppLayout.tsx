@@ -8,10 +8,27 @@ import { useAuthStore } from '@/stores/authStore';
 
 export function AppLayout() {
   const { isAuthenticated, isLoading, loadUser } = useAuthStore();
+  const [cmdOpen, setCmdOpen] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState(64);
+
+  const handleSidebarWidth = useCallback((width: number) => {
+    setSidebarWidth(width);
+  }, []);
 
   useEffect(() => {
     loadUser();
   }, [loadUser]);
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setCmdOpen((prev) => !prev);
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   if (isLoading) {
     return (
@@ -24,23 +41,6 @@ export function AppLayout() {
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
-  const [cmdOpen, setCmdOpen] = useState(false);
-  const [sidebarWidth, setSidebarWidth] = useState(64);
-
-  const handleSidebarWidth = useCallback((width: number) => {
-    setSidebarWidth(width);
-  }, []);
-
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        setCmdOpen((prev) => !prev);
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
 
   return (
     <div className="h-screen bg-bg-primary">

@@ -32,7 +32,7 @@ export default function Register() {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { demoLogin } = useAuthStore();
+  const { register: registerUser, demoLogin } = useAuthStore();
   const navigate = useNavigate();
 
   const passwordStrength = PASSWORD_RULES.filter((r) => r.test(password)).length;
@@ -48,11 +48,23 @@ export default function Register() {
     setIsLoading(true);
 
     try {
-      // In demo mode (and currently always), log in as demo user
-      demoLogin();
+      if (isDemoMode) {
+        // Demo mode — no backend available
+        demoLogin();
+      } else {
+        // Real registration via backend API
+        const username = email.split('@')[0].replace(/[^a-zA-Z0-9_-]/g, '_');
+        await registerUser({
+          username,
+          email,
+          password,
+          full_name: fullName,
+        });
+      }
       navigate('/');
-    } catch {
-      setError('Registration failed. Please try again.');
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      setError(msg || 'Registration failed. Please try again.');
     } finally {
       setIsLoading(false);
     }

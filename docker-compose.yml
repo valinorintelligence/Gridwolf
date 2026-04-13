@@ -11,13 +11,13 @@ services:
       - "8000:8000"
     environment:
       GRIDWOLF_DATABASE_URL: "sqlite+aiosqlite:///./data/gridwolf.db"
-      GRIDWOLF_SECRET_KEY: "gridwolf-local-dev-key"
+      GRIDWOLF_SECRET_KEY: "${GRIDWOLF_SECRET_KEY:-gridwolf-local-dev-key}"
       GRIDWOLF_CORS_ORIGINS: '["http://localhost:3000","http://localhost:5173","http://localhost:5174"]'
-      GRIDWOLF_DEBUG: "true"
+      GRIDWOLF_DEBUG: "${GRIDWOLF_DEBUG:-false}"
     volumes:
       - gridwolf_data:/app/data
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/docs')"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 10s
       timeout: 5s
       retries: 5

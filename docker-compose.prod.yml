@@ -7,10 +7,8 @@ services:
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: gridwolf
-      POSTGRES_PASSWORD: gridwolf
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-gridwolf}"
       POSTGRES_DB: gridwolf
-    ports:
-      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -18,16 +16,16 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
 
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
 
   backend:
     build:
@@ -36,24 +34,34 @@ services:
     ports:
       - "8000:8000"
     environment:
-      GRIDWOLF_DATABASE_URL: postgresql+asyncpg://gridwolf:gridwolf@postgres:5432/gridwolf
+      GRIDWOLF_DATABASE_URL: "postgresql+asyncpg://gridwolf:${POSTGRES_PASSWORD:-gridwolf}@postgres:5432/gridwolf"
       GRIDWOLF_REDIS_URL: redis://redis:6379/0
-      GRIDWOLF_SECRET_KEY: change-me-in-production
+      GRIDWOLF_SECRET_KEY: "${GRIDWOLF_SECRET_KEY}"
       GRIDWOLF_CORS_ORIGINS: '["http://localhost:3000"]'
+      GRIDWOLF_DEBUG: "false"
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
 
   frontend:
     build:
-      context: ./frontend
-      dockerfile: ../Dockerfile.frontend
+      context: .
+      dockerfile: Dockerfile.frontend
     ports:
       - "3000:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
 
   celery-worker:
     build:
@@ -61,14 +69,15 @@ services:
       dockerfile: ../Dockerfile.backend
     command: celery -A app.celery_app worker --loglevel=info
     environment:
-      GRIDWOLF_DATABASE_URL: postgresql+asyncpg://gridwolf:gridwolf@postgres:5432/gridwolf
+      GRIDWOLF_DATABASE_URL: "postgresql+asyncpg://gridwolf:${POSTGRES_PASSWORD:-gridwolf}@postgres:5432/gridwolf"
       GRIDWOLF_REDIS_URL: redis://redis:6379/0
-      GRIDWOLF_SECRET_KEY: change-me-in-production
+      GRIDWOLF_SECRET_KEY: "${GRIDWOLF_SECRET_KEY}"
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+    restart: unless-stopped
 
 volumes:
   postgres_data:

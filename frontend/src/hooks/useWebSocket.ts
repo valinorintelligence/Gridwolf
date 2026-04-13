@@ -11,9 +11,14 @@ interface UseWebSocketReturn {
   send: (message: WebSocketMessage) => void;
 }
 
-const WS_URL = 'ws://localhost:8000/ws';
 const RECONNECT_DELAY_MS = 3000;
 const MAX_RECONNECT_ATTEMPTS = 10;
+
+function getWsUrl(): string {
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const token = localStorage.getItem('gridwolf_token') ?? '';
+  return `${protocol}//${window.location.host}/ws?token=${encodeURIComponent(token)}`;
+}
 
 export function useWebSocket(): UseWebSocketReturn {
   const [lastMessage, setLastMessage] = useState<WebSocketMessage | null>(null);
@@ -26,8 +31,11 @@ export function useWebSocket(): UseWebSocketReturn {
   const connect = useCallback(() => {
     if (unmountedRef.current) return;
 
+    const token = localStorage.getItem('gridwolf_token');
+    if (!token) return; // Don't connect without auth
+
     try {
-      const ws = new WebSocket(WS_URL);
+      const ws = new WebSocket(getWsUrl());
       wsRef.current = ws;
 
       ws.onopen = () => {

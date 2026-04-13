@@ -1,10 +1,26 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   FileText, Download, Eye, Trash2, FileSpreadsheet, Shield,
   Check, Loader2, Lock, Calendar, User, Building2,
   FileJson, Package, ClipboardList
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { api } from '@/services/api';
+
+interface Session {
+  id: string;
+  name: string;
+}
+
+interface GeneratedReport {
+  id: string | number;
+  name: string;
+  type: string;
+  date: string;
+  pages: number;
+  size: string;
+  status: 'ready' | 'generating' | 'error';
+}
 
 const REPORT_TYPES = [
   { id: 'executive', label: 'Executive Summary', desc: 'High-level findings for management' },
@@ -12,13 +28,6 @@ const REPORT_TYPES = [
   { id: 'device', label: 'Device Inventory Report', desc: 'All discovered devices and properties' },
   { id: 'compliance', label: 'Compliance Report', desc: 'IEC 62443 / NIST 800-82 / NERC CIP' },
   { id: 'findings', label: 'Findings & Remediation', desc: 'Security findings with fix guidance' },
-];
-
-const SESSIONS = [
-  'Plant Floor Assessment - Mar 2024',
-  'SCADA Network Baseline - Feb 2024',
-  'Substation ICS Audit - Jan 2024',
-  'Quarterly Review Q4 2023',
 ];
 
 const SECTIONS = [
@@ -35,14 +44,6 @@ const SECTIONS = [
   { id: 'appendix', label: 'Appendix: Raw Data Tables' },
 ];
 
-const GENERATED_REPORTS = [
-  { id: 1, name: 'Plant Floor Full Assessment', type: 'Full Technical', date: '2024-03-15', pages: 48, size: '4.2 MB', status: 'ready' as const },
-  { id: 2, name: 'SCADA Executive Summary', type: 'Executive', date: '2024-03-10', pages: 12, size: '1.1 MB', status: 'ready' as const },
-  { id: 3, name: 'IEC 62443 Compliance Audit', type: 'Compliance', date: '2024-03-08', pages: 32, size: '3.5 MB', status: 'ready' as const },
-  { id: 4, name: 'Substation Device Inventory', type: 'Device Inventory', date: '2024-03-05', pages: 18, size: '2.0 MB', status: 'ready' as const },
-  { id: 5, name: 'Q1 Findings Report', type: 'Findings', date: '2024-03-01', pages: 0, size: '-', status: 'generating' as const },
-];
-
 const EXPORTS = [
   { icon: FileText, label: 'PDF Assessment Report', desc: 'Professional multi-section report with charts and topology maps', primary: true },
   { icon: FileSpreadsheet, label: 'CSV Data Export', desc: 'Assets, connections, and findings as spreadsheets' },
@@ -54,32 +55,97 @@ const EXPORTS = [
 
 export default function ReportGenerator() {
   const [reportType, setReportType] = useState('full');
-  const [session, setSession] = useState(SESSIONS[0]);
-  const [sections, setSections] = useState<Record<string, boolean>>(
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [sessionsLoading, setSessionsLoading] = useState(true);
+  const [selectedSession, setSelectedSession] = useState('');
+  const [sectionChecks, setSectionChecks] = useState<Record<string, boolean>>(
     Object.fromEntries(SECTIONS.map((s) => [s.id, true]))
   );
-  const [clientName, setClientName] = useState('Acme Energy Corp');
-  const [assessor, setAssessor] = useState('Jane Smith');
+  const [clientName, setClientName] = useState('');
+  const [assessor, setAssessor] = useState('');
   const [classification, setClassification] = useState('confidential');
   const [generating, setGenerating] = useState(false);
+  const [reports, setReports] = useState<GeneratedReport[]>([]);
+  const [reportsLoading, setReportsLoading] = useState(true);
 
-  const handleGenerate = () => {
+  const fetchReports = useCallback(async () => {
+    try {
+      setReportsLoading(true);
+      const res = await api.get('/ics/findings/reports/list');
+      setReports(res.data ?? []);
+    } catch {
+      // silently handle — table will show empty state
+    } finally {
+      setReportsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    // Fetch sessions
+    (async () => {
+      try {
+        setSessionsLoading(true);
+        const res = await api.get('/ics/sessions/');
+        const data: Session[] = res.data ?? [];
+        setSessions(data);
+        if (data.length > 0) {
+          setSelectedSession(data[0].id);
+        }
+      } catch {
+        // silently handle — dropdown will show empty state
+      } finally {
+        setSessionsLoading(false);
+      }
+    })();
+
+    // Fetch existing reports
+    fetchReports();
+  }, [fetchReports]);
+
+  const handleGenerate = async () => {
+    if (!selectedSession) return;
     setGenerating(true);
-    setTimeout(() => {
+    try {
+      const payload = {
+        report_type: reportType,
+        session_id: selectedSession,
+        sections: Object.entries(sectionChecks)
+          .filter(([, v]) => v)
+          .map(([k]) => k),
+        client_name: clientName,
+        assessor,
+        classification,
+      };
+      await api.post('/ics/findings/reports/generate', payload);
+      // Refresh the reports list to show the newly generated report
+      await fetchReports();
+    } catch {
+      // generation failed — user will see no new report appear
+    } finally {
       setGenerating(false);
-      // Download the sample report
-      handleDownload('Gridwolf_Sample_Assessment');
-    }, 2000);
+    }
   };
 
-  const handleDownload = (_name: string) => {
-    // Download sample HTML report (generated by backend engine with real data)
-    const a = document.createElement('a');
-    a.href = `${import.meta.env.BASE_URL}sample-report.html`;
-    a.download = 'Gridwolf_ICS_Assessment_Report.html';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+  const handleDownload = async (reportId: string | number) => {
+    try {
+      const res = await api.get(`/ics/findings/reports/${reportId}/download`, {
+        responseType: 'blob',
+      });
+      const blob = new Blob([res.data]);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      // Try to extract filename from Content-Disposition header
+      const disposition = res.headers['content-disposition'];
+      const match = disposition?.match(/filename="?([^"]+)"?/);
+      a.download = match?.[1] ?? `report_${reportId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch {
+      // download failed
+    }
   };
 
   return (
@@ -110,9 +176,17 @@ export default function ReportGenerator() {
           {/* Source Session */}
           <div className="rounded-lg border border-border-default bg-surface-card p-4 space-y-3">
             <p className="text-sm font-medium text-content-primary">Source Session</p>
-            <select value={session} onChange={(e) => setSession(e.target.value)} className="w-full rounded border border-border-default bg-bg-secondary text-content-primary text-sm px-3 py-1.5">
-              {SESSIONS.map((s) => <option key={s}>{s}</option>)}
-            </select>
+            {sessionsLoading ? (
+              <div className="flex items-center gap-2 text-xs text-content-tertiary py-1.5">
+                <Loader2 size={14} className="animate-spin" /> Loading sessions...
+              </div>
+            ) : sessions.length === 0 ? (
+              <p className="text-xs text-content-tertiary py-1.5">No sessions available. Upload a PCAP to create one.</p>
+            ) : (
+              <select value={selectedSession} onChange={(e) => setSelectedSession(e.target.value)} className="w-full rounded border border-border-default bg-bg-secondary text-content-primary text-sm px-3 py-1.5">
+                {sessions.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            )}
           </div>
 
           {/* Sections */}
@@ -121,7 +195,7 @@ export default function ReportGenerator() {
             <div className="space-y-1">
               {SECTIONS.map((s) => (
                 <label key={s.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-surface-hover cursor-pointer">
-                  <input type="checkbox" checked={sections[s.id]} disabled={s.locked} onChange={(e) => setSections({ ...sections, [s.id]: e.target.checked })}
+                  <input type="checkbox" checked={sectionChecks[s.id]} disabled={s.locked} onChange={(e) => setSectionChecks({ ...sectionChecks, [s.id]: e.target.checked })}
                     className="h-3.5 w-3.5 rounded border-border-default text-accent" />
                   <span className="text-xs text-content-primary flex-1">{s.label}</span>
                   {s.locked && <Lock size={10} className="text-content-tertiary" />}
@@ -190,7 +264,7 @@ export default function ReportGenerator() {
             <div className="p-4">
               <p className="text-xs font-medium text-content-secondary mb-2">Table of Contents</p>
               <div className="space-y-1">
-                {SECTIONS.filter((s) => sections[s.id]).map((s, i) => (
+                {SECTIONS.filter((s) => sectionChecks[s.id]).map((s, i) => (
                   <div key={s.id} className="flex items-center justify-between text-[11px]">
                     <span className="text-content-primary">{i + 1}. {s.label}</span>
                     <span className="text-content-tertiary">{(i + 1) * 3 + 1}</span>
@@ -198,8 +272,8 @@ export default function ReportGenerator() {
                 ))}
               </div>
               <div className="mt-4 pt-3 border-t border-border-default flex justify-between text-[10px] text-content-tertiary">
-                <span>~{SECTIONS.filter((s) => sections[s.id]).length * 4 + 2} pages</span>
-                <span>~{(SECTIONS.filter((s) => sections[s.id]).length * 0.4 + 0.5).toFixed(1)} MB</span>
+                <span>~{SECTIONS.filter((s) => sectionChecks[s.id]).length * 4 + 2} pages</span>
+                <span>~{(SECTIONS.filter((s) => sectionChecks[s.id]).length * 0.4 + 0.5).toFixed(1)} MB</span>
               </div>
             </div>
           </div>
@@ -238,30 +312,44 @@ export default function ReportGenerator() {
             </tr>
           </thead>
           <tbody>
-            {GENERATED_REPORTS.map((r) => (
-              <tr key={r.id} className="border-b border-border-default last:border-0 hover:bg-surface-hover">
-                <td className="px-4 py-2.5 text-content-primary font-medium">{r.name}</td>
-                <td className="px-4 py-2.5"><span className="px-1.5 py-0.5 rounded text-[10px] bg-accent/15 text-accent">{r.type}</span></td>
-                <td className="px-4 py-2.5 text-content-secondary">{r.date}</td>
-                <td className="px-4 py-2.5 text-right text-content-secondary">{r.pages || '-'}</td>
-                <td className="px-4 py-2.5 text-right text-content-secondary">{r.size}</td>
-                <td className="px-4 py-2.5">
-                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${
-                    r.status === 'ready' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-amber-500/15 text-amber-400'
-                  }`}>
-                    {r.status === 'ready' ? <Check size={10} /> : <Loader2 size={10} className="animate-spin" />}
-                    {r.status}
-                  </span>
-                </td>
-                <td className="px-4 py-2.5 text-right">
-                  <div className="flex items-center gap-1 justify-end">
-                    <button onClick={() => handleDownload(r.name)} disabled={r.status !== 'ready'} className="p-1 rounded hover:bg-surface-hover text-content-tertiary hover:text-accent disabled:opacity-30"><Download size={14} /></button>
-                    <button className="p-1 rounded hover:bg-surface-hover text-content-tertiary hover:text-accent disabled:opacity-30" disabled={r.status !== 'ready'}><Eye size={14} /></button>
-                    <button className="p-1 rounded hover:bg-surface-hover text-content-tertiary hover:text-red-400"><Trash2 size={14} /></button>
-                  </div>
+            {reportsLoading ? (
+              <tr>
+                <td colSpan={7} className="px-4 py-8 text-center text-content-tertiary text-xs">
+                  <Loader2 size={16} className="animate-spin inline mr-2" />Loading reports...
                 </td>
               </tr>
-            ))}
+            ) : reports.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="px-4 py-8 text-center text-content-tertiary text-xs">
+                  No reports generated yet. Configure a report above and click Generate.
+                </td>
+              </tr>
+            ) : (
+              reports.map((r) => (
+                <tr key={r.id} className="border-b border-border-default last:border-0 hover:bg-surface-hover">
+                  <td className="px-4 py-2.5 text-content-primary font-medium">{r.name}</td>
+                  <td className="px-4 py-2.5"><span className="px-1.5 py-0.5 rounded text-[10px] bg-accent/15 text-accent">{r.type}</span></td>
+                  <td className="px-4 py-2.5 text-content-secondary">{r.date}</td>
+                  <td className="px-4 py-2.5 text-right text-content-secondary">{r.pages || '-'}</td>
+                  <td className="px-4 py-2.5 text-right text-content-secondary">{r.size}</td>
+                  <td className="px-4 py-2.5">
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                      r.status === 'ready' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-amber-500/15 text-amber-400'
+                    }`}>
+                      {r.status === 'ready' ? <Check size={10} /> : <Loader2 size={10} className="animate-spin" />}
+                      {r.status}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2.5 text-right">
+                    <div className="flex items-center gap-1 justify-end">
+                      <button onClick={() => handleDownload(r.id)} disabled={r.status !== 'ready'} className="p-1 rounded hover:bg-surface-hover text-content-tertiary hover:text-accent disabled:opacity-30"><Download size={14} /></button>
+                      <button className="p-1 rounded hover:bg-surface-hover text-content-tertiary hover:text-accent disabled:opacity-30" disabled={r.status !== 'ready'}><Eye size={14} /></button>
+                      <button className="p-1 rounded hover:bg-surface-hover text-content-tertiary hover:text-red-400"><Trash2 size={14} /></button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>

@@ -1,13 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Download, FileText, FileSpreadsheet, FileJson, Package, Shield,
   Filter, ListChecks, ChevronDown, Copy, Check, ExternalLink,
-  Flame, Target, AlertTriangle,
+  Flame, Target, AlertTriangle, Loader2,
 } from 'lucide-react';
 import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/cn';
+import { api } from '@/services/api';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -35,52 +36,14 @@ interface RemediationItem {
 }
 
 // ---------------------------------------------------------------------------
-// Mock data
+// Constants
 // ---------------------------------------------------------------------------
-
-const FIREWALL_RULES: Record<FirewallFormat, string[]> = {
-  cisco_acl: [
-    'access-list 100 permit tcp host 10.10.3.10 host 10.10.2.100 eq 102',
-    'access-list 100 permit tcp host 10.10.3.45 host 10.10.2.100 eq 102',
-    'access-list 100 permit udp host 10.10.3.5 host 10.10.4.1 eq 53',
-    'access-list 100 permit tcp host 10.10.2.100 host 10.10.4.200 eq 443',
-    'access-list 100 permit tcp host 10.10.3.90 host 10.10.3.10 eq 502',
-    'access-list 100 deny ip any any log',
-  ],
-  iptables: [
-    'iptables -A FORWARD -s 10.10.3.10 -d 10.10.2.100 -p tcp --dport 102 -j ACCEPT',
-    'iptables -A FORWARD -s 10.10.3.45 -d 10.10.2.100 -p tcp --dport 102 -j ACCEPT',
-    'iptables -A FORWARD -s 10.10.3.5 -d 10.10.4.1 -p udp --dport 53 -j ACCEPT',
-    'iptables -A FORWARD -s 10.10.2.100 -d 10.10.4.200 -p tcp --dport 443 -j ACCEPT',
-    'iptables -A FORWARD -s 10.10.3.90 -d 10.10.3.10 -p tcp --dport 502 -j ACCEPT',
-    'iptables -A FORWARD -j DROP',
-  ],
-  windows_firewall: [
-    'netsh advfirewall firewall add rule name="S7comm-PLC1" dir=out action=allow protocol=tcp remoteip=10.10.2.100 remoteport=102 localip=10.10.3.10',
-    'netsh advfirewall firewall add rule name="S7comm-PLC2" dir=out action=allow protocol=tcp remoteip=10.10.2.100 remoteport=102 localip=10.10.3.45',
-    'netsh advfirewall firewall add rule name="DNS-WAP" dir=out action=allow protocol=udp remoteip=10.10.4.1 remoteport=53 localip=10.10.3.5',
-    'netsh advfirewall firewall add rule name="HTTPS-Historian" dir=out action=allow protocol=tcp remoteip=10.10.4.200 remoteport=443 localip=10.10.2.100',
-    'netsh advfirewall firewall add rule name="Modbus-Polling" dir=out action=allow protocol=tcp remoteip=10.10.3.10 remoteport=502 localip=10.10.3.90',
-    'netsh advfirewall firewall add rule name="BlockAll" dir=out action=block protocol=any remoteip=any',
-  ],
-};
 
 const FIREWALL_FORMAT_LABELS: Record<FirewallFormat, string> = {
   cisco_acl: 'Cisco ACL',
   iptables: 'iptables',
   windows_firewall: 'Windows Firewall',
 };
-
-const REMEDIATION_LIST: RemediationItem[] = [
-  { id: 'rem-1', rank: 1, finding: 'Unencrypted Modbus TCP on OT segment', severity: 'critical', attackTechnique: 'T0801 - Monitor Process State', remediation: 'Deploy Modbus/TCP deep packet inspection firewall; segment Modbus devices onto dedicated VLAN', effort: 'High' },
-  { id: 'rem-2', rank: 2, finding: 'Default credentials on S7-1200 PLCs', severity: 'critical', attackTechnique: 'T0812 - Default Credentials', remediation: 'Change all PLC passwords to unique strong values; enable PLC access protection level 3', effort: 'Low' },
-  { id: 'rem-3', rank: 3, finding: 'HMI server with unpatched CVE-2025-3104', severity: 'high', attackTechnique: 'T0866 - Exploitation of Remote Services', remediation: 'Apply WinCC patch KB5034210; schedule quarterly patching window', effort: 'Medium' },
-  { id: 'rem-4', rank: 4, finding: 'Cross-zone DNS traffic to enterprise network', severity: 'high', attackTechnique: 'T0884 - Connection Proxy', remediation: 'Deploy OT DNS resolver in DMZ; block direct enterprise DNS from OT zone', effort: 'Medium' },
-  { id: 'rem-5', rank: 5, finding: 'Unauthorized MQTT broker on plant floor', severity: 'high', attackTechnique: 'T0830 - Man in the Middle', remediation: 'Identify MQTT broker owner; enforce TLS on port 8883 or remove', effort: 'Medium' },
-  { id: 'rem-6', rank: 6, finding: 'OPC UA without certificate validation', severity: 'medium', attackTechnique: 'T0869 - Standard Application Layer Protocol', remediation: 'Enable OPC UA certificate trust lists; reject anonymous connections', effort: 'Medium' },
-  { id: 'rem-7', rank: 7, finding: 'Unnecessary HTTP on SCALANCE switches', severity: 'medium', attackTechnique: 'T0886 - Remote Services', remediation: 'Disable HTTP management interface; enforce HTTPS-only with valid certs', effort: 'Low' },
-  { id: 'rem-8', rank: 8, finding: 'Broadcast storm potential from flat L2 topology', severity: 'low', attackTechnique: 'T0814 - Denial of Service', remediation: 'Implement VLANs per Purdue level; enable storm control on managed switches', effort: 'High' },
-];
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -112,6 +75,40 @@ export default function ExportHub() {
   const [copied, setCopied] = useState(false);
   const [filterIp, setFilterIp] = useState('');
   const [filterPort, setFilterPort] = useState('');
+
+  // Remediation findings from the backend
+  const [remediationList, setRemediationList] = useState<RemediationItem[]>([]);
+  const [remediationLoading, setRemediationLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchFindings() {
+      try {
+        const res = await api.get('/ics/findings/').catch(() => ({ data: [] }));
+        const raw = Array.isArray(res.data) ? res.data : res.data?.results ?? [];
+
+        // Map backend findings to RemediationItem shape, sorted by severity
+        const severityOrder: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
+        const mapped: RemediationItem[] = raw
+          .sort((a: any, b: any) => (severityOrder[a.severity] ?? 4) - (severityOrder[b.severity] ?? 4))
+          .map((f: any, idx: number) => ({
+            id: String(f.id),
+            rank: idx + 1,
+            finding: f.title ?? 'Untitled finding',
+            severity: f.severity ?? 'medium',
+            attackTechnique: f.attack_technique ?? f.cve_id ?? '-',
+            remediation: f.remediation ?? f.description ?? '-',
+            effort: f.effort ?? 'Medium',
+          }));
+
+        setRemediationList(mapped);
+      } catch {
+        setRemediationList([]);
+      } finally {
+        setRemediationLoading(false);
+      }
+    }
+    fetchFindings();
+  }, []);
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -165,7 +162,7 @@ export default function ExportHub() {
 
   const handleRemediationExport = () => {
     const header = 'Rank,Finding,Severity,MITRE ATT&CK,Remediation,Effort\n';
-    const rows = REMEDIATION_LIST.map((r) =>
+    const rows = remediationList.map((r) =>
       `${r.rank},"${r.finding}",${r.severity},"${r.attackTechnique}","${r.remediation}",${r.effort}`
     ).join('\n');
     triggerBlobDownload('gridwolf_remediation_priority.csv', header + rows, 'text/csv');
@@ -353,13 +350,8 @@ export default function ExportHub() {
           <p className="text-xs text-content-secondary mb-3">
             Generated firewall rules based on observed legitimate communication flows. Review and customize before deploying to production firewalls.
           </p>
-          <div className="rounded-lg border border-border-default bg-[#0d1117] p-3 font-mono text-xs text-emerald-400 overflow-x-auto">
-            {FIREWALL_RULES[fwFormat].map((rule, i) => (
-              <div key={i} className="py-0.5">
-                <span className="text-content-tertiary select-none mr-3">{String(i + 1).padStart(2, ' ')}</span>
-                {rule}
-              </div>
-            ))}
+          <div className="rounded-lg border border-border-default bg-[#0d1117] p-4 font-mono text-xs text-content-tertiary text-center">
+            Firewall rules will be generated from real findings data once a PCAP capture has been analyzed.
           </div>
         </CardContent>
         <CardFooter>
@@ -368,19 +360,15 @@ export default function ExportHub() {
               variant="secondary"
               size="sm"
               icon={copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-              onClick={() => handleCopy(FIREWALL_RULES[fwFormat].join('\n'))}
+              disabled
             >
-              {copied ? 'Copied!' : 'Copy Rules'}
+              Copy Rules
             </Button>
             <Button
               variant="secondary"
               size="sm"
               icon={<Download className="h-3.5 w-3.5" />}
-              onClick={() => triggerBlobDownload(
-                `gridwolf_allowlist_${fwFormat}.txt`,
-                FIREWALL_RULES[fwFormat].join('\n'),
-                'text/plain'
-              )}
+              disabled
             >
               Download
             </Button>
@@ -417,27 +405,44 @@ export default function ExportHub() {
                 </tr>
               </thead>
               <tbody>
-                {REMEDIATION_LIST.map((item) => (
-                  <tr key={item.id} className="border-b border-border-default hover:bg-surface-hover/50 transition-colors">
-                    <td className="px-3 py-2 text-xs font-bold text-content-tertiary">{item.rank}</td>
-                    <td className="px-3 py-2 text-xs text-content-primary">{item.finding}</td>
-                    <td className="px-3 py-2">
-                      <Badge variant={severityBadge[item.severity]}>{item.severity}</Badge>
-                    </td>
-                    <td className="px-3 py-2 text-[11px] font-mono text-content-secondary">{item.attackTechnique}</td>
-                    <td className="px-3 py-2 text-xs text-content-secondary">{item.remediation}</td>
-                    <td className="px-3 py-2">
-                      <span className={cn(
-                        'text-[10px] font-medium px-1.5 py-0.5 rounded',
-                        item.effort === 'Low' && 'bg-emerald-500/15 text-emerald-400',
-                        item.effort === 'Medium' && 'bg-amber-500/15 text-amber-400',
-                        item.effort === 'High' && 'bg-red-500/15 text-red-400',
-                      )}>
-                        {item.effort}
-                      </span>
+                {remediationLoading ? (
+                  <tr>
+                    <td colSpan={6} className="px-3 py-8 text-center">
+                      <div className="flex items-center justify-center gap-2 text-content-tertiary text-xs">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Loading findings...
+                      </div>
                     </td>
                   </tr>
-                ))}
+                ) : remediationList.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-3 py-8 text-center text-content-tertiary text-xs">
+                      No findings available. Upload and analyze a PCAP capture to generate remediation priorities.
+                    </td>
+                  </tr>
+                ) : (
+                  remediationList.map((item) => (
+                    <tr key={item.id} className="border-b border-border-default hover:bg-surface-hover/50 transition-colors">
+                      <td className="px-3 py-2 text-xs font-bold text-content-tertiary">{item.rank}</td>
+                      <td className="px-3 py-2 text-xs text-content-primary">{item.finding}</td>
+                      <td className="px-3 py-2">
+                        <Badge variant={severityBadge[item.severity]}>{item.severity}</Badge>
+                      </td>
+                      <td className="px-3 py-2 text-[11px] font-mono text-content-secondary">{item.attackTechnique}</td>
+                      <td className="px-3 py-2 text-xs text-content-secondary">{item.remediation}</td>
+                      <td className="px-3 py-2">
+                        <span className={cn(
+                          'text-[10px] font-medium px-1.5 py-0.5 rounded',
+                          item.effort === 'Low' && 'bg-emerald-500/15 text-emerald-400',
+                          item.effort === 'Medium' && 'bg-amber-500/15 text-amber-400',
+                          item.effort === 'High' && 'bg-red-500/15 text-red-400',
+                        )}>
+                          {item.effort}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

@@ -3,12 +3,13 @@ import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect, status
+from fastapi import FastAPI, Query, Request, WebSocket, WebSocketDisconnect, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import ORJSONResponse
 
 from app.api.v1.router import api_v1_router
 from app.core.config import settings
+from app.core.security import verify_token
 
 logger = logging.getLogger("gridwolf")
 
@@ -62,10 +63,10 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS middleware
+# CORS middleware — use configured origins instead of wildcard
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -81,12 +82,21 @@ async def health_check():
 
 
 @app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
+async def websocket_endpoint(websocket: WebSocket, token: str = Query(default="")):
+    # Validate token before accepting connection
+    if token:
+        payload = verify_token(token)
+        if payload is None:
+            await websocket.close(code=4001, reason="Invalid token")
+            return
+    else:
+        await websocket.close(code=4001, reason="Authentication required")
+        return
+
     await ws_manager.connect(websocket)
     try:
         while True:
             data = await websocket.receive_json()
-            # Echo back or handle commands
             await websocket.send_json({"type": "ack", "data": data})
     except WebSocketDisconnect:
         ws_manager.disconnect(websocket)

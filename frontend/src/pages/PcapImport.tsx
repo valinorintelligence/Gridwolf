@@ -35,17 +35,6 @@ const DEMO_RESULT = {
   ],
 };
 
-// ---------------------------------------------------------------------------
-// Mock data
-// ---------------------------------------------------------------------------
-const RECENT_IMPORTS = [
-  { id: 1, name: 'plant_floor_modbus_capture.pcap', date: '2024-03-15 14:32', packets: 245_300, devices: 18, protocols: ['Modbus TCP', 'S7comm', 'LLDP'], status: 'complete' as const, size: '48.2 MB' },
-  { id: 2, name: 'scada_network_20240310.pcapng', date: '2024-03-10 09:15', packets: 1_230_400, devices: 24, protocols: ['EtherNet/IP', 'CIP', 'DNP3', 'Modbus'], status: 'complete' as const, size: '312 MB' },
-  { id: 3, name: 'substation_iec104.pcap', date: '2024-03-08 16:45', packets: 89_200, devices: 8, protocols: ['IEC 104', 'LLDP', 'SNMP'], status: 'complete' as const, size: '12.6 MB' },
-  { id: 4, name: 'building_automation_bacnet.pcap', date: '2024-03-05 11:20', packets: 156_800, devices: 32, protocols: ['BACnet', 'LLDP'], status: 'complete' as const, size: '28.4 MB' },
-  { id: 5, name: 'profinet_line3_capture.pcapng', date: '2024-03-01 08:00', packets: 67_500, devices: 12, protocols: ['PROFINET', 'LLDP', 'SNMP'], status: 'failed' as const, size: '9.8 MB' },
-];
-
 const PIPELINE_STAGES = [
   { name: 'Ingest', desc: 'PCAP validation & metadata extraction', icon: Upload },
   { name: 'Dissect', desc: 'Protocol dissection & flow extraction', icon: Activity },
@@ -99,6 +88,7 @@ export default function PcapImport() {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollErrorCount = useRef(0);
   const navigate = useNavigate();
+  const [recentImports, setRecentImports] = useState<any[]>([]);
   const isDemoMode = import.meta.env.VITE_DEMO_MODE === 'true';
 
   // Cleanup polling on unmount
@@ -107,6 +97,14 @@ export default function PcapImport() {
       if (pollRef.current) clearInterval(pollRef.current);
     };
   }, []);
+
+  // Fetch recent imports from backend
+  useEffect(() => {
+    if (isDemoMode) return;
+    api.get('/ics/pcap/list')
+      .then(({ data }) => setRecentImports(Array.isArray(data) ? data : []))
+      .catch(() => setRecentImports([]));
+  }, [isDemoMode]);
 
   const startAnalysis = async () => {
     setAnalyzing(true);
@@ -353,7 +351,7 @@ export default function PcapImport() {
           )}
 
           {/* Demo analysis results */}
-          {showDemoResult && (
+          {isDemoMode && showDemoResult && (
             <div className="space-y-4 rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -571,54 +569,61 @@ export default function PcapImport() {
             <div className="px-4 py-3 border-b border-border-default">
               <p className="text-sm font-medium text-content-primary">Recent Imports</p>
             </div>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border-default text-xs text-content-tertiary">
-                  <th className="text-left px-4 py-2 font-medium">File</th>
-                  <th className="text-left px-4 py-2 font-medium">Date</th>
-                  <th className="text-right px-4 py-2 font-medium">Packets</th>
-                  <th className="text-right px-4 py-2 font-medium">Devices</th>
-                  <th className="text-left px-4 py-2 font-medium">Protocols</th>
-                  <th className="text-left px-4 py-2 font-medium">Status</th>
-                  <th className="text-right px-4 py-2 font-medium">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {RECENT_IMPORTS.map((r) => (
-                  <tr key={r.id} className="border-b border-border-default last:border-0 hover:bg-surface-hover">
-                    <td className="px-4 py-2.5">
-                      <div className="text-content-primary font-medium">{r.name}</div>
-                      <div className="text-[10px] text-content-tertiary">{r.size}</div>
-                    </td>
-                    <td className="px-4 py-2.5 text-content-secondary">{r.date}</td>
-                    <td className="px-4 py-2.5 text-right text-content-secondary">{r.packets.toLocaleString()}</td>
-                    <td className="px-4 py-2.5 text-right text-content-primary font-medium">{r.devices}</td>
-                    <td className="px-4 py-2.5">
-                      <div className="flex flex-wrap gap-1">
-                        {r.protocols.map((p) => (
-                          <span key={p} className="px-1.5 py-0.5 rounded text-[10px] bg-accent/15 text-accent">{p}</span>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${
-                        r.status === 'complete' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'
-                      }`}>
-                        {r.status === 'complete' ? <Check size={10} /> : <AlertTriangle size={10} />}
-                        {r.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2.5 text-right">
-                      <div className="flex items-center gap-1 justify-end">
-                        <button className="p-1 rounded hover:bg-surface-hover text-content-tertiary hover:text-accent"><Eye size={14} /></button>
-                        <button className="p-1 rounded hover:bg-surface-hover text-content-tertiary hover:text-accent"><RefreshCw size={14} /></button>
-                        <button className="p-1 rounded hover:bg-surface-hover text-content-tertiary hover:text-red-400"><Trash2 size={14} /></button>
-                      </div>
-                    </td>
+            {recentImports.length === 0 ? (
+              <div className="px-4 py-8 text-center">
+                <p className="text-sm text-content-tertiary">No imports yet</p>
+                <p className="text-xs text-content-tertiary mt-1">Upload a PCAP file above to get started</p>
+              </div>
+            ) : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border-default text-xs text-content-tertiary">
+                    <th className="text-left px-4 py-2 font-medium">File</th>
+                    <th className="text-left px-4 py-2 font-medium">Date</th>
+                    <th className="text-right px-4 py-2 font-medium">Packets</th>
+                    <th className="text-left px-4 py-2 font-medium">Protocols</th>
+                    <th className="text-left px-4 py-2 font-medium">Status</th>
+                    <th className="text-right px-4 py-2 font-medium">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {recentImports.map((r) => (
+                    <tr key={r.id} className="border-b border-border-default last:border-0 hover:bg-surface-hover">
+                      <td className="px-4 py-2.5">
+                        <div className="text-content-primary font-medium">{r.filename}</div>
+                        <div className="text-[10px] text-content-tertiary">{r.file_size ? `${(r.file_size / 1024 / 1024).toFixed(1)} MB` : ''}</div>
+                      </td>
+                      <td className="px-4 py-2.5 text-content-secondary">{r.created_at ? new Date(r.created_at).toLocaleString() : ''}</td>
+                      <td className="px-4 py-2.5 text-right text-content-secondary">{(r.packet_count || 0).toLocaleString()}</td>
+                      <td className="px-4 py-2.5">
+                        <div className="flex flex-wrap gap-1">
+                          {Object.keys(r.protocol_summary || {}).map((p) => (
+                            <span key={p} className="px-1.5 py-0.5 rounded text-[10px] bg-accent/15 text-accent">{p}</span>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                          r.status === 'completed' ? 'bg-emerald-500/15 text-emerald-400' :
+                          r.status === 'failed' ? 'bg-red-500/15 text-red-400' :
+                          'bg-amber-500/15 text-amber-400'
+                        }`}>
+                          {r.status === 'completed' ? <Check size={10} /> : r.status === 'failed' ? <AlertTriangle size={10} /> : <RefreshCw size={10} />}
+                          {r.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2.5 text-right">
+                        <div className="flex items-center gap-1 justify-end">
+                          <button className="p-1 rounded hover:bg-surface-hover text-content-tertiary hover:text-accent"><Eye size={14} /></button>
+                          <button className="p-1 rounded hover:bg-surface-hover text-content-tertiary hover:text-accent"><RefreshCw size={14} /></button>
+                          <button className="p-1 rounded hover:bg-surface-hover text-content-tertiary hover:text-red-400"><Trash2 size={14} /></button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
       )}

@@ -1,6 +1,6 @@
 [project]
 name = "gridwolf"
-version = "0.9.4"
+version = "0.9.5"
 description = "Gridwolf - Passive ICS/SCADA Network Discovery & Topology Visualization"
 requires-python = ">=3.9"
 dependencies = [

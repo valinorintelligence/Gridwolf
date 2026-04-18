@@ -130,7 +130,7 @@ export const router = createRouter([
       { path: 'report-diff', element: page(ReportDiff) },
       { path: 'investigations', element: page(Investigations) },
       { path: 'vuln-feed', element: page(VulnFeed) },
-      { path: 'advisory-detail', element: page(AdvisoryDetail) },
+      { path: 'advisory-detail/:id', element: page(AdvisoryDetail) },
       { path: 'my-environment', element: page(MyEnvironment) },
       { path: 'admin', element: page(SystemAdmin) },
     ],

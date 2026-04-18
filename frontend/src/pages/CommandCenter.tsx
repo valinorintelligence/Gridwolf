@@ -66,7 +66,7 @@ export default function CommandCenter() {
         const [devRes, findRes, findListRes, sessRes, topoRes] = await Promise.allSettled([
           api.get('/ics/devices/stats'),
           api.get('/ics/findings/stats'),
-          api.get('/ics/findings/', { params: { severity: undefined } }),
+          api.get('/ics/findings/', { params: { limit: 10 } }),
           api.get('/ics/sessions/'),
           api.get('/ics/devices/topology'),
         ]);
@@ -84,7 +84,7 @@ export default function CommandCenter() {
                 type: (n.type || 'default') as string,
                 color: '#8b5cf6',
               })),
-              edges: d.edges.map((e: Record<string, unknown>) => ({
+              edges: (d.edges ?? []).map((e: Record<string, unknown>) => ({
                 id: `${e.source}-${e.target}`,
                 source: e.source as string,
                 target: e.target as string,
@@ -105,7 +105,7 @@ export default function CommandCenter() {
   const totalDevices = deviceStats?.total_devices ?? 0;
   const totalFindings = findingStats?.total ?? 0;
   const openFindings = findingStats?.open_count ?? 0;
-  const criticalCount = findingStats?.by_severity?.critical ?? findingStats?.by_severity?.high ?? 0;
+  const criticalCount = findingStats?.by_severity?.critical ?? 0;
   const highCount = findingStats?.by_severity?.high ?? 0;
 
   const threatLevel = criticalCount > 0 ? 'critical' : highCount > 0 ? 'high' : totalFindings > 0 ? 'medium' : 'low';

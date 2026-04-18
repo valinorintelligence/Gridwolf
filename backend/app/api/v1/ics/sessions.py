@@ -1,7 +1,7 @@
 from __future__ import annotations
 """Session & Project Management API endpoints."""
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -27,11 +27,17 @@ class ProjectCreate(BaseModel):
 
 
 @router.get("/")
-async def list_sessions(project_id: str = None, db: AsyncSession = Depends(get_db)):
+async def list_sessions(
+    project_id: str = None,
+    limit: int = Query(default=200, ge=1, le=1000),
+    offset: int = Query(default=0, ge=0),
+    db: AsyncSession = Depends(get_db),
+):
     """List all sessions."""
     query = select(Session).order_by(Session.created_at.desc())
     if project_id:
         query = query.where(Session.project_id == project_id)
+    query = query.offset(offset).limit(limit)
     result = await db.execute(query)
     sessions = result.scalars().all()
 
@@ -99,9 +105,15 @@ async def delete_session(session_id: str, db: AsyncSession = Depends(get_db)):
 # ─── Projects ──────────────────────────────────────────
 
 @router.get("/projects/list")
-async def list_projects(db: AsyncSession = Depends(get_db)):
+async def list_projects(
+    limit: int = Query(default=200, ge=1, le=1000),
+    offset: int = Query(default=0, ge=0),
+    db: AsyncSession = Depends(get_db),
+):
     """List all projects."""
-    result = await db.execute(select(Project).order_by(Project.created_at.desc()))
+    result = await db.execute(
+        select(Project).order_by(Project.created_at.desc()).offset(offset).limit(limit)
+    )
     projects = result.scalars().all()
     return [
         {

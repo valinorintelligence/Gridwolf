@@ -34,6 +34,11 @@ async def upload_pcap(
     if not file.filename.endswith((".pcap", ".pcapng", ".cap")):
         raise HTTPException(400, "Invalid file type. Supported: .pcap, .pcapng, .cap")
 
+    # Sanitize filename to prevent path traversal (strip all directory components)
+    safe_filename = Path(file.filename).name
+    if not safe_filename:
+        raise HTTPException(400, "Invalid filename")
+
     # Read file content and validate before saving
     content = await file.read()
 
@@ -70,9 +75,9 @@ async def upload_pcap(
         if not session:
             raise HTTPException(404, f"Session {session_id} not found")
 
-    # Save validated file
+    # Save validated file using sanitized filename
     file_id = str(uuid.uuid4())
-    filepath = UPLOAD_DIR / f"{file_id}_{file.filename}"
+    filepath = UPLOAD_DIR / f"{file_id}_{safe_filename}"
 
     with open(filepath, "wb") as f:
         f.write(content)
@@ -87,7 +92,7 @@ async def upload_pcap(
     pcap_record = PcapFile(
         id=file_id,
         session_id=session_id,
-        filename=file.filename,
+        filename=safe_filename,
         filepath=str(filepath),
         file_size=len(content),
         status="processing",

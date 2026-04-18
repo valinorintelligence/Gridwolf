@@ -17,7 +17,9 @@ async def list_devices(
     device_type: str = None,
     purdue_level: str = None,
     protocol: str = None,
-    search: str = None,
+    search: str = Query(default=None, max_length=100),
+    limit: int = Query(default=500, ge=1, le=2000),
+    offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
     """List discovered devices with filters."""
@@ -36,6 +38,7 @@ async def list_devices(
             (Device.vendor.ilike(f"%{search}%"))
         )
 
+    query = query.offset(offset).limit(limit)
     result = await db.execute(query)
     devices = result.scalars().all()
 

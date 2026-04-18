@@ -37,7 +37,8 @@ export default function Register() {
 
   const passwordStrength = PASSWORD_RULES.filter((r) => r.test(password)).length;
   const passwordsMatch = password === confirmPassword && confirmPassword.length > 0;
-  const isStep1Valid = fullName.trim().length > 0 && email.includes('@') && organization.trim().length > 0;
+  const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
+  const isStep1Valid = fullName.trim().length > 0 && isEmailValid && organization.trim().length > 0;
   const isStep2Valid = passwordStrength === PASSWORD_RULES.length && passwordsMatch && agreedToTerms;
 
   const isDemoMode = import.meta.env.VITE_DEMO_MODE === 'true';
@@ -53,7 +54,8 @@ export default function Register() {
         demoLogin();
       } else {
         // Real registration via backend API
-        const username = email.split('@')[0].replace(/[^a-zA-Z0-9_-]/g, '_');
+        const rawUsername = email.split('@')[0].replace(/[^a-zA-Z0-9_-]/g, '_');
+        const username = rawUsername.length >= 3 ? rawUsername : `user_${rawUsername}`;
         await registerUser({
           username,
           email,

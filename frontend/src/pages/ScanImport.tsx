@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
-  Upload, FileUp, FileCheck, Clock, CheckCircle, XCircle, AlertCircle,
+  Upload, FileUp, FileCheck, CheckCircle, XCircle, AlertCircle,
   File, Monitor, Shield, Terminal, Bug, Cpu, Radar, Eye,
   Loader2, AlertTriangle, ExternalLink,
 } from 'lucide-react';
@@ -27,7 +27,7 @@ interface PcapFile {
   packets: number;
   status: PcapFileStatus;
   currentStage: PcapStage;
-  stageProgress: number; // 0-100 for current stage
+  stageProgress: number;
   results?: {
     devicesDiscovered: number;
     connectionsFound: number;
@@ -44,17 +44,6 @@ interface ExternalToolFile {
   entries?: number;
   alerts?: number;
   flows?: number;
-}
-
-interface ImportHistoryRecord {
-  id: string;
-  date: string;
-  source: string;
-  type: string;
-  file: string;
-  devicesAdded: number;
-  findingsGenerated: number;
-  status: 'completed' | 'partial' | 'failed';
 }
 
 // ---------------------------------------------------------------------------
@@ -74,40 +63,15 @@ function stageIndex(stage: PcapStage): number {
   return PCAP_STAGES.findIndex((s) => s.key === stage);
 }
 
-// PCAP files are now fetched from the API
-
-// ---------------------------------------------------------------------------
-// Mock import history
-// ---------------------------------------------------------------------------
-
-const IMPORT_HISTORY: ImportHistoryRecord[] = [
-  { id: 'hist-001', date: '2026-03-24 14:32', source: 'PCAP Import', type: 'pcapng', file: 'plant_floor_capture_20260320.pcapng', devicesAdded: 12, findingsGenerated: 34, status: 'completed' },
-  { id: 'hist-002', date: '2026-03-23 09:15', source: 'Zeek', type: 'conn.log', file: 'conn.log (2026-03-22)', devicesAdded: 8, findingsGenerated: 15, status: 'completed' },
-  { id: 'hist-003', date: '2026-03-22 16:48', source: 'Suricata', type: 'EVE JSON', file: 'eve-2026-03-22.json', devicesAdded: 3, findingsGenerated: 42, status: 'completed' },
-  { id: 'hist-004', date: '2026-03-21 11:20', source: 'Nmap', type: 'XML', file: 'nmap_scan_subnet_10.xml', devicesAdded: 24, findingsGenerated: 0, status: 'completed' },
-  { id: 'hist-005', date: '2026-03-20 08:00', source: 'PCAP Import', type: 'pcap', file: 'historian_segment.pcap', devicesAdded: 6, findingsGenerated: 18, status: 'completed' },
-  { id: 'hist-006', date: '2026-03-19 13:45', source: 'Siemens SINEMA', type: 'CSV', file: 'sinema_inventory_export.csv', devicesAdded: 31, findingsGenerated: 0, status: 'completed' },
-  { id: 'hist-007', date: '2026-03-18 17:30', source: 'Wazuh', type: 'JSON', file: 'wazuh_alerts_march.json', devicesAdded: 0, findingsGenerated: 67, status: 'partial' },
-  { id: 'hist-008', date: '2026-03-17 10:12', source: 'Siemens TIA Portal', type: 'XML', file: 'tia_project_v18.xml', devicesAdded: 14, findingsGenerated: 5, status: 'completed' },
-  { id: 'hist-009', date: '2026-03-16 22:05', source: 'Zeek', type: 'modbus.log', file: 'modbus.log (2026-03-16)', devicesAdded: 2, findingsGenerated: 9, status: 'completed' },
-  { id: 'hist-010', date: '2026-03-15 07:40', source: 'Masscan', type: 'XML', file: 'masscan_full_range.xml', devicesAdded: 18, findingsGenerated: 0, status: 'failed' },
-];
-
 // ---------------------------------------------------------------------------
 // Status helpers
 // ---------------------------------------------------------------------------
 
 const pcapStatusConfig: Record<PcapFileStatus, { icon: React.ElementType; color: string; bg: string }> = {
-  queued: { icon: Clock, color: 'text-content-secondary', bg: 'bg-surface-hover' },
+  queued: { icon: Loader2, color: 'text-content-secondary', bg: 'bg-surface-hover' },
   processing: { icon: Loader2, color: 'text-amber-400', bg: 'bg-amber-500/15' },
   complete: { icon: CheckCircle, color: 'text-emerald-400', bg: 'bg-emerald-500/15' },
   error: { icon: XCircle, color: 'text-red-400', bg: 'bg-red-500/15' },
-};
-
-const historyStatusConfig: Record<string, { color: string; bg: string }> = {
-  completed: { color: 'text-emerald-400', bg: 'bg-emerald-500/15' },
-  partial: { color: 'text-amber-400', bg: 'bg-amber-500/15' },
-  failed: { color: 'text-red-400', bg: 'bg-red-500/15' },
 };
 
 // ---------------------------------------------------------------------------
@@ -149,13 +113,17 @@ function DragDropZone({
   sublabel,
   isDragging,
   onDragState,
+  onFileDrop,
 }: {
   accept: string;
   label: string;
   sublabel?: string;
   isDragging: boolean;
   onDragState: (v: boolean) => void;
+  onFileDrop?: (files: FileList) => void;
 }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
   return (
     <div
       className={cn(
@@ -166,8 +134,20 @@ function DragDropZone({
       )}
       onDragOver={(e) => { e.preventDefault(); onDragState(true); }}
       onDragLeave={() => onDragState(false)}
-      onDrop={(e) => { e.preventDefault(); onDragState(false); }}
+      onDrop={(e) => {
+        e.preventDefault();
+        onDragState(false);
+        if (onFileDrop && e.dataTransfer.files.length > 0) onFileDrop(e.dataTransfer.files);
+      }}
+      onClick={() => inputRef.current?.click()}
     >
+      <input
+        ref={inputRef}
+        type="file"
+        accept={accept}
+        className="hidden"
+        onChange={(e) => { if (onFileDrop && e.target.files?.length) onFileDrop(e.target.files); }}
+      />
       <div className="flex h-14 w-14 items-center justify-center rounded-full bg-accent/10 mb-3">
         <FileUp className={cn('h-7 w-7', isDragging ? 'text-accent' : 'text-content-tertiary')} />
       </div>
@@ -175,7 +155,7 @@ function DragDropZone({
         {isDragging ? 'Drop files here' : label}
       </p>
       <p className="text-xs text-content-secondary mb-3">{sublabel ?? `Accepts ${accept}`}</p>
-      <Button variant="secondary" size="sm" icon={<Upload className="h-3.5 w-3.5" />}>
+      <Button variant="secondary" size="sm" icon={<Upload className="h-3.5 w-3.5" />} onClick={(e) => e.stopPropagation()}>
         Browse Files
       </Button>
     </div>
@@ -183,10 +163,12 @@ function DragDropZone({
 }
 
 // ---------------------------------------------------------------------------
-// External tool cards
+// Scanner tool card — wires uploads to real endpoints
 // ---------------------------------------------------------------------------
 
-interface ToolCardProps {
+type ScannerType = 'semgrep' | 'trivy' | 'sarif' | null;
+
+interface ScannerToolCardProps {
   name: string;
   description: string;
   icon: React.ReactNode;
@@ -194,14 +176,38 @@ interface ToolCardProps {
   accept: string;
   status: 'ready' | 'connected' | 'desktop-only';
   warning?: string;
+  scannerType?: ScannerType;
   children?: React.ReactNode;
 }
 
-function ToolCard({ name, description, icon, formats, accept, status, warning, children }: ToolCardProps) {
+function ScannerToolCard({
+  name, description, icon, formats, accept, status, warning, scannerType, children,
+}: ScannerToolCardProps) {
   const [isDragging, setIsDragging] = useState(false);
-  const [_files, _setFiles] = useState<ExternalToolFile[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadResult, setUploadResult] = useState<{ ok: boolean; message: string } | null>(null);
 
   const isDesktopOnly = status === 'desktop-only';
+
+  async function handleFiles(files: FileList) {
+    if (!scannerType || files.length === 0) return;
+    setUploading(true);
+    setUploadResult(null);
+    const formData = new FormData();
+    formData.append('file', files[0]);
+    try {
+      await api.post(`/scanners/import/${scannerType}`, formData);
+      setUploadResult({ ok: true, message: `${files[0].name} imported successfully.` });
+    } catch (err: unknown) {
+      const msg =
+        err && typeof err === 'object' && 'response' in err
+          ? (err as { response?: { data?: { detail?: string } } }).response?.data?.detail ?? 'Import failed. Please check the file format and try again.'
+          : 'Import failed. Please check the file format and try again.';
+      setUploadResult({ ok: false, message: msg });
+    } finally {
+      setUploading(false);
+    }
+  }
 
   return (
     <Card className={cn(isDesktopOnly && 'opacity-60')}>
@@ -217,9 +223,7 @@ function ToolCard({ name, description, icon, formats, accept, status, warning, c
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> Connected
               </span>
             )}
-            {isDesktopOnly && (
-              <Badge variant="info">Desktop Only</Badge>
-            )}
+            {isDesktopOnly && <Badge variant="info">Desktop Only</Badge>}
           </div>
         }
       />
@@ -237,13 +241,37 @@ function ToolCard({ name, description, icon, formats, accept, status, warning, c
           </div>
         )}
 
+        {uploadResult && (
+          <div className={cn(
+            'flex items-start gap-2 rounded-lg border p-2.5',
+            uploadResult.ok
+              ? 'border-emerald-500/30 bg-emerald-500/5'
+              : 'border-red-500/30 bg-red-500/5'
+          )}>
+            {uploadResult.ok
+              ? <CheckCircle className="h-3.5 w-3.5 text-emerald-400 shrink-0 mt-0.5" />
+              : <XCircle className="h-3.5 w-3.5 text-red-400 shrink-0 mt-0.5" />}
+            <p className={cn('text-[11px]', uploadResult.ok ? 'text-emerald-300' : 'text-red-300')}>
+              {uploadResult.message}
+            </p>
+          </div>
+        )}
+
         {!isDesktopOnly ? (
-          <DragDropZone
-            accept={accept}
-            label={`Drop ${accept} files here`}
-            isDragging={isDragging}
-            onDragState={setIsDragging}
-          />
+          uploading ? (
+            <div className="flex items-center justify-center rounded-lg border border-border-default bg-surface-hover/30 p-10 gap-2 text-content-secondary">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              <span className="text-sm">Importing…</span>
+            </div>
+          ) : (
+            <DragDropZone
+              accept={accept}
+              label={`Drop ${accept} files here`}
+              isDragging={isDragging}
+              onDragState={setIsDragging}
+              onFileDrop={scannerType ? handleFiles : undefined}
+            />
+          )
         ) : (
           <div className="flex items-center justify-center rounded-lg border border-border-default bg-surface-hover/30 p-6">
             <Button variant="secondary" size="sm" disabled icon={<ExternalLink className="h-3.5 w-3.5" />}>
@@ -283,7 +311,10 @@ export default function ScanImport() {
           results: p.status === 'complete' ? {
             devicesDiscovered: 0,
             connectionsFound: 0,
-            protocolsIdentified: typeof p.protocol_summary === 'object' && p.protocol_summary ? Object.keys(p.protocol_summary).length : 0,
+            protocolsIdentified:
+              typeof p.protocol_summary === 'object' && p.protocol_summary
+                ? Object.keys(p.protocol_summary).length
+                : 0,
             newDevices: 0,
             knownDevices: 0,
           } : undefined,
@@ -301,7 +332,6 @@ export default function ScanImport() {
   const completedPcaps = pcapFiles.filter((f) => f.status === 'complete').length;
   const totalDevices = pcapFiles.reduce((sum, f) => sum + (f.results?.devicesDiscovered ?? 0), 0);
   const totalConnections = pcapFiles.reduce((sum, f) => sum + (f.results?.connectionsFound ?? 0), 0);
-  const totalImports = IMPORT_HISTORY.length;
 
   return (
     <div className="space-y-6">
@@ -312,13 +342,15 @@ export default function ScanImport() {
         </div>
         <div>
           <h1 className="text-xl font-bold text-content-primary">Import Hub</h1>
-          <p className="text-sm text-content-secondary">Import PCAP captures, external tool outputs, and scan results into Gridwolf</p>
+          <p className="text-sm text-content-secondary">
+            Import PCAP captures, external tool outputs, and scan results into Gridwolf
+          </p>
         </div>
       </div>
 
       {/* Stat Cards */}
       <div className="grid grid-cols-4 gap-4">
-        <StatCard icon={<FileUp className="h-5 w-5" />} label="Total Imports" value={totalImports} />
+        <StatCard icon={<FileUp className="h-5 w-5" />} label="PCAPs Uploaded" value={pcapFiles.length} />
         <StatCard icon={<FileCheck className="h-5 w-5" />} label="PCAPs Processed" value={completedPcaps} />
         <StatCard icon={<Monitor className="h-5 w-5" />} label="Devices Discovered" value={totalDevices} />
         <StatCard icon={<AlertCircle className="h-5 w-5" />} label="Connections Mapped" value={totalConnections} />
@@ -329,7 +361,6 @@ export default function ScanImport() {
         <TabList>
           <Tab value="pcap">PCAP Import</Tab>
           <Tab value="tools">External Tools</Tab>
-          <Tab value="history">Import History</Tab>
         </TabList>
 
         {/* ============================================================ */}
@@ -337,7 +368,6 @@ export default function ScanImport() {
         {/* ============================================================ */}
         <TabPanel value="pcap">
           <div className="space-y-4">
-            {/* Drag-drop zone */}
             <Card>
               <CardHeader title="Upload PCAP / PCAPNG Files" action={<Badge variant="info">Multi-file</Badge>} />
               <CardContent>
@@ -351,8 +381,22 @@ export default function ScanImport() {
               </CardContent>
             </Card>
 
-            {/* File list */}
-            {pcapFiles.length > 0 && (
+            {loading && (
+              <div className="flex items-center justify-center py-8 gap-2 text-content-tertiary">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="text-sm">Loading import queue…</span>
+              </div>
+            )}
+
+            {!loading && pcapFiles.length === 0 && (
+              <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border-default bg-surface-card/50 py-12 text-center gap-2">
+                <FileUp className="h-8 w-8 text-content-tertiary" />
+                <p className="text-sm font-medium text-content-primary">No files imported yet</p>
+                <p className="text-xs text-content-secondary">Upload a PCAP above to begin analysis.</p>
+              </div>
+            )}
+
+            {!loading && pcapFiles.length > 0 && (
               <Card>
                 <CardHeader title="Import Queue" action={<Badge variant="info">{pcapFiles.length} files</Badge>} />
                 <CardContent className="space-y-4">
@@ -378,7 +422,6 @@ export default function ScanImport() {
 
                         <PcapStageIndicator file={file} />
 
-                        {/* Results summary for completed files */}
                         {file.results && (
                           <div className="mt-3 grid grid-cols-5 gap-2">
                             {[
@@ -409,8 +452,41 @@ export default function ScanImport() {
         {/* ============================================================ */}
         <TabPanel value="tools">
           <div className="grid grid-cols-2 gap-4">
+            {/* Semgrep */}
+            <ScannerToolCard
+              name="Semgrep"
+              description="Import Semgrep SAST scan results in JSON format. Findings will be correlated with known devices and enriched as security findings."
+              icon={<Shield className="h-4 w-4" />}
+              formats=".json"
+              accept=".json"
+              status="ready"
+              scannerType="semgrep"
+            />
+
+            {/* Trivy */}
+            <ScannerToolCard
+              name="Trivy"
+              description="Import Trivy vulnerability scan results in JSON format. CVEs will be mapped to firmware versions and device models in the inventory."
+              icon={<Bug className="h-4 w-4" />}
+              formats=".json"
+              accept=".json"
+              status="ready"
+              scannerType="trivy"
+            />
+
+            {/* SARIF */}
+            <ScannerToolCard
+              name="SARIF"
+              description="Import any SARIF-format scan results (Static Analysis Results Interchange Format). Compatible with any SARIF 2.1.0 compliant tool."
+              icon={<Radar className="h-4 w-4" />}
+              formats=".json, .sarif"
+              accept=".json,.sarif"
+              status="ready"
+              scannerType="sarif"
+            />
+
             {/* Zeek */}
-            <ToolCard
+            <ScannerToolCard
               name="Zeek"
               description="Import Zeek (Bro) ICS protocol logs including conn.log, modbus.log, dnp3.log, and s7comm.log for passive traffic analysis."
               icon={<Eye className="h-4 w-4" />}
@@ -420,7 +496,7 @@ export default function ScanImport() {
             />
 
             {/* Suricata */}
-            <ToolCard
+            <ScannerToolCard
               name="Suricata"
               description="Import Suricata EVE JSON output containing flow records and IDS alert events for threat correlation."
               icon={<Shield className="h-4 w-4" />}
@@ -430,7 +506,7 @@ export default function ScanImport() {
             />
 
             {/* Nmap / Masscan */}
-            <ToolCard
+            <ScannerToolCard
               name="Nmap / Masscan"
               description="Import XML scan results from Nmap or Masscan host discovery. Assets will be tagged as actively scanned."
               icon={<Radar className="h-4 w-4" />}
@@ -440,18 +516,8 @@ export default function ScanImport() {
               warning="Active scan results detected — these were not passively discovered. Imported assets will be flagged with an [active-scan] tag."
             />
 
-            {/* Wazuh */}
-            <ToolCard
-              name="Wazuh"
-              description="Import Wazuh HIDS/SIEM alert exports in JSON format. Alerts will be correlated against known devices in the asset inventory."
-              icon={<Bug className="h-4 w-4" />}
-              formats=".json"
-              accept=".json"
-              status="ready"
-            />
-
             {/* Siemens SINEMA Server */}
-            <ToolCard
+            <ScannerToolCard
               name="Siemens SINEMA Server"
               description="Import CSV inventory exports from SINEMA Server for Siemens device discovery including firmware versions and module info."
               icon={<Cpu className="h-4 w-4" />}
@@ -461,7 +527,7 @@ export default function ScanImport() {
             />
 
             {/* Siemens TIA Portal */}
-            <ToolCard
+            <ScannerToolCard
               name="Siemens TIA Portal"
               description="Import TIA Portal project XML exports to extract PLC, HMI, and drive configurations including IP addressing and module layout."
               icon={<Terminal className="h-4 w-4" />}
@@ -471,7 +537,7 @@ export default function ScanImport() {
             />
 
             {/* Wireshark */}
-            <ToolCard
+            <ScannerToolCard
               name="Wireshark"
               description="Open the currently loaded PCAP in Wireshark for deep packet inspection. Requires the Gridwolf desktop agent."
               icon={<Monitor className="h-4 w-4" />}
@@ -480,57 +546,6 @@ export default function ScanImport() {
               status="desktop-only"
             />
           </div>
-        </TabPanel>
-
-        {/* ============================================================ */}
-        {/* Tab 3: Import History                                        */}
-        {/* ============================================================ */}
-        <TabPanel value="history">
-          <Card>
-            <CardHeader title="Import History" action={<Badge variant="info">{IMPORT_HISTORY.length} records</Badge>} />
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Source</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>File</TableHead>
-                    <TableHead>Devices Added</TableHead>
-                    <TableHead>Findings</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {IMPORT_HISTORY.map((rec) => {
-                    const sc = historyStatusConfig[rec.status];
-                    return (
-                      <TableRow key={rec.id}>
-                        <TableCell className="text-xs text-content-secondary whitespace-nowrap">{rec.date}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{rec.source}</Badge>
-                        </TableCell>
-                        <TableCell className="font-mono text-xs">{rec.type}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1.5">
-                            <File className="h-3.5 w-3.5 text-content-tertiary shrink-0" />
-                            <span className="text-xs truncate max-w-[200px]">{rec.file}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="font-mono text-xs">{rec.devicesAdded > 0 ? rec.devicesAdded : '-'}</TableCell>
-                        <TableCell className="font-mono text-xs">{rec.findingsGenerated > 0 ? rec.findingsGenerated : '-'}</TableCell>
-                        <TableCell>
-                          <span className={cn('inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium', sc.bg, sc.color)}>
-                            {rec.status}
-                          </span>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
         </TabPanel>
       </Tabs>
     </div>

@@ -4,8 +4,8 @@ from __future__ import annotations
 import os
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import FileResponse
-from pydantic import BaseModel
-from typing import Optional
+from pydantic import BaseModel, field_validator
+from typing import Optional, Literal
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -24,6 +24,8 @@ async def list_findings(
     severity: str = None,
     finding_type: str = None,
     status: str = None,
+    limit: int = Query(default=500, ge=1, le=5000),
+    offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
     """List security findings with filters."""
@@ -37,6 +39,7 @@ async def list_findings(
     if status:
         query = query.where(Finding.status == status)
 
+    query = query.offset(offset).limit(limit)
     result = await db.execute(query)
     findings = result.scalars().all()
 
@@ -139,10 +142,21 @@ async def match_device_cves(session_id: str, db: AsyncSession = Depends(get_db))
 
 class ReportRequest(BaseModel):
     session_id: str
-    report_type: str = "full"
+    report_type: Literal["full", "executive", "technical", "compliance", "delta"] = "full"
     client_name: Optional[str] = ""
     assessor_name: Optional[str] = ""
     sections: Optional[list[str]] = None
+
+    @field_validator("sections")
+    @classmethod
+    def validate_sections(cls, v):
+        if v is None:
+            return v
+        valid = {"all", "executive_summary", "devices", "topology", "findings", "cves", "compliance", "recommendations"}
+        invalid = [s for s in v if s not in valid]
+        if invalid:
+            raise ValueError(f"Invalid sections: {invalid}. Valid: {sorted(valid)}")
+        return v
 
 
 @router.post("/reports/generate")

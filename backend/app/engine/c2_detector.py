@@ -210,12 +210,13 @@ class C2Detector:
 
             if ratio > 20 and max(tx, rx) > 100_000:  # 20:1 ratio, >100KB
                 direction = "outbound (exfiltration)" if tx > rx else "inbound (staging)"
-                ips = pair_key.strip("()' ").split("', '")
+                # pair_key is a tuple of two IP strings — extract directly
+                ip_a, ip_b = pair_key[0], pair_key[1]
 
                 self.findings.append({
                     "finding_type": "asymmetric_flow",
                     "severity": "high" if ratio > 50 else "medium",
-                    "title": f"Asymmetric Flow: {pair_key} (ratio {ratio:.0f}:1)",
+                    "title": f"Asymmetric Flow: {ip_a} ↔ {ip_b} (ratio {ratio:.0f}:1)",
                     "description": (
                         f"Highly asymmetric data flow detected: TX={self._human_bytes(tx)}, "
                         f"RX={self._human_bytes(rx)} (ratio {ratio:.1f}:1). "

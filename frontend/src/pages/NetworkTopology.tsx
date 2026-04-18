@@ -69,11 +69,6 @@ function getSubnet(ip: string): string {
   return `${parts[0]}.${parts[1]}.${parts[2]}.0/24`;
 }
 
-// Module-level mutable state — populated by fetchTopologyData()
-let TOPO_NODES: TopoNode[] = [];
-let ALL_EDGES: TopoEdge[] = [];
-let SWITCHES: SwitchNode[] = [];
-
 interface MatrixCell {
   sourceIp: string;
   destIp: string;
@@ -81,7 +76,6 @@ interface MatrixCell {
   packets: number;
   bytes: number;
 }
-let MATRIX_DATA: MatrixCell[] = [];
 
 interface TimelineEvent {
   id: string;
@@ -91,13 +85,24 @@ interface TimelineEvent {
   edgeId?: string;
   label: string;
 }
-let TIMELINE_EVENTS: TimelineEvent[] = [];
 
-let ALL_PROTOCOLS: string[] = [];
-let ALL_SUBNETS: string[] = [];
-let ALL_LEVELS: string[] = [];
+interface TopologyData {
+  nodes: TopoNode[];
+  edges: TopoEdge[];
+  switches: SwitchNode[];
+  matrix: MatrixCell[];
+  timeline: TimelineEvent[];
+  protocols: string[];
+  subnets: string[];
+  levels: string[];
+}
 
-async function fetchTopologyData(): Promise<boolean> {
+const EMPTY_TOPO: TopologyData = {
+  nodes: [], edges: [], switches: [], matrix: [], timeline: [],
+  protocols: [], subnets: [], levels: [],
+};
+
+async function fetchTopologyData(): Promise<TopologyData | null> {
   try {
     const [topoRes, devicesRes] = await Promise.allSettled([
       api.get('/ics/devices/topology'),
@@ -107,11 +112,10 @@ async function fetchTopologyData(): Promise<boolean> {
     const topo = topoRes.status === 'fulfilled' ? topoRes.value.data : { nodes: [], edges: [] };
     const devices = devicesRes.status === 'fulfilled' ? devicesRes.value.data : [];
 
-    if (topo.nodes.length === 0 && devices.length === 0) return false;
+    if (!topo.nodes?.length && !devices.length) return null;
 
-    // Build nodes from topology or devices
-    const rawNodes = topo.nodes.length > 0 ? topo.nodes : devices;
-    TOPO_NODES = rawNodes.map((n: Record<string, unknown>, i: number) => ({
+    const rawNodes = topo.nodes?.length > 0 ? topo.nodes : devices;
+    const nodes: TopoNode[] = rawNodes.map((n: Record<string, unknown>, i: number) => ({
       id: (n.id || `node-${i}`) as string,
       ip: (n.ip || n.ip_address || '') as string,
       hostname: (n.hostname || n.label || '') as string,
@@ -125,8 +129,7 @@ async function fetchTopologyData(): Promise<boolean> {
       y: 80 + Math.floor(i / 4) * 160,
     }));
 
-    // Build edges
-    ALL_EDGES = (topo.edges || []).map((e: Record<string, unknown>, i: number) => ({
+    const edges: TopoEdge[] = (topo.edges || []).map((e: Record<string, unknown>, i: number) => ({
       id: `edge-${i}`,
       source: (e.source || '') as string,
       target: (e.target || '') as string,
@@ -137,29 +140,21 @@ async function fetchTopologyData(): Promise<boolean> {
       firstSeen: new Date().toISOString(),
     })).filter((e: TopoEdge) => e.source && e.target);
 
-    // Matrix data from edges
-    MATRIX_DATA = ALL_EDGES.map((e) => {
-      const src = TOPO_NODES.find((n) => n.id === e.source);
-      const dst = TOPO_NODES.find((n) => n.id === e.target);
-      return {
-        sourceIp: src?.ip ?? e.source,
-        destIp: dst?.ip ?? e.target,
-        protocol: e.protocol,
-        packets: e.packets,
-        bytes: e.bytes,
-      };
+    const matrix: MatrixCell[] = edges.map((e) => {
+      const src = nodes.find((n) => n.id === e.source);
+      const dst = nodes.find((n) => n.id === e.target);
+      return { sourceIp: src?.ip ?? e.source, destIp: dst?.ip ?? e.target, protocol: e.protocol, packets: e.packets, bytes: e.bytes };
     });
 
-    // Timeline events
-    TIMELINE_EVENTS = [
-      ...TOPO_NODES.map((n, i) => ({
+    const timeline: TimelineEvent[] = [
+      ...nodes.map((n, i) => ({
         id: `te-node-${i}`,
-        timestamp: new Date(Date.now() - (TOPO_NODES.length - i) * 7200000).toISOString(),
+        timestamp: new Date(Date.now() - (nodes.length - i) * 7200000).toISOString(),
         type: 'node_discovered' as const,
         nodeId: n.id,
         label: `Discovered ${n.label} (${n.ip})`,
       })),
-      ...ALL_EDGES.map((e, i) => ({
+      ...edges.map((e, i) => ({
         id: `te-edge-${i}`,
         timestamp: e.firstSeen,
         type: 'edge_established' as const,
@@ -168,17 +163,18 @@ async function fetchTopologyData(): Promise<boolean> {
       })),
     ].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
-    // Filters
-    ALL_PROTOCOLS = [...new Set(ALL_EDGES.map((e) => e.protocol).filter(Boolean))];
-    ALL_SUBNETS = [...new Set(TOPO_NODES.map((n) => n.subnet))];
-    ALL_LEVELS = [...new Set(TOPO_NODES.map((n) => n.purdueLevel))];
-
-    // Switches — empty for now (no backend endpoint)
-    SWITCHES = [];
-
-    return true;
+    return {
+      nodes,
+      edges,
+      switches: [],
+      matrix,
+      timeline,
+      protocols: [...new Set(edges.map((e) => e.protocol).filter(Boolean))],
+      subnets: [...new Set(nodes.map((n) => n.subnet))],
+      levels: [...new Set(nodes.map((n) => n.purdueLevel))],
+    };
   } catch {
-    return false;
+    return null;
   }
 }
 
@@ -243,8 +239,8 @@ function ToolbarButton({ icon, title, onClick }: { icon: React.ReactNode; title:
 // Node Popup
 // ---------------------------------------------------------------------------
 
-function NodePopup({ node, onClose }: { node: TopoNode; onClose: () => void }) {
-  const connectedEdges = ALL_EDGES.filter((e) => e.source === node.id || e.target === node.id);
+function NodePopup({ node, onClose, allEdges, allNodes }: { node: TopoNode; onClose: () => void; allEdges: TopoEdge[]; allNodes: TopoNode[] }) {
+  const connectedEdges = allEdges.filter((e) => e.source === node.id || e.target === node.id);
   return (
     <div className="absolute right-4 top-4 z-30 w-80 rounded-lg border border-border-default bg-surface-card shadow-2xl">
       <div className="flex items-center justify-between border-b border-border-default px-3 py-2">
@@ -276,7 +272,7 @@ function NodePopup({ node, onClose }: { node: TopoNode; onClose: () => void }) {
           </p>
           <div className="space-y-1 max-h-32 overflow-y-auto">
             {connectedEdges.map((e) => {
-              const peer = TOPO_NODES.find((n) => n.id === (e.source === node.id ? e.target : e.source));
+              const peer = allNodes.find((n) => n.id === (e.source === node.id ? e.target : e.source));
               return (
                 <div key={e.id} className="flex items-center gap-2 text-xs text-content-secondary">
                   <span className={cn('h-1.5 w-1.5 rounded-full', e.observed ? 'bg-emerald-400' : 'bg-amber-400')} />
@@ -298,6 +294,9 @@ function NodePopup({ node, onClose }: { node: TopoNode; onClose: () => void }) {
 // ---------------------------------------------------------------------------
 
 function FilterSidebar({
+  protocols,
+  levels,
+  subnets,
   protocolFilters,
   levelFilters,
   subnetFilters,
@@ -306,6 +305,9 @@ function FilterSidebar({
   onToggleSubnet,
   onClearAll,
 }: {
+  protocols: string[];
+  levels: string[];
+  subnets: string[];
   protocolFilters: Set<string>;
   levelFilters: Set<string>;
   subnetFilters: Set<string>;
@@ -329,9 +331,9 @@ function FilterSidebar({
         )}
       </div>
 
-      <FilterGroup title="Protocol" items={ALL_PROTOCOLS} selected={protocolFilters} onToggle={onToggleProtocol} />
-      <FilterGroup title="Purdue Level" items={ALL_LEVELS} selected={levelFilters} onToggle={onToggleLevel} colorMap={LEVEL_COLORS} />
-      <FilterGroup title="Subnet" items={ALL_SUBNETS} selected={subnetFilters} onToggle={onToggleSubnet} />
+      <FilterGroup title="Protocol" items={protocols} selected={protocolFilters} onToggle={onToggleProtocol} />
+      <FilterGroup title="Purdue Level" items={levels} selected={levelFilters} onToggle={onToggleLevel} colorMap={LEVEL_COLORS} />
+      <FilterGroup title="Subnet" items={subnets} selected={subnetFilters} onToggle={onToggleSubnet} />
     </div>
   );
 }
@@ -377,6 +379,8 @@ function FilterGroup({
 // ---------------------------------------------------------------------------
 
 function LogicalView({
+  nodes,
+  edges,
   searchQuery,
   zoom,
   selectedNode,
@@ -385,6 +389,8 @@ function LogicalView({
   levelFilters,
   subnetFilters,
 }: {
+  nodes: TopoNode[];
+  edges: TopoEdge[];
   searchQuery: string;
   zoom: number;
   selectedNode: TopoNode | null;
@@ -394,28 +400,28 @@ function LogicalView({
   subnetFilters: Set<string>;
 }) {
   const filteredNodes = useMemo(() => {
-    let nodes = TOPO_NODES;
+    let result = nodes;
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
-      nodes = nodes.filter((n) => n.ip.includes(q) || n.hostname.toLowerCase().includes(q) || n.label.toLowerCase().includes(q));
+      result = result.filter((n) => n.ip.includes(q) || n.hostname.toLowerCase().includes(q) || n.label.toLowerCase().includes(q));
     }
     if (levelFilters.size > 0) {
-      nodes = nodes.filter((n) => levelFilters.has(n.purdueLevel));
+      result = result.filter((n) => levelFilters.has(n.purdueLevel));
     }
     if (subnetFilters.size > 0) {
-      nodes = nodes.filter((n) => subnetFilters.has(n.subnet));
+      result = result.filter((n) => subnetFilters.has(n.subnet));
     }
-    return nodes;
-  }, [searchQuery, levelFilters, subnetFilters]);
+    return result;
+  }, [nodes, searchQuery, levelFilters, subnetFilters]);
 
   const filteredEdges = useMemo(() => {
     const nodeIds = new Set(filteredNodes.map((n) => n.id));
-    let edges = ALL_EDGES.filter((e) => nodeIds.has(e.source) && nodeIds.has(e.target));
+    let result = edges.filter((e) => nodeIds.has(e.source) && nodeIds.has(e.target));
     if (protocolFilters.size > 0) {
-      edges = edges.filter((e) => protocolFilters.has(e.protocol));
+      result = result.filter((e) => protocolFilters.has(e.protocol));
     }
-    return edges;
-  }, [filteredNodes, protocolFilters]);
+    return result;
+  }, [edges, filteredNodes, protocolFilters]);
 
   // Group nodes by subnet for compound nodes
   const subnetGroups = useMemo(() => {
@@ -545,7 +551,7 @@ function LogicalView({
         })}
       </svg>
 
-      {selectedNode && <NodePopup node={selectedNode} onClose={() => onSelectNode(null)} />}
+      {selectedNode && <NodePopup node={selectedNode} onClose={() => onSelectNode(null)} allEdges={edges} allNodes={nodes} />}
     </div>
   );
 }
@@ -554,22 +560,22 @@ function LogicalView({
 // Physical View
 // ---------------------------------------------------------------------------
 
-function PhysicalView({ searchQuery }: { searchQuery: string }) {
+function PhysicalView({ searchQuery, switches, nodes }: { searchQuery: string; switches: SwitchNode[]; nodes: TopoNode[] }) {
   const [selectedPort, setSelectedPort] = useState<{ switchId: string; port: number } | null>(null);
 
   const filteredSwitches = useMemo(() => {
-    if (!searchQuery) return SWITCHES;
+    if (!searchQuery) return switches;
     const q = searchQuery.toLowerCase();
-    return SWITCHES.filter(
+    return switches.filter(
       (sw) =>
         sw.name.toLowerCase().includes(q) ||
         sw.vendor.toLowerCase().includes(q) ||
         sw.connections.some((c) => {
-          const dev = TOPO_NODES.find((n) => n.id === c.deviceId);
+          const dev = nodes.find((n) => n.id === c.deviceId);
           return dev && (dev.ip.includes(q) || dev.hostname.toLowerCase().includes(q));
         })
     );
-  }, [searchQuery]);
+  }, [searchQuery, switches, nodes]);
 
   return (
     <div className="p-4 space-y-6">
@@ -591,7 +597,7 @@ function PhysicalView({ searchQuery }: { searchQuery: string }) {
             <div className="flex flex-wrap gap-2">
               {Array.from({ length: sw.ports }, (_, i) => i + 1).map((portNum) => {
                 const conn = sw.connections.find((c) => c.port === portNum);
-                const device = conn ? TOPO_NODES.find((n) => n.id === conn.deviceId) : null;
+                const device = conn ? nodes.find((n) => n.id === conn.deviceId) : null;
                 const isSelected = selectedPort?.switchId === sw.id && selectedPort?.port === portNum;
                 return (
                   <button
@@ -624,7 +630,7 @@ function PhysicalView({ searchQuery }: { searchQuery: string }) {
             {/* Connected device detail */}
             {selectedPort?.switchId === sw.id && (() => {
               const conn = sw.connections.find((c) => c.port === selectedPort.port);
-              const device = conn ? TOPO_NODES.find((n) => n.id === conn.deviceId) : null;
+              const device = conn ? nodes.find((n) => n.id === conn.deviceId) : null;
               if (!device || !conn) return null;
               return (
                 <div className="mt-4 rounded-md border border-border-default bg-surface-hover/30 p-3">
@@ -671,20 +677,20 @@ function PhysicalView({ searchQuery }: { searchQuery: string }) {
 // Mesh View (Connection Matrix)
 // ---------------------------------------------------------------------------
 
-function MeshView({ searchQuery: _searchQuery }: { searchQuery: string }) {
+function MeshView({ searchQuery: _searchQuery, matrix, protocols }: { searchQuery: string; matrix: MatrixCell[]; protocols: string[] }) {
   const [protocolFilter, setProtocolFilter] = useState<string>('all');
   const [hoveredCell, setHoveredCell] = useState<{ row: number; col: number } | null>(null);
 
   const ips = useMemo(() => {
     const ipSet = new Set<string>();
-    MATRIX_DATA.forEach((m) => { ipSet.add(m.sourceIp); ipSet.add(m.destIp); });
+    matrix.forEach((m) => { ipSet.add(m.sourceIp); ipSet.add(m.destIp); });
     return [...ipSet].sort();
-  }, []);
+  }, [matrix]);
 
   const filteredMatrix = useMemo(() => {
-    if (protocolFilter === 'all') return MATRIX_DATA;
-    return MATRIX_DATA.filter((m) => m.protocol === protocolFilter);
-  }, [protocolFilter]);
+    if (protocolFilter === 'all') return matrix;
+    return matrix.filter((m) => m.protocol === protocolFilter);
+  }, [matrix, protocolFilter]);
 
   const maxPackets = useMemo(
     () => Math.max(1, ...filteredMatrix.map((m) => m.packets)),
@@ -716,7 +722,7 @@ function MeshView({ searchQuery: _searchQuery }: { searchQuery: string }) {
           className="rounded-md border border-border-default bg-surface-hover px-2 py-1 text-xs text-content-primary focus:outline-none focus:ring-1 focus:ring-accent"
         >
           <option value="all">All Protocols</option>
-          {ALL_PROTOCOLS.map((p) => (
+          {protocols.map((p) => (
             <option key={p} value={p}>{p}</option>
           ))}
         </select>
@@ -809,24 +815,25 @@ function MeshView({ searchQuery: _searchQuery }: { searchQuery: string }) {
 // Timeline View
 // ---------------------------------------------------------------------------
 
-function TimelineView() {
+function TimelineView({ timeline, totalNodes }: { timeline: TimelineEvent[]; totalNodes: number }) {
   const [progress, setProgress] = useState(100); // 0-100
   const [isPlaying, setIsPlaying] = useState(false);
   const [speed, setSpeed] = useState(1);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const timeRange = useMemo(() => {
-    const timestamps = TIMELINE_EVENTS.map((e) => new Date(e.timestamp).getTime());
+    const timestamps = timeline.map((e) => new Date(e.timestamp).getTime());
+    if (timestamps.length === 0) return { min: Date.now(), max: Date.now() };
     return { min: Math.min(...timestamps), max: Math.max(...timestamps) };
-  }, []);
+  }, [timeline]);
 
   const currentTime = useMemo(() => {
     return timeRange.min + (progress / 100) * (timeRange.max - timeRange.min);
   }, [progress, timeRange]);
 
   const visibleEvents = useMemo(() => {
-    return TIMELINE_EVENTS.filter((e) => new Date(e.timestamp).getTime() <= currentTime);
-  }, [currentTime]);
+    return timeline.filter((e) => new Date(e.timestamp).getTime() <= currentTime);
+  }, [timeline, currentTime]);
 
   const visibleNodeCount = visibleEvents.filter((e) => e.type === 'node_discovered').length;
   const visibleEdgeCount = visibleEvents.filter((e) => e.type === 'edge_established').length;
@@ -866,7 +873,7 @@ function TimelineView() {
           <p className="text-[10px] text-content-tertiary">Connections</p>
         </div>
         <div className="rounded-md border border-border-default bg-surface-hover/30 px-3 py-2 text-center">
-          <p className="text-lg font-bold text-content-primary">{TOPO_NODES.length}</p>
+          <p className="text-lg font-bold text-content-primary">{totalNodes}</p>
           <p className="text-[10px] text-content-tertiary">Total Nodes</p>
         </div>
         <div className="rounded-md border border-border-default bg-surface-hover/30 px-3 py-2 text-center">
@@ -980,14 +987,15 @@ function TimelineView() {
 
 export default function NetworkTopology() {
   const [loading, setLoading] = useState(true);
-  const [hasData, setHasData] = useState(false);
+  const [topo, setTopo] = useState<TopologyData>(EMPTY_TOPO);
+  const hasData = topo.nodes.length > 0;
   const [searchQuery, setSearchQuery] = useState('');
   const [zoom, setZoom] = useState(1);
   const [selectedNode, setSelectedNode] = useState<TopoNode | null>(null);
 
   useEffect(() => {
-    fetchTopologyData().then((ok) => {
-      setHasData(ok);
+    fetchTopologyData().then((data) => {
+      if (data) setTopo(data);
       setLoading(false);
     });
   }, []);
@@ -1013,9 +1021,9 @@ export default function NetworkTopology() {
   }, []);
 
   // Stats
-  const totalNodes = TOPO_NODES.length;
-  const totalEdges = ALL_EDGES.length;
-  const totalSubnets = ALL_SUBNETS.length;
+  const totalNodes = topo.nodes.length;
+  const totalEdges = topo.edges.length;
+  const totalSubnets = topo.subnets.length;
 
   const handleZoomIn = useCallback(() => setZoom((z) => Math.min(2, z + 0.15)), []);
   const handleZoomOut = useCallback(() => setZoom((z) => Math.max(0.4, z - 0.15)), []);
@@ -1081,7 +1089,7 @@ export default function NetworkTopology() {
         <StatCard icon={<Server size={20} />} label="Network Nodes" value={totalNodes} />
         <StatCard icon={<ArrowRightLeft size={20} />} label="Connections" value={totalEdges} />
         <StatCard icon={<Layers size={20} />} label="Subnets Discovered" value={totalSubnets} />
-        <StatCard icon={<Network size={20} />} label="ICS Protocols" value={ALL_PROTOCOLS.length} />
+        <StatCard icon={<Network size={20} />} label="ICS Protocols" value={topo.protocols.length} />
       </div>
 
       {/* Tabbed Topology Views */}
@@ -1126,6 +1134,9 @@ export default function NetworkTopology() {
             />
             <div className="flex">
               <FilterSidebar
+                protocols={topo.protocols}
+                levels={topo.levels}
+                subnets={topo.subnets}
                 protocolFilters={protocolFilters}
                 levelFilters={levelFilters}
                 subnetFilters={subnetFilters}
@@ -1136,6 +1147,8 @@ export default function NetworkTopology() {
               />
               <div className="flex-1 overflow-auto">
                 <LogicalView
+                  nodes={topo.nodes}
+                  edges={topo.edges}
                   searchQuery={searchQuery}
                   zoom={zoom}
                   selectedNode={selectedNode}
@@ -1160,7 +1173,7 @@ export default function NetworkTopology() {
               onReset={handleReset}
               onExport={handleExport}
             />
-            <PhysicalView searchQuery={searchQuery} />
+            <PhysicalView searchQuery={searchQuery} switches={topo.switches} nodes={topo.nodes} />
           </Card>
         </TabPanel>
 
@@ -1175,13 +1188,13 @@ export default function NetworkTopology() {
               onReset={handleReset}
               onExport={handleExport}
             />
-            <MeshView searchQuery={searchQuery} />
+            <MeshView searchQuery={searchQuery} matrix={topo.matrix} protocols={topo.protocols} />
           </Card>
         </TabPanel>
 
         <TabPanel value="timeline" className="py-0">
           <Card className="overflow-hidden">
-            <TimelineView />
+            <TimelineView timeline={topo.timeline} totalNodes={topo.nodes.length} />
           </Card>
         </TabPanel>
       </Tabs>

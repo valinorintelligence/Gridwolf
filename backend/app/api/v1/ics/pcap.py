@@ -117,12 +117,22 @@ async def _process_pcap_task(pcap_id: str, filepath: str, session_id: str):
         try:
             # Process PCAP — run in thread pool to avoid blocking the
             # async event loop (Scapy parsing is synchronous / CPU-bound).
+            # 10-minute hard timeout prevents hung threads on corrupted files.
             processor = PcapProcessor()
-            results = await asyncio.to_thread(processor.process_file, filepath)
+            try:
+                results = await asyncio.wait_for(
+                    asyncio.to_thread(processor.process_file, filepath),
+                    timeout=600,
+                )
+            except asyncio.TimeoutError:
+                raise RuntimeError("PCAP processing timed out after 10 minutes")
 
             # Update PCAP record
             result = await db.execute(select(PcapFile).where(PcapFile.id == pcap_id))
-            pcap = result.scalar_one()
+            pcap = result.scalar_one_or_none()
+            if not pcap:
+                logger.error(f"PCAP record {pcap_id} not found after processing — skipping update")
+                return
             pcap.packet_count = results["packet_count"]
             pcap.duration_seconds = results["duration_seconds"]
             pcap.protocol_summary = results["protocol_summary"]
@@ -179,19 +189,20 @@ async def _process_pcap_task(pcap_id: str, filepath: str, session_id: str):
                 )
                 db.add(finding)
 
-            # Update session counts
+            # Update session counts — increment so multiple PCAPs per session accumulate
             result = await db.execute(select(Session).where(Session.id == session_id))
-            session = result.scalar_one()
-            session.device_count = len(results["devices"])
-            session.connection_count = len(results["connections"])
-            session.finding_count = len(results["findings"])
+            session = result.scalar_one_or_none()
+            if session:
+                session.device_count = (session.device_count or 0) + len(results["devices"])
+                session.connection_count = (session.connection_count or 0) + len(results["connections"])
+                session.finding_count = (session.finding_count or 0) + len(results["findings"])
 
             await db.commit()
             logger.info(f"PCAP {pcap_id} processed: {len(results['devices'])} devices, "
                        f"{len(results['connections'])} connections, {len(results['findings'])} findings")
 
         except Exception as e:
-            logger.error(f"PCAP processing failed for {pcap_id}: {e}")
+            logger.exception(f"PCAP processing failed for {pcap_id}: {e}")
             result = await db.execute(select(PcapFile).where(PcapFile.id == pcap_id))
             pcap = result.scalar_one_or_none()
             if pcap:

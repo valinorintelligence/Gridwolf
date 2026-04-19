@@ -1,0 +1,15 @@
+# Keep Python source as LF so `ruff format --check` in Linux CI matches
+# local Windows checkouts (ruff's formatter is line-ending-sensitive).
+*.py text eol=lf
+
+# Also normalize common text formats that ruff / prettier / eslint handle.
+*.ts text eol=lf
+*.tsx text eol=lf
+*.js text eol=lf
+*.jsx text eol=lf
+*.json text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.md text eol=lf
+*.sh text eol=lf
+*.toml text eol=lf

@@ -180,17 +180,29 @@ def _build_html_report(
     without transmitting any packets to the monitored network.</p>
 
     <div style="text-align:center;margin:24px 0">
-        <div class="stat-box"><div class="value">{len(devices)}</div><div class="label">Devices Found</div></div>
-        <div class="stat-box"><div class="value">{len(connections)}</div><div class="label">Connections</div></div>
-        <div class="stat-box"><div class="value">{len(findings)}</div><div class="label">Findings</div></div>
-        <div class="stat-box"><div class="value critical">{critical_count}</div><div class="label">Critical</div></div>
+        <div class="stat-box"><div class="value">{
+        len(devices)
+    }</div><div class="label">Devices Found</div></div>
+        <div class="stat-box"><div class="value">{
+        len(connections)
+    }</div><div class="label">Connections</div></div>
+        <div class="stat-box"><div class="value">{
+        len(findings)
+    }</div><div class="label">Findings</div></div>
+        <div class="stat-box"><div class="value critical">{
+        critical_count
+    }</div><div class="label">Critical</div></div>
     </div>
 
     <h3>Risk Summary</h3>
     <ul>
-        <li><span class="critical"><strong>{critical_count} Critical</strong></span> findings requiring immediate attention</li>
+        <li><span class="critical"><strong>{
+        critical_count
+    } Critical</strong></span> findings requiring immediate attention</li>
         <li><span class="high"><strong>{high_count} High</strong></span> severity findings</li>
-        <li><span class="medium"><strong>{medium_count} Medium</strong></span> severity findings</li>
+        <li><span class="medium"><strong>{
+        medium_count
+    } Medium</strong></span> severity findings</li>
     </ul>
 
     <h2>2. Discovered Devices</h2>
@@ -204,9 +216,12 @@ def _build_html_report(
     <p>Protocols observed in network traffic:</p>
     <table>
         <thead><tr><th>Protocol</th><th>Packet Count</th></tr></thead>
-        <tbody>{"".join(f"<tr><td>{p}</td><td>{c:,}</td></tr>" for p, c in sorted(protocol_summary.items(), key=lambda x: (
-                x[1]
-            ), reverse=True))}</tbody>
+        <tbody>{
+        "".join(
+            f"<tr><td>{p}</td><td>{c:,}</td></tr>"
+            for p, c in sorted(protocol_summary.items(), key=lambda x: x[1], reverse=True)
+        )
+    }</tbody>
     </table>
 
     <h2>4. Security Findings</h2>

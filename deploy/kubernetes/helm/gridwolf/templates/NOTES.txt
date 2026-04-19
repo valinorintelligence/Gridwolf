@@ -1,0 +1,42 @@
+
+╔═══════════════════════════════════════════════════════════════════════╗
+║  Gridwolf {{ .Chart.AppVersion }} deployed — release: {{ .Release.Name }}
+╚═══════════════════════════════════════════════════════════════════════╝
+
+1. Watch the rollout:
+
+   kubectl --namespace {{ .Release.Namespace }} rollout status \
+     deploy/{{ include "gridwolf.fullname" . }}-backend
+
+2. Retrieve the first-run admin password:
+
+   kubectl --namespace {{ .Release.Namespace }} logs \
+     deploy/{{ include "gridwolf.fullname" . }}-backend | grep -A1 "Password"
+
+{{- if .Values.ingress.enabled }}
+
+3. Access Gridwolf:
+
+{{- range .Values.ingress.hosts }}
+   {{- range .paths }}
+     http{{ if $.Values.ingress.tls }}s{{ end }}://{{ .host | default "gridwolf.local" }}{{ .path }}
+   {{- end }}
+{{- end }}
+
+{{- else }}
+
+3. Port-forward to access the UI:
+
+   kubectl --namespace {{ .Release.Namespace }} port-forward \
+     svc/{{ include "gridwolf.fullname" . }}-frontend 8080:{{ .Values.frontend.service.port }}
+
+   Then open http://localhost:8080
+
+{{- end }}
+
+4. Change the admin password after first login and rotate GRIDWOLF_SECRET_KEY:
+
+   kubectl --namespace {{ .Release.Namespace }} edit secret {{ include "gridwolf.secretName" . }}
+
+📖 Docs:    https://github.com/valinorintelligence/Gridwolf#readme
+🔒 Security: https://github.com/valinorintelligence/Gridwolf/blob/main/SECURITY.md

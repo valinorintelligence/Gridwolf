@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "gridwolf.fullname" . }}-config
+  labels:
+    {{- include "gridwolf.labels" . | nindent 4 }}
+data:
+  GRIDWOLF_DATABASE_URL: {{ include "gridwolf.databaseUrl" . | quote }}
+  GRIDWOLF_REDIS_URL: {{ include "gridwolf.redisUrl" . | quote }}
+  GRIDWOLF_DEBUG: "false"
+  GRIDWOLF_UPLOAD_DIR: "/data/uploads"
+  GRIDWOLF_REPORTS_DIR: "/data/reports"
+  GRIDWOLF_ADMIN_USERNAME: {{ .Values.admin.username | quote }}
+  GRIDWOLF_ADMIN_EMAIL: {{ .Values.admin.email | quote }}
+  GRIDWOLF_CORS_ORIGINS: |-
+    [{{- range $i, $h := .Values.ingress.hosts }}{{ if $i }},{{ end }}"https://{{ $h.host }}"{{- end }}]
+  {{- range $k, $v := .Values.backend.env }}
+  {{ $k }}: {{ $v | quote }}
+  {{- end }}

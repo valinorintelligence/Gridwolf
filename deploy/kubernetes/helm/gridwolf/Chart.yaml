@@ -1,0 +1,22 @@
+apiVersion: v2
+name: gridwolf
+description: Passive ICS / OT security platform — discovery, CVE intelligence, and MITRE ATT&CK for ICS mapping.
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+home: https://gridwolf.io
+sources:
+  - https://github.com/valinorintelligence/Gridwolf
+keywords:
+  - ics
+  - scada
+  - ot-security
+  - vulnerability-management
+  - mitre-attack
+maintainers:
+  - name: Valinor Intelligence
+    email: support@gridwolf.io
+icon: https://raw.githubusercontent.com/valinorintelligence/Gridwolf/main/frontend/public/logo.png
+annotations:
+  category: Security
+  licenses: AGPL-3.0

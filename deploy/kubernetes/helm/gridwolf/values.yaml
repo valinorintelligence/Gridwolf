@@ -1,0 +1,156 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Gridwolf Helm chart — default values
+# Override with:  helm install gridwolf . -f my-values.yaml
+# ─────────────────────────────────────────────────────────────────────────────
+
+image:
+  registry: docker.io
+  repository: gridwolf
+  pullPolicy: IfNotPresent
+  # Tag shared between backend + frontend. Override per-component below if needed.
+  tag: "1.0.0"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+# ── Backend (FastAPI + Celery worker baked into one image) ───────────────────
+backend:
+  image:
+    repository: ""   # defaults to {{ image.repository }}/backend
+    tag: ""          # defaults to {{ image.tag }}
+  replicaCount: 1
+  service:
+    type: ClusterIP
+    port: 8000
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+  env: {}
+    # GRIDWOLF_NVD_API_KEY: ""
+    # GRIDWOLF_ACCESS_TOKEN_EXPIRE_MINUTES: "720"
+  # Probes hit /health which performs a SELECT 1 against the configured DB.
+  probes:
+    liveness:
+      initialDelaySeconds: 30
+      periodSeconds: 20
+    readiness:
+      initialDelaySeconds: 10
+      periodSeconds: 10
+  podSecurityContext:
+    fsGroup: 1000
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    readOnlyRootFilesystem: false
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+
+# ── Frontend (Nginx serving the React SPA) ───────────────────────────────────
+frontend:
+  image:
+    repository: ""   # defaults to {{ image.repository }}/frontend
+    tag: ""
+  replicaCount: 2
+  service:
+    type: ClusterIP
+    port: 80
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  # Nginx proxies /api/* and /ws to the backend service; override if you
+  # terminate TLS elsewhere and want to reach the backend directly.
+  backendUrl: ""   # auto: http://{release}-backend:{backend.service.port}
+
+# ── Ingress ──────────────────────────────────────────────────────────────────
+ingress:
+  enabled: true
+  className: nginx
+  annotations: {}
+    # cert-manager.io/cluster-issuer: letsencrypt-prod
+    # nginx.ingress.kubernetes.io/proxy-body-size: "500m"
+  hosts:
+    - host: gridwolf.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+    # - secretName: gridwolf-tls
+    #   hosts:
+    #     - gridwolf.example.com
+
+# ── Persistence ──────────────────────────────────────────────────────────────
+persistence:
+  enabled: true
+  storageClass: ""
+  accessMode: ReadWriteOnce
+  size: 20Gi
+
+# ── Secrets ──────────────────────────────────────────────────────────────────
+# Generated automatically if left blank AND createSecret is true.
+# For production, provide them via an external secret manager (Sealed Secrets,
+# External Secrets Operator, Vault CSI, etc.) and set createSecret: false.
+secrets:
+  createSecret: true
+  existingSecret: ""
+  secretKey: ""            # GRIDWOLF_SECRET_KEY — auto-generated if empty
+  postgresPassword: ""     # POSTGRES_PASSWORD   — auto-generated if empty
+  adminPassword: ""        # Leave blank to use backend's auto-generate
+
+admin:
+  username: admin
+  email: admin@gridwolf.local
+
+# ── PostgreSQL (Bitnami sub-chart style — not included; toggle external) ────
+postgresql:
+  enabled: true
+  host: ""                 # if external, set host + skip bundled deployment
+  port: 5432
+  database: gridwolf
+  username: gridwolf
+  # Bundled single-replica Postgres for eval. Use an external managed DB
+  # (RDS / Azure Database / Cloud SQL) for production.
+  image:
+    repository: postgres
+    tag: "16-alpine"
+  persistence:
+    size: 20Gi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+
+redis:
+  enabled: true
+  host: ""
+  port: 6379
+  image:
+    repository: redis
+    tag: "7-alpine"
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+
+# ── Pod placement ────────────────────────────────────────────────────────────
+nodeSelector: {}
+tolerations: []
+affinity: {}
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+# ── Network policy ───────────────────────────────────────────────────────────
+networkPolicy:
+  enabled: false

@@ -1,6 +1,10 @@
 from __future__ import annotations
+import logging
 import secrets
+import sys
 from pydantic_settings import BaseSettings
+
+logger = logging.getLogger(__name__)
 
 
 class Settings(BaseSettings):
@@ -16,9 +20,25 @@ class Settings(BaseSettings):
     REPORTS_DIR: str = "./reports"
 
     def model_post_init(self, __context) -> None:
-        # Auto-generate SECRET_KEY if not provided via env
         if not self.SECRET_KEY:
+            if not self.DEBUG:
+                # Production: refuse to start with an auto-generated key.
+                # Sessions would be invalidated every restart and the key
+                # provides no real security if never explicitly set.
+                print(
+                    "\n[GRIDWOLF] FATAL: GRIDWOLF_SECRET_KEY is not set.\n"
+                    "  Generate one with:  python -c \"import secrets; print(secrets.token_urlsafe(64))\"\n"
+                    "  Then set it in your .env file or environment before starting.\n",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+            # Development only: auto-generate and warn loudly.
             self.SECRET_KEY = secrets.token_urlsafe(64)
+            logger.warning(
+                "GRIDWOLF_SECRET_KEY not set — auto-generated for this process only. "
+                "All sessions will be invalidated on restart. "
+                "Set GRIDWOLF_SECRET_KEY explicitly for any persistent deployment."
+            )
 
     model_config = {"env_prefix": "GRIDWOLF_", "env_file": ".env"}
 

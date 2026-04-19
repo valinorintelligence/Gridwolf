@@ -1,0 +1,33 @@
+#cloud-config
+# Ubuntu 24.04 autoinstall — minimal server for Gridwolf OVA
+autoinstall:
+  version: 1
+  locale: en_US.UTF-8
+  keyboard:
+    layout: us
+  storage:
+    layout:
+      name: lvm
+      sizing-policy: all
+  identity:
+    hostname: gridwolf
+    username: gridwolf
+    # password: gridwolf  (hashed below)
+    password: "$6$rounds=4096$gridwolf$4VIqzaOhSH1J1pnvk4A6N8QJeK2fU3oVHXV5sXwW5ZbCFZr/qHN2LBaMJdeMC7ZQb5gJwDZJf3FqK2XT2SoRx0"
+  ssh:
+    install-server: true
+    allow-pw: true
+  packages:
+    - curl
+    - wget
+    - git
+    - vim
+    - net-tools
+    - ca-certificates
+    - gnupg
+    - lsb-release
+  user-data:
+    disable_root: false
+  late-commands:
+    - echo 'gridwolf ALL=(ALL) NOPASSWD:ALL' > /target/etc/sudoers.d/gridwolf
+    - chmod 440 /target/etc/sudoers.d/gridwolf

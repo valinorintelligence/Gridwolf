@@ -1,0 +1,225 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Gridwolf ICS/OT Security Platform — single-instance deployment on EC2.
+  Launches Ubuntu 24.04 with Docker, pulls Gridwolf images from Docker Hub,
+  and configures a security group and persistent EBS volume.
+
+# ── Parameters ────────────────────────────────────────────────────────────────
+Parameters:
+  InstanceType:
+    Type: String
+    Default: t3.large
+    AllowedValues: [t3.medium, t3.large, t3.xlarge, c5.2xlarge, c5.4xlarge]
+    Description: >
+      t3.medium  — evaluation (2 vCPU, 4 GB)
+      t3.large   — standard (2 vCPU, 8 GB)
+      c5.2xlarge — heavy PCAP workloads (8 vCPU, 16 GB)
+
+  KeyPairName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: SSH key pair for admin access (port 22)
+
+  AllowedCidr:
+    Type: String
+    Default: "0.0.0.0/0"
+    Description: CIDR range allowed to reach the web UI (restrict for production)
+
+  GridwolfVersion:
+    Type: String
+    Default: "latest"
+    Description: Docker Hub image tag (e.g. v0.9.8 or latest)
+
+  DockerHubUsername:
+    Type: String
+    Default: "gridwolf"
+    Description: Docker Hub organisation/username
+
+  DataVolumeSizeGB:
+    Type: Number
+    Default: 64
+    MinValue: 20
+    MaxValue: 2000
+    Description: EBS data volume size in GB (PCAP storage, database)
+
+# ── Mappings — latest Ubuntu 24.04 AMI by region ─────────────────────────────
+Mappings:
+  AmiMap:
+    us-east-1:      { AMI: ami-0c7217cdde317cfec }
+    us-west-2:      { AMI: ami-05d38da78ce859165 }
+    eu-west-1:      { AMI: ami-0905a3c97561e0b69 }
+    eu-central-1:   { AMI: ami-06dd92ecc74fdfb36 }
+    ap-southeast-1: { AMI: ami-0fa377108253bf620 }
+    ap-northeast-1: { AMI: ami-0595d6e81396a9efb }
+
+# ── Resources ─────────────────────────────────────────────────────────────────
+Resources:
+
+  # Security group — web UI + SSH
+  GridwolfSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Gridwolf ICS Security Platform
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: !Ref AllowedCidr
+          Description: HTTP (Gridwolf UI)
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: !Ref AllowedCidr
+          Description: HTTPS (optional TLS termination)
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref AllowedCidr
+          Description: SSH admin access
+      Tags:
+        - Key: Name
+          Value: !Sub "gridwolf-sg-${AWS::StackName}"
+
+  # Elastic IP for a stable address
+  GridwolfEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+
+  # Persistent EBS volume for data (survives instance replacement)
+  GridwolfDataVolume:
+    Type: AWS::EC2::Volume
+    DeletionPolicy: Retain
+    Properties:
+      AvailabilityZone: !GetAtt GridwolfInstance.AvailabilityZone
+      Size: !Ref DataVolumeSizeGB
+      VolumeType: gp3
+      Encrypted: true
+      Tags:
+        - Key: Name
+          Value: !Sub "gridwolf-data-${AWS::StackName}"
+
+  GridwolfVolumeAttachment:
+    Type: AWS::EC2::VolumeAttachment
+    Properties:
+      Device: /dev/xvdf
+      InstanceId: !Ref GridwolfInstance
+      VolumeId: !Ref GridwolfDataVolume
+
+  GridwolfEIPAssociation:
+    Type: AWS::EC2::EIPAssociation
+    Properties:
+      EIP: !Ref GridwolfEIP
+      InstanceId: !Ref GridwolfInstance
+
+  # IAM role — minimal: CloudWatch logs only
+  GridwolfRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { Service: ec2.amazonaws.com }
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
+
+  GridwolfInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles: [!Ref GridwolfRole]
+
+  # EC2 Instance
+  GridwolfInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref KeyPairName
+      ImageId: !FindInMap [AmiMap, !Ref "AWS::Region", AMI]
+      IamInstanceProfile: !Ref GridwolfInstanceProfile
+      SecurityGroupIds: [!GetAtt GridwolfSG.GroupId]
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeSize: 20
+            VolumeType: gp3
+            Encrypted: true
+            DeleteOnTermination: true
+      Tags:
+        - Key: Name
+          Value: !Sub "gridwolf-${AWS::StackName}"
+        - Key: Application
+          Value: Gridwolf
+        - Key: Version
+          Value: !Ref GridwolfVersion
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          set -euo pipefail
+          export DEBIAN_FRONTEND=noninteractive
+
+          # ── Mount data volume ──────────────────────────────────────────────
+          DATA_DEV=/dev/xvdf
+          DATA_MOUNT=/opt/gridwolf/data
+          if ! blkid "$DATA_DEV" &>/dev/null; then
+            mkfs.ext4 -L gridwolf-data "$DATA_DEV"
+          fi
+          mkdir -p "$DATA_MOUNT"
+          echo "LABEL=gridwolf-data  $DATA_MOUNT  ext4  defaults,nofail  0 2" >> /etc/fstab
+          mount -a
+
+          # ── Install Docker ─────────────────────────────────────────────────
+          curl -fsSL https://get.docker.com | bash
+          systemctl enable --now docker
+
+          # ── Generate secrets ───────────────────────────────────────────────
+          SECRET_KEY=$(python3 -c "import secrets; print(secrets.token_urlsafe(64))")
+          POSTGRES_PASS=$(openssl rand -hex 32)
+          PUBLIC_IP=$(curl -sf http://169.254.169.254/latest/meta-data/public-ipv4 || echo "localhost")
+
+          # ── Install Gridwolf ───────────────────────────────────────────────
+          INSTALL_DIR=/opt/gridwolf
+          mkdir -p "$INSTALL_DIR"/{data/uploads,data/reports,data/postgres}
+
+          cat > "$INSTALL_DIR/.env" <<EOF
+          GRIDWOLF_SECRET_KEY=${!SECRET_KEY}
+          POSTGRES_PASSWORD=${!POSTGRES_PASS}
+          GRIDWOLF_CORS_ORIGINS=["http://${!PUBLIC_IP}","https://${!PUBLIC_IP}"]
+          GRIDWOLF_UPLOAD_DIR=/data/uploads
+          GRIDWOLF_REPORTS_DIR=/data/reports
+          GRIDWOLF_DEBUG=false
+          EOF
+          chmod 600 "$INSTALL_DIR/.env"
+
+          # Pull images
+          docker pull ${DockerHubUsername}/backend:${GridwolfVersion}
+          docker pull ${DockerHubUsername}/frontend:${GridwolfVersion}
+          docker pull postgres:16-alpine
+          docker pull redis:7-alpine
+
+          # Write compose file and start
+          curl -fsSL "https://raw.githubusercontent.com/valinorintelligence/Gridwolf/main/docker-compose.hub.yml" \
+            -o "$INSTALL_DIR/docker-compose.yml"
+
+          cd "$INSTALL_DIR"
+          docker compose --env-file .env up -d
+
+          echo "Gridwolf started at http://${!PUBLIC_IP}"
+
+# ── Outputs ───────────────────────────────────────────────────────────────────
+Outputs:
+  PublicIP:
+    Description: Gridwolf public IP address
+    Value: !Ref GridwolfEIP
+
+  WebUI:
+    Description: Gridwolf web interface URL
+    Value: !Sub "http://${GridwolfEIP}"
+
+  APIDoc:
+    Description: Gridwolf REST API documentation
+    Value: !Sub "http://${GridwolfEIP}/api/docs"
+
+  SSHCommand:
+    Description: SSH access command
+    Value: !Sub "ssh -i ${KeyPairName}.pem ubuntu@${GridwolfEIP}"

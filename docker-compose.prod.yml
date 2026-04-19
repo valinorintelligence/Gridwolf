@@ -1,13 +1,15 @@
 # Gridwolf - Production Docker Setup (PostgreSQL + Redis)
-# Usage: docker compose -f docker-compose.prod.yml up --build
-# UI: http://localhost:3000  |  API: http://localhost:8000/docs
+# Usage: cp .env.example .env  →  edit .env  →  docker compose -f docker-compose.prod.yml up -d
+# UI: http://localhost  |  API Docs: http://localhost/api/docs
 
 services:
   postgres:
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: gridwolf
-      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-gridwolf}"
+      # No default — Compose aborts with a clear error if unset.
+      # Generate: openssl rand -hex 32
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}"
       POSTGRES_DB: gridwolf
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -28,50 +30,63 @@ services:
     restart: unless-stopped
 
   backend:
+    image: "${GRIDWOLF_IMAGE:-gridwolf/backend:latest}"
     build:
       context: ./backend
       dockerfile: ../Dockerfile.backend
     ports:
       - "8000:8000"
     environment:
-      GRIDWOLF_DATABASE_URL: "postgresql+asyncpg://gridwolf:${POSTGRES_PASSWORD:-gridwolf}@postgres:5432/gridwolf"
+      GRIDWOLF_DATABASE_URL: "postgresql+asyncpg://gridwolf:${POSTGRES_PASSWORD:?}@postgres:5432/gridwolf"
       GRIDWOLF_REDIS_URL: redis://redis:6379/0
-      GRIDWOLF_SECRET_KEY: "${GRIDWOLF_SECRET_KEY}"
-      GRIDWOLF_CORS_ORIGINS: '["http://localhost:3000"]'
+      GRIDWOLF_SECRET_KEY: "${GRIDWOLF_SECRET_KEY:?GRIDWOLF_SECRET_KEY must be set in .env}"
+      GRIDWOLF_CORS_ORIGINS: "${GRIDWOLF_CORS_ORIGINS:-[\"http://localhost\"]}"
       GRIDWOLF_DEBUG: "false"
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+    volumes:
+      - gridwolf_uploads:/app/uploads
+      - gridwolf_reports:/app/reports
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 15s
+      start_period: 20s
     restart: unless-stopped
 
   frontend:
+    image: "${GRIDWOLF_FRONTEND_IMAGE:-gridwolf/frontend:latest}"
     build:
       context: .
       dockerfile: Dockerfile.frontend
     ports:
-      - "3000:80"
+      - "${FRONTEND_PORT:-80}:80"
     depends_on:
       backend:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
     restart: unless-stopped
 
   celery-worker:
+    image: "${GRIDWOLF_IMAGE:-gridwolf/backend:latest}"
     build:
       context: ./backend
       dockerfile: ../Dockerfile.backend
-    command: celery -A app.celery_app worker --loglevel=info
+    command: celery -A app.celery_app worker --loglevel=info --concurrency=2
     environment:
-      GRIDWOLF_DATABASE_URL: "postgresql+asyncpg://gridwolf:${POSTGRES_PASSWORD:-gridwolf}@postgres:5432/gridwolf"
+      GRIDWOLF_DATABASE_URL: "postgresql+asyncpg://gridwolf:${POSTGRES_PASSWORD:?}@postgres:5432/gridwolf"
       GRIDWOLF_REDIS_URL: redis://redis:6379/0
-      GRIDWOLF_SECRET_KEY: "${GRIDWOLF_SECRET_KEY}"
+      GRIDWOLF_SECRET_KEY: "${GRIDWOLF_SECRET_KEY:?}"
+    volumes:
+      - gridwolf_uploads:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -81,3 +96,5 @@ services:
 
 volumes:
   postgres_data:
+  gridwolf_uploads:
+  gridwolf_reports:

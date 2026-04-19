@@ -63,3 +63,16 @@ backend/reports/
 *.log
 npm-debug.log*
 .vercel
+
+# Packer build output
+output/
+packer_cache/
+
+# OVA / VM artefacts
+*.ova
+*.ova.gz
+*.box
+
+# Cloud deploy secrets
+deploy/aws/*.pem
+deploy/azure/*.pem

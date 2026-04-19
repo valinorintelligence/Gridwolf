@@ -1,0 +1,32 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/viewdefinition/0.0.1-preview/ViewDefinition.json#",
+  "contentVersion": "0.0.0.1",
+  "views": [
+    {
+      "kind": "Overview",
+      "properties": {
+        "header": "Gridwolf ICS/OT Security Platform",
+        "description": "Passive network discovery, CVE intelligence, and MITRE ATT&CK for ICS mapping. Open the Web UI link below to sign in with the auto-generated admin credentials printed to the VM's serial console on first boot.",
+        "commands": [
+          {
+            "displayName": "Open Gridwolf UI",
+            "path": "[outputs('webUI')]",
+            "icon": "Browse"
+          },
+          {
+            "displayName": "Open API docs",
+            "path": "[outputs('apiDocs')]",
+            "icon": "Browse"
+          }
+        ],
+        "outputs": [
+          { "displayName": "Web UI", "name": "webUI" },
+          { "displayName": "API docs", "name": "apiDocs" },
+          { "displayName": "Public IP", "name": "publicIp" },
+          { "displayName": "FQDN", "name": "fqdn" },
+          { "displayName": "SSH command", "name": "sshCommand" }
+        ]
+      }
+    }
+  ]
+}

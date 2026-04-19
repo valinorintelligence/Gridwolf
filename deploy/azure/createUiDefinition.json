@@ -1,0 +1,119 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/0.1.2-preview/CreateUIDefinition.MultiVm.json#",
+  "handler": "Microsoft.Azure.CreateUIDef",
+  "version": "0.1.2-preview",
+  "parameters": {
+    "basics": [
+      {
+        "name": "gridwolfIntro",
+        "type": "Microsoft.Common.InfoBox",
+        "visible": true,
+        "options": {
+          "icon": "Info",
+          "text": "Gridwolf is a passive ICS/OT security platform: network topology discovery from PCAPs, CVE intelligence, and MITRE ATT&CK for ICS mapping. This template deploys a single VM with Docker, pulls the official Gridwolf images, and creates a persistent data disk."
+        }
+      }
+    ],
+    "steps": [
+      {
+        "name": "vmConfig",
+        "label": "Virtual Machine",
+        "elements": [
+          {
+            "name": "vmSize",
+            "type": "Microsoft.Compute.SizeSelector",
+            "label": "VM size",
+            "toolTip": "D2s_v3 is the standard evaluation size. Use F4s_v2 or D4s_v3 for heavy PCAP workloads.",
+            "recommendedSizes": [
+              "Standard_D2s_v3",
+              "Standard_D4s_v3",
+              "Standard_F4s_v2"
+            ],
+            "constraints": {
+              "allowedSizes": [
+                "Standard_B2s",
+                "Standard_D2s_v3",
+                "Standard_D4s_v3",
+                "Standard_F4s_v2"
+              ]
+            },
+            "osPlatform": "Linux"
+          },
+          {
+            "name": "authentication",
+            "type": "Microsoft.Compute.CredentialsCombo",
+            "label": {
+              "authenticationType": "Authentication type",
+              "password": "Password",
+              "confirmPassword": "Confirm password",
+              "sshPublicKey": "SSH public key"
+            },
+            "toolTip": {
+              "authenticationType": "SSH public key is strongly recommended. Passwords may be rejected by Azure policy on some subscriptions.",
+              "password": "",
+              "sshPublicKey": "Paste your SSH public key (~/.ssh/id_rsa.pub or ~/.ssh/id_ed25519.pub)."
+            },
+            "constraints": {
+              "required": true,
+              "customPasswordRegex": "^.{12,}$",
+              "customValidationMessage": "Password must be at least 12 characters."
+            },
+            "options": {
+              "hideConfirmation": false,
+              "hidePassword": false
+            },
+            "osPlatform": "Linux"
+          },
+          {
+            "name": "dataDiskSizeGB",
+            "type": "Microsoft.Common.Slider",
+            "label": "Data disk size (GB)",
+            "defaultValue": 64,
+            "min": 20,
+            "max": 1024,
+            "toolTip": "Persistent disk for PCAPs, database, and reports. Separate from the OS disk and retained across VM replacements."
+          }
+        ]
+      },
+      {
+        "name": "software",
+        "label": "Gridwolf image",
+        "elements": [
+          {
+            "name": "gridwolfVersion",
+            "type": "Microsoft.Common.TextBox",
+            "label": "Gridwolf version",
+            "defaultValue": "latest",
+            "toolTip": "Docker Hub tag. Use a pinned semver (e.g. 1.1.0) for production, or 'latest' for eval.",
+            "constraints": {
+              "required": true,
+              "regex": "^[a-zA-Z0-9._-]+$",
+              "validationMessage": "Only alphanumeric, dot, underscore, and dash allowed."
+            }
+          },
+          {
+            "name": "dockerHubUsername",
+            "type": "Microsoft.Common.TextBox",
+            "label": "Docker Hub namespace",
+            "defaultValue": "gridwolf",
+            "toolTip": "Docker Hub org/user that owns the backend and frontend images. Only change this if you've forked Gridwolf into your own registry.",
+            "constraints": {
+              "required": true,
+              "regex": "^[a-z0-9][a-z0-9_-]{1,63}$",
+              "validationMessage": "Must be a valid Docker Hub namespace (lowercase alphanumeric, 2-64 chars)."
+            }
+          }
+        ]
+      }
+    ],
+    "outputs": {
+      "location": "[location()]",
+      "vmSize": "[steps('vmConfig').vmSize]",
+      "authenticationType": "[steps('vmConfig').authentication.authenticationType]",
+      "adminPasswordOrKey": "[coalesce(steps('vmConfig').authentication.password, steps('vmConfig').authentication.sshPublicKey)]",
+      "dataDiskSizeGB": "[steps('vmConfig').dataDiskSizeGB]",
+      "gridwolfVersion": "[steps('software').gridwolfVersion]",
+      "dockerHubUsername": "[steps('software').dockerHubUsername]"
+    }
+  }
+}

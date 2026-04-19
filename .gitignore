@@ -76,3 +76,6 @@ packer_cache/
 # Cloud deploy secrets
 deploy/aws/*.pem
 deploy/azure/*.pem
+
+# Claude Code local settings
+.claude/settings.local.json

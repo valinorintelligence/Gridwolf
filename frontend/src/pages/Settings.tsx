@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Settings as SettingsIcon, Copy, Trash2, Plus } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Settings as SettingsIcon, Copy, Trash2, Plus, AlertCircle } from 'lucide-react';
 import { Card, CardHeader, CardContent } from '@/components/ui/Card';
 import { Tabs, TabList, Tab, TabPanel } from '@/components/ui/Tabs';
 import { Badge } from '@/components/ui/Badge';
@@ -9,22 +9,23 @@ import { Select } from '@/components/ui/Select';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
 import { Modal } from '@/components/ui/Modal';
 import { cn } from '@/lib/cn';
+import { api } from '@/services/api';
 
 interface APIKey {
   id: string;
   name: string;
   prefix: string;
-  created: string;
-  lastUsed: string;
+  environment: string;
+  permissions: string;
+  created_at: string;
+  last_used_at: string | null;
   status: 'active' | 'revoked';
 }
 
-const API_KEYS: APIKey[] = [
-  { id: 'key-001', name: 'CI/CD Pipeline', prefix: 'gw_live_4f8a...', created: '2024-09-15', lastUsed: '2024-12-18', status: 'active' },
-  { id: 'key-002', name: 'Splunk Integration', prefix: 'gw_live_9c2b...', created: '2024-10-01', lastUsed: '2024-12-18', status: 'active' },
-  { id: 'key-003', name: 'Development', prefix: 'gw_test_7d3e...', created: '2024-08-20', lastUsed: '2024-11-30', status: 'active' },
-  { id: 'key-004', name: 'Legacy Scanner', prefix: 'gw_live_1a5f...', created: '2024-06-10', lastUsed: '2024-09-15', status: 'revoked' },
-];
+function formatDate(iso: string | null): string {
+  if (!iso) return '—';
+  try { return new Date(iso).toISOString().split('T')[0]; } catch { return iso; }
+}
 
 function ToggleSwitch({ enabled, onChange, label }: { enabled: boolean; onChange: () => void; label?: string }) {
   return (
@@ -69,6 +70,56 @@ export default function Settings() {
   const [weeklyDigest, setWeeklyDigest] = useState(false);
   const [newKeyModal, setNewKeyModal] = useState(false);
   const [newKeyName, setNewKeyName] = useState('');
+  const [newKeyEnv, setNewKeyEnv] = useState<'live' | 'test'>('live');
+  const [newKeyPerms, setNewKeyPerms] = useState<'read' | 'write' | 'admin'>('read');
+  const [apiKeys, setApiKeys] = useState<APIKey[]>([]);
+  const [keysLoading, setKeysLoading] = useState(false);
+  const [keysError, setKeysError] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [freshToken, setFreshToken] = useState<string | null>(null);
+
+  const loadKeys = async () => {
+    setKeysLoading(true);
+    setKeysError(null);
+    try {
+      const { data } = await api.get<APIKey[]>('/api-keys');
+      setApiKeys(data);
+    } catch (e: any) {
+      setKeysError(e?.response?.data?.detail || 'Failed to load API keys');
+    } finally {
+      setKeysLoading(false);
+    }
+  };
+
+  useEffect(() => { loadKeys(); }, []);
+
+  const handleCreate = async () => {
+    if (!newKeyName.trim()) return;
+    setCreating(true);
+    try {
+      const { data } = await api.post('/api-keys', {
+        name: newKeyName.trim(),
+        environment: newKeyEnv,
+        permissions: newKeyPerms,
+      });
+      setFreshToken(data.token);
+      setNewKeyName('');
+      await loadKeys();
+    } catch (e: any) {
+      setKeysError(e?.response?.data?.detail || 'Failed to create key');
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleRevoke = async (id: string) => {
+    try {
+      await api.delete(`/api-keys/${id}`);
+      await loadKeys();
+    } catch (e: any) {
+      setKeysError(e?.response?.data?.detail || 'Failed to revoke key');
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -209,6 +260,11 @@ export default function Settings() {
               }
             />
             <CardContent className="p-0">
+              {keysError && (
+                <div className="flex items-center gap-2 px-4 py-2 text-xs text-red-400 bg-red-500/10 border-b border-red-500/30">
+                  <AlertCircle className="h-3.5 w-3.5" /> {keysError}
+                </div>
+              )}
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -221,19 +277,29 @@ export default function Settings() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {API_KEYS.map((key) => (
+                  {keysLoading && (
+                    <TableRow><TableCell colSpan={6} className="text-center text-xs text-content-tertiary py-6">Loading API keys…</TableCell></TableRow>
+                  )}
+                  {!keysLoading && apiKeys.length === 0 && (
+                    <TableRow><TableCell colSpan={6} className="text-center text-xs text-content-tertiary py-6">No API keys yet. Click “Create Key” to issue one.</TableCell></TableRow>
+                  )}
+                  {apiKeys.map((key) => (
                     <TableRow key={key.id}>
                       <TableCell className="font-medium text-sm">{key.name}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <code className="text-xs font-mono text-content-secondary bg-surface-hover px-2 py-0.5 rounded">{key.prefix}</code>
-                          <button className="text-content-tertiary hover:text-content-primary transition-colors">
+                          <button
+                            onClick={() => navigator.clipboard?.writeText(key.prefix)}
+                            className="text-content-tertiary hover:text-content-primary transition-colors"
+                            title="Copy prefix"
+                          >
                             <Copy className="h-3.5 w-3.5" />
                           </button>
                         </div>
                       </TableCell>
-                      <TableCell className="text-xs text-content-secondary">{key.created}</TableCell>
-                      <TableCell className="text-xs text-content-secondary">{key.lastUsed}</TableCell>
+                      <TableCell className="text-xs text-content-secondary">{formatDate(key.created_at)}</TableCell>
+                      <TableCell className="text-xs text-content-secondary">{formatDate(key.last_used_at)}</TableCell>
                       <TableCell>
                         {key.status === 'active' ? (
                           <Badge variant="default" dot>Active</Badge>
@@ -243,7 +309,13 @@ export default function Settings() {
                       </TableCell>
                       <TableCell>
                         {key.status === 'active' && (
-                          <Button variant="ghost" size="sm" className="text-red-400 hover:text-red-300">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRevoke(key.id)}
+                            className="text-red-400 hover:text-red-300"
+                            title="Revoke key"
+                          >
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                         )}
@@ -260,43 +332,77 @@ export default function Settings() {
       {/* New Key Modal */}
       <Modal
         isOpen={newKeyModal}
-        onClose={() => setNewKeyModal(false)}
-        title="Create API Key"
+        onClose={() => { setNewKeyModal(false); setFreshToken(null); }}
+        title={freshToken ? 'API Key Created' : 'Create API Key'}
         footer={
-          <>
-            <Button variant="ghost" size="sm" onClick={() => setNewKeyModal(false)}>Cancel</Button>
-            <Button variant="primary" size="sm" disabled={!newKeyName.trim()} onClick={() => { setNewKeyName(''); setNewKeyModal(false); }}>
-              Create Key
-            </Button>
-          </>
+          freshToken ? (
+            <Button variant="primary" size="sm" onClick={() => { setNewKeyModal(false); setFreshToken(null); }}>Done</Button>
+          ) : (
+            <>
+              <Button variant="ghost" size="sm" onClick={() => setNewKeyModal(false)}>Cancel</Button>
+              <Button
+                variant="primary"
+                size="sm"
+                disabled={!newKeyName.trim() || creating}
+                onClick={handleCreate}
+              >
+                {creating ? 'Creating…' : 'Create Key'}
+              </Button>
+            </>
+          )
         }
       >
-        <div className="space-y-4">
-          <Input
-            label="Key Name"
-            placeholder="e.g., Production Scanner"
-            value={newKeyName}
-            onChange={(e) => setNewKeyName(e.target.value)}
-          />
-          <Select
-            label="Environment"
-            options={[
-              { value: 'live', label: 'Production (gw_live_)' },
-              { value: 'test', label: 'Development (gw_test_)' },
-            ]}
-          />
-          <Select
-            label="Permissions"
-            options={[
-              { value: 'read', label: 'Read Only' },
-              { value: 'write', label: 'Read & Write' },
-              { value: 'admin', label: 'Admin' },
-            ]}
-          />
-          <p className="text-xs text-content-tertiary">
-            The API key will be shown once after creation. Store it securely.
-          </p>
-        </div>
+        {freshToken ? (
+          <div className="space-y-3">
+            <p className="text-sm text-content-primary">
+              Copy this token now — you won’t be able to see it again.
+            </p>
+            <div className="flex items-center gap-2 p-3 rounded bg-surface-hover border border-border-default">
+              <code className="flex-1 text-xs font-mono text-content-primary break-all">{freshToken}</code>
+              <button
+                onClick={() => navigator.clipboard?.writeText(freshToken)}
+                className="text-content-tertiary hover:text-content-primary"
+                title="Copy token"
+              >
+                <Copy className="h-4 w-4" />
+              </button>
+            </div>
+            <p className="text-xs text-red-400">
+              Treat it like a password. Rotate immediately if leaked.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <Input
+              label="Key Name"
+              placeholder="e.g., Production Scanner"
+              value={newKeyName}
+              onChange={(e) => setNewKeyName(e.target.value)}
+            />
+            <Select
+              label="Environment"
+              value={newKeyEnv}
+              onChange={(e) => setNewKeyEnv(e.target.value as 'live' | 'test')}
+              options={[
+                { value: 'live', label: 'Production (gw_live_)' },
+                { value: 'test', label: 'Development (gw_test_)' },
+              ]}
+            />
+            <Select
+              label="Permissions"
+              value={newKeyPerms}
+              onChange={(e) => setNewKeyPerms(e.target.value as 'read' | 'write' | 'admin')}
+              options={[
+                { value: 'read', label: 'Read Only' },
+                { value: 'write', label: 'Read & Write' },
+                { value: 'admin', label: 'Admin' },
+              ]}
+            />
+            <p className="text-xs text-content-tertiary">
+              The API key will be shown once after creation. Store it securely.
+            </p>
+          </div>
+        )}
       </Modal>
     </div>
   );

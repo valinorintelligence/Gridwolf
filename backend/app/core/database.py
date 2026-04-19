@@ -44,6 +44,7 @@ async def init_db():
         # Import all models so they are registered with Base.metadata
         from app.models import user, ontology  # noqa
         from app.models import ics  # noqa
+        from app.models import admin  # noqa
         await conn.run_sync(Base.metadata.create_all)
 
     await _seed_first_admin()

@@ -10,6 +10,7 @@ from app.api.v1.ics.devices import router as devices_router
 from app.api.v1.ics.sessions import router as sessions_router
 from app.api.v1.ics.findings import router as findings_router
 from app.api.v1.ics.vuln_feed import router as vuln_feed_router
+from app.api.v1.admin import keys_router, system_router, sig_router
 
 api_v1_router = APIRouter()
 
@@ -25,3 +26,8 @@ api_v1_router.include_router(devices_router, prefix="/ics")
 api_v1_router.include_router(sessions_router, prefix="/ics")
 api_v1_router.include_router(findings_router, prefix="/ics")
 api_v1_router.include_router(vuln_feed_router, prefix="/ics")
+
+# Admin — API keys, system metrics, detection signatures
+api_v1_router.include_router(keys_router)
+api_v1_router.include_router(system_router)
+api_v1_router.include_router(sig_router)

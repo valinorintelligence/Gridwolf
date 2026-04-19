@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 class Settings(BaseSettings):
     APP_NAME: str = "Gridwolf"
-    APP_VERSION: str = "1.0.0"
+    APP_VERSION: str = "1.1.0"
     DEBUG: bool = False
     DATABASE_URL: str = "sqlite+aiosqlite:///./gridwolf.db"
     REDIS_URL: str = "redis://localhost:6379/0"

@@ -2,10 +2,11 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "gridwolf-frontend",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--prefix", "frontend"],
-      "port": 5176
+      "name": "gridwolf-docker",
+      "runtimeExecutable": "docker",
+      "runtimeArgs": ["compose", "up"],
+      "port": 3000,
+      "autoPort": false
     }
   ]
 }

@@ -8,7 +8,7 @@ image:
   repository: gridwolf
   pullPolicy: IfNotPresent
   # Tag shared between backend + frontend. Override per-component below if needed.
-  tag: "1.0.0"
+  tag: "1.1.0"
 
 imagePullSecrets: []
 nameOverride: ""

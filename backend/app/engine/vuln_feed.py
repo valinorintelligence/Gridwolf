@@ -15,6 +15,7 @@ Enriches each advisory with:
   - CISA KEV (Known Exploited Vulnerabilities) status
   - EPSS (Exploit Prediction Scoring System) probability from FIRST.org
 """
+
 from __future__ import annotations
 
 import logging
@@ -24,6 +25,7 @@ from dataclasses import dataclass, field, asdict
 
 try:
     import httpx
+
     HTTPX_AVAILABLE = True
 except ImportError:
     HTTPX_AVAILABLE = False
@@ -33,9 +35,11 @@ logger = logging.getLogger(__name__)
 
 # ─── Data Structures ───────────────────────────────────────────
 
+
 @dataclass
 class Advisory:
     """A single ICS/OT vulnerability advisory."""
+
     id: str = ""
     cve_id: str = ""
     title: str = ""
@@ -677,12 +681,14 @@ class VulnFeedEngine:
                             break
 
                 if matched:
-                    matches.append({
-                        "device_ip": device.get("ip_address"),
-                        "device_vendor": device.get("vendor"),
-                        "device_type": device.get("device_type"),
-                        "advisory": adv.to_dict(),
-                    })
+                    matches.append(
+                        {
+                            "device_ip": device.get("ip_address"),
+                            "device_vendor": device.get("vendor"),
+                            "device_type": device.get("device_type"),
+                            "advisory": adv.to_dict(),
+                        }
+                    )
 
         # Deduplicate
         seen = set()
@@ -733,8 +739,7 @@ class VulnFeedEngine:
             if cve_ids:
                 async with httpx.AsyncClient(timeout=30.0) as client:
                     resp = await client.get(
-                        "https://api.first.org/data/v1/epss",
-                        params={"cve": ",".join(cve_ids)}
+                        "https://api.first.org/data/v1/epss", params={"cve": ",".join(cve_ids)}
                     )
                     if resp.status_code == 200:
                         epss_data = resp.json()
@@ -760,7 +765,9 @@ class VulnFeedEngine:
 
         matched = []
         for adv in self._advisories:
-            vendor_match = any(v.lower() in adv.vendor.lower() for v in vendors) if vendors else True
+            vendor_match = (
+                any(v.lower() in adv.vendor.lower() for v in vendors) if vendors else True
+            )
             sector_match = adv.sector in sectors if sectors else True
             if vendor_match or sector_match:
                 matched.append(adv.to_dict())
@@ -782,10 +789,23 @@ class VulnFeedEngine:
             advisories = [a.to_dict() for a in self._advisories]
 
         headers = [
-            "CVE ID", "Title", "Severity", "CVSS Score", "Urgency Tier",
-            "KEV Listed", "EPSS Score", "Vendor", "Products", "Affected Versions",
-            "Patch Available", "Disposition", "Source", "Sector", "Published Date",
-            "Attack Vector", "Remediation (Immediate)"
+            "CVE ID",
+            "Title",
+            "Severity",
+            "CVSS Score",
+            "Urgency Tier",
+            "KEV Listed",
+            "EPSS Score",
+            "Vendor",
+            "Products",
+            "Affected Versions",
+            "Patch Available",
+            "Disposition",
+            "Source",
+            "Sector",
+            "Published Date",
+            "Attack Vector",
+            "Remediation (Immediate)",
         ]
 
         lines = [",".join(headers)]

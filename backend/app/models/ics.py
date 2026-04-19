@@ -1,11 +1,20 @@
 """ICS/SCADA-specific database models for Gridwolf."""
+
 from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
 from sqlalchemy import (
-    Column, String, Integer, Float, Boolean, DateTime, Text,
-    ForeignKey, JSON, Index
+    Column,
+    String,
+    Integer,
+    Float,
+    Boolean,
+    DateTime,
+    Text,
+    ForeignKey,
+    JSON,
+    Index,
 )
 from sqlalchemy.orm import relationship
 from app.core.database import Base
@@ -21,6 +30,7 @@ def genuuid():
 
 
 # ─── Enums ──────────────────────────────────────────────
+
 
 class PurdueLevel(str, enum.Enum):
     L0 = "L0"
@@ -78,6 +88,7 @@ class FindingType(str, enum.Enum):
 
 # ─── Projects & Sessions ────────────────────────────────
 
+
 class Project(Base):
     __tablename__ = "projects"
 
@@ -119,6 +130,7 @@ class Session(Base):
 
 # ─── PCAP Files ─────────────────────────────────────────
 
+
 class PcapFile(Base):
     __tablename__ = "pcap_files"
 
@@ -140,6 +152,7 @@ class PcapFile(Base):
 
 
 # ─── Discovered Devices ─────────────────────────────────
+
 
 class Device(Base):
     __tablename__ = "devices"
@@ -165,12 +178,11 @@ class Device(Base):
 
     session = relationship("Session", back_populates="devices")
 
-    __table_args__ = (
-        Index("ix_device_session_ip", "session_id", "ip_address", unique=True),
-    )
+    __table_args__ = (Index("ix_device_session_ip", "session_id", "ip_address", unique=True),)
 
 
 # ─── Connections ────────────────────────────────────────
+
 
 class Connection(Base):
     __tablename__ = "connections"
@@ -193,12 +205,11 @@ class Connection(Base):
 
     session = relationship("Session", back_populates="connections")
 
-    __table_args__ = (
-        Index("ix_conn_session_flow", "session_id", "src_ip", "dst_ip", "dst_port"),
-    )
+    __table_args__ = (Index("ix_conn_session_flow", "session_id", "src_ip", "dst_ip", "dst_port"),)
 
 
 # ─── Protocol Analysis ─────────────────────────────────
+
 
 class ProtocolAnalysis(Base):
     __tablename__ = "protocol_analysis"
@@ -221,6 +232,7 @@ class ProtocolAnalysis(Base):
 
 
 # ─── Security Findings ─────────────────────────────────
+
 
 class Finding(Base):
     __tablename__ = "findings"
@@ -248,13 +260,16 @@ class Finding(Base):
 
 # ─── Reports ────────────────────────────────────────────
 
+
 class Report(Base):
     __tablename__ = "reports"
 
     id = Column(String, primary_key=True, default=genuuid)
     session_id = Column(String, ForeignKey("sessions.id"), nullable=False)
     name = Column(String(255), nullable=False)
-    report_type = Column(String(50), default="full")  # full, executive, technical, compliance, delta
+    report_type = Column(
+        String(50), default="full"
+    )  # full, executive, technical, compliance, delta
     format = Column(String(10), default="pdf")  # pdf, csv, stix, sbom
     filepath = Column(String(1024))
     file_size = Column(Integer)

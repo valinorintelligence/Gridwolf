@@ -1,6 +1,7 @@
 """
 CVE Lookup Engine — Query NVD API and local cache for ICS vulnerabilities.
 """
+
 from __future__ import annotations
 
 import logging
@@ -10,6 +11,7 @@ from typing import Optional
 
 try:
     import httpx
+
     HTTPX_AVAILABLE = True
 except ImportError:
     HTTPX_AVAILABLE = False
@@ -176,8 +178,9 @@ class CVELookup:
         self.nvd_api_key = nvd_api_key or os.environ.get("NVD_API_KEY")
         self.cache: dict[str, list[dict]] = {}
 
-    def match_device(self, vendor: Optional[str], product: Optional[str],
-                     firmware: Optional[str] = None) -> list[dict]:
+    def match_device(
+        self, vendor: Optional[str], product: Optional[str], firmware: Optional[str] = None
+    ) -> list[dict]:
         """Match a device against known CVEs."""
         matches = []
 
@@ -192,9 +195,9 @@ class CVELookup:
             cve_product = cve["product"].lower()
 
             # Fuzzy match on vendor and product
-            if (vendor_lower and (vendor_lower in cve_vendor or cve_vendor in vendor_lower)):
+            if vendor_lower and (vendor_lower in cve_vendor or cve_vendor in vendor_lower):
                 matches.append(cve)
-            elif (product_lower and (product_lower in cve_product or cve_product in product_lower)):
+            elif product_lower and (product_lower in cve_product or cve_product in product_lower):
                 matches.append(cve)
 
         return matches
@@ -226,15 +229,21 @@ class CVELookup:
                         cvss_v3 = metrics.get("cvssMetricV31", [{}])
                         score = cvss_v3[0].get("cvssData", {}).get("baseScore", 0) if cvss_v3 else 0
 
-                        results.append({
-                            "cve_id": cve_data.get("id", ""),
-                            "description": cve_data.get("descriptions", [{}])[0].get("value", ""),
-                            "cvss_score": score,
-                            "severity": self._cvss_to_severity(score),
-                            "vendor": keyword,
-                            "product": keyword,
-                            "references": [r.get("url", "") for r in cve_data.get("references", [])[:3]],
-                        })
+                        results.append(
+                            {
+                                "cve_id": cve_data.get("id", ""),
+                                "description": cve_data.get("descriptions", [{}])[0].get(
+                                    "value", ""
+                                ),
+                                "cvss_score": score,
+                                "severity": self._cvss_to_severity(score),
+                                "vendor": keyword,
+                                "product": keyword,
+                                "references": [
+                                    r.get("url", "") for r in cve_data.get("references", [])[:3]
+                                ],
+                            }
+                        )
                     return results
                 else:
                     logger.warning(f"NVD API returned {resp.status_code}, falling back to offline")
@@ -248,7 +257,8 @@ class CVELookup:
         """Search offline CVE database."""
         keyword_lower = keyword.lower()
         return [
-            cve for cve in ICS_CVE_DATABASE
+            cve
+            for cve in ICS_CVE_DATABASE
             if keyword_lower in cve["vendor"].lower()
             or keyword_lower in cve["product"].lower()
             or keyword_lower in cve["description"].lower()

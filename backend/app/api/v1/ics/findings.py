@@ -1,4 +1,5 @@
 """Security Findings, CVE Lookup, and Report Generation API endpoints."""
+
 from __future__ import annotations
 
 import os
@@ -111,6 +112,7 @@ async def update_finding_status(
 
 # ─── CVE Lookup ─────────────────────────────────────────
 
+
 @router.get("/cve/search")
 async def search_cves(keyword: str = Query(..., min_length=2)):
     """Search for CVEs by keyword (vendor, product, etc.)."""
@@ -126,19 +128,24 @@ async def match_device_cves(session_id: str, db: AsyncSession = Depends(get_db))
 
     matches = []
     for dev in devices:
-        device_cves = cve_engine.match_device(dev.vendor, dev.model or dev.device_type, dev.firmware_version)
+        device_cves = cve_engine.match_device(
+            dev.vendor, dev.model or dev.device_type, dev.firmware_version
+        )
         if device_cves:
-            matches.append({
-                "device_ip": dev.ip_address,
-                "device_vendor": dev.vendor,
-                "device_type": dev.device_type,
-                "cves": device_cves,
-            })
+            matches.append(
+                {
+                    "device_ip": dev.ip_address,
+                    "device_vendor": dev.vendor,
+                    "device_type": dev.device_type,
+                    "cves": device_cves,
+                }
+            )
 
     return {"session_id": session_id, "devices_checked": len(devices), "matches": matches}
 
 
 # ─── Report Generation ──────────────────────────────────
+
 
 class ReportRequest(BaseModel):
     session_id: str
@@ -152,7 +159,16 @@ class ReportRequest(BaseModel):
     def validate_sections(cls, v):
         if v is None:
             return v
-        valid = {"all", "executive_summary", "devices", "topology", "findings", "cves", "compliance", "recommendations"}
+        valid = {
+            "all",
+            "executive_summary",
+            "devices",
+            "topology",
+            "findings",
+            "cves",
+            "compliance",
+            "recommendations",
+        }
         invalid = [s for s in v if s not in valid]
         if invalid:
             raise ValueError(f"Invalid sections: {invalid}. Valid: {sorted(valid)}")
@@ -173,7 +189,9 @@ async def generate_assessment_report(req: ReportRequest, db: AsyncSession = Depe
     devices = dev_result.scalars().all()
 
     # Get connections
-    conn_result = await db.execute(select(Connection).where(Connection.session_id == req.session_id))
+    conn_result = await db.execute(
+        select(Connection).where(Connection.session_id == req.session_id)
+    )
     connections = conn_result.scalars().all()
 
     # Get findings
@@ -184,19 +202,34 @@ async def generate_assessment_report(req: ReportRequest, db: AsyncSession = Depe
     session_data = {
         "name": session.name,
         "devices": [
-            {"ip_address": d.ip_address, "hostname": d.hostname, "vendor": d.vendor,
-             "device_type": d.device_type, "purdue_level": d.purdue_level,
-             "protocols": d.protocols or []}
+            {
+                "ip_address": d.ip_address,
+                "hostname": d.hostname,
+                "vendor": d.vendor,
+                "device_type": d.device_type,
+                "purdue_level": d.purdue_level,
+                "protocols": d.protocols or [],
+            }
             for d in devices
         ],
         "connections": [
-            {"src_ip": c.src_ip, "dst_ip": c.dst_ip, "protocol": c.protocol,
-             "packet_count": c.packet_count}
+            {
+                "src_ip": c.src_ip,
+                "dst_ip": c.dst_ip,
+                "protocol": c.protocol,
+                "packet_count": c.packet_count,
+            }
             for c in connections
         ],
         "findings": [
-            {"severity": f.severity, "title": f.title, "src_ip": f.src_ip,
-             "dst_ip": f.dst_ip, "protocol": f.protocol, "confidence": f.confidence}
+            {
+                "severity": f.severity,
+                "title": f.title,
+                "src_ip": f.src_ip,
+                "dst_ip": f.dst_ip,
+                "protocol": f.protocol,
+                "confidence": f.confidence,
+            }
             for f in findings
         ],
         "protocol_summary": {},
@@ -247,7 +280,9 @@ async def download_report(report_id: str, db: AsyncSession = Depends(get_db)):
         raise HTTPException(404, "Report file not found on disk")
 
     media_type = "application/pdf" if report.format == "pdf" else "text/html"
-    return FileResponse(report.filepath, media_type=media_type, filename=os.path.basename(report.filepath))
+    return FileResponse(
+        report.filepath, media_type=media_type, filename=os.path.basename(report.filepath)
+    )
 
 
 @router.get("/reports/list")

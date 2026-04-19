@@ -4,6 +4,7 @@ Kept in a separate module so they live outside the ICS detection pipeline
 and can be imported from app.core.database.init_db without triggering
 circular imports.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -26,9 +27,7 @@ class APIKey(Base):
 
     __tablename__ = "api_keys"
 
-    id: Mapped[str] = mapped_column(
-        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
-    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     prefix: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
     key_hash: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
@@ -52,9 +51,7 @@ class Signature(Base):
 
     __tablename__ = "signatures"
 
-    id: Mapped[str] = mapped_column(
-        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
-    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     name: Mapped[str] = mapped_column(String(200), nullable=False, index=True)
     protocol: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     vendor: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)

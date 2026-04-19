@@ -19,6 +19,7 @@ _START_TIME = time.time()
 
 # ── WebSocket connection manager ─────────────────────────────────────────────
 
+
 class ConnectionManager:
     """Manages active WebSocket connections for real-time updates."""
 
@@ -46,10 +47,12 @@ ws_manager = ConnectionManager()
 
 # ── Application lifespan ─────────────────────────────────────────────────────
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("Gridwolf %s starting up", settings.APP_VERSION)
     from app.core.database import init_db
+
     await init_db()
     logger.info("Database initialised")
     yield
@@ -87,6 +90,7 @@ app.include_router(api_v1_router, prefix="/api/v1")
 
 
 # ── Health check ─────────────────────────────────────────────────────────────
+
 
 @app.get("/health", tags=["health"])
 async def health_check():
@@ -137,6 +141,7 @@ async def version():
 
 # ── WebSocket ─────────────────────────────────────────────────────────────────
 
+
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket, token: str = Query(default="")):
     if token:
@@ -160,6 +165,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str = Query(default=""
 
 
 # ── Exception handlers ────────────────────────────────────────────────────────
+
 
 @app.exception_handler(404)
 async def not_found_handler(request: Request, exc):

@@ -1,6 +1,7 @@
 """
 PCAP Upload & Analysis API endpoints.
 """
+
 from __future__ import annotations
 
 import os
@@ -43,14 +44,18 @@ async def upload_pcap(
     content = await file.read()
 
     if len(content) < 24:
-        raise HTTPException(400, f"File is too small ({len(content)} bytes) — not a valid capture file")
+        raise HTTPException(
+            400, f"File is too small ({len(content)} bytes) — not a valid capture file"
+        )
 
     # Validate magic bytes
     magic = content[:4]
     valid_magics = {
-        b'\xd4\xc3\xb2\xa1', b'\xa1\xb2\xc3\xd4',  # pcap LE/BE
-        b'\x4d\x3c\xb2\xa1', b'\xa1\xb2\x3c\x4d',  # pcap nanosecond
-        b'\x0a\x0d\x0d\x0a',                          # pcapng
+        b"\xd4\xc3\xb2\xa1",
+        b"\xa1\xb2\xc3\xd4",  # pcap LE/BE
+        b"\x4d\x3c\xb2\xa1",
+        b"\xa1\xb2\x3c\x4d",  # pcap nanosecond
+        b"\x0a\x0d\x0d\x0a",  # pcapng
     }
     if magic not in valid_magics:
         raise HTTPException(
@@ -199,12 +204,16 @@ async def _process_pcap_task(pcap_id: str, filepath: str, session_id: str):
             session = result.scalar_one_or_none()
             if session:
                 session.device_count = (session.device_count or 0) + len(results["devices"])
-                session.connection_count = (session.connection_count or 0) + len(results["connections"])
+                session.connection_count = (session.connection_count or 0) + len(
+                    results["connections"]
+                )
                 session.finding_count = (session.finding_count or 0) + len(results["findings"])
 
             await db.commit()
-            logger.info(f"PCAP {pcap_id} processed: {len(results['devices'])} devices, "
-                       f"{len(results['connections'])} connections, {len(results['findings'])} findings")
+            logger.info(
+                f"PCAP {pcap_id} processed: {len(results['devices'])} devices, "
+                f"{len(results['connections'])} connections, {len(results['findings'])} findings"
+            )
 
         except Exception as e:
             logger.exception(f"PCAP processing failed for {pcap_id}: {e}")

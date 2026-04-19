@@ -13,6 +13,7 @@ Endpoints:
   GET    /advisories/export/csv    Export advisories as CSV
   GET    /advisories/sources       List available feed sources
 """
+
 from __future__ import annotations
 
 import logging
@@ -31,6 +32,7 @@ router = APIRouter(prefix="/advisories", tags=["Vulnerability Feed"])
 
 # ─── Pydantic Schemas ──────────────────────────────────────────
 
+
 class DispositionUpdate(BaseModel):
     disposition: str  # new, not_applicable, acknowledged, in_progress, remediated
 
@@ -46,14 +48,26 @@ class EnvironmentConfig(BaseModel):
 
 # ─── Endpoints ─────────────────────────────────────────────────
 
+
 @router.get("/")
 async def list_advisories(
-    severity: Optional[str] = Query(None, description="Filter by severity: critical, high, medium, low"),
+    severity: Optional[str] = Query(
+        None, description="Filter by severity: critical, high, medium, low"
+    ),
     vendor: Optional[str] = Query(None, description="Filter by vendor name"),
-    sector: Optional[str] = Query(None, description="Filter by sector: energy, water, manufacturing, oil_gas, transportation, healthcare"),
-    source: Optional[str] = Query(None, description="Filter by source: cisa, siemens, schneider, rockwell, abb, moxa, certvde"),
-    urgency: Optional[str] = Query(None, description="Filter by urgency tier: act_now, plan_patch, monitor, low_risk"),
-    search: Optional[str] = Query(None, description="Full-text search across title, description, CVE ID"),
+    sector: Optional[str] = Query(
+        None,
+        description="Filter by sector: energy, water, manufacturing, oil_gas, transportation, healthcare",
+    ),
+    source: Optional[str] = Query(
+        None, description="Filter by source: cisa, siemens, schneider, rockwell, abb, moxa, certvde"
+    ),
+    urgency: Optional[str] = Query(
+        None, description="Filter by urgency tier: act_now, plan_patch, monitor, low_risk"
+    ),
+    search: Optional[str] = Query(
+        None, description="Full-text search across title, description, CVE ID"
+    ),
     kev_only: bool = Query(False, description="Show only CISA KEV-listed advisories"),
     sort: str = Query("newest", description="Sort by: newest, severity, exploitable"),
     days: Optional[int] = Query(None, description="Filter to last N days"),
@@ -88,12 +102,14 @@ async def list_sources():
     """List available feed sources."""
     sources = []
     for key, val in FEED_SOURCES.items():
-        sources.append({
-            "id": key,
-            "name": val["name"],
-            "advisory_url": val.get("advisory_url", ""),
-            "type": val.get("type", ""),
-        })
+        sources.append(
+            {
+                "id": key,
+                "name": val["name"],
+                "advisory_url": val.get("advisory_url", ""),
+                "type": val.get("type", ""),
+            }
+        )
     return {"sources": sources}
 
 
@@ -171,11 +187,41 @@ async def match_session_devices(
     else:
         # Demo: return matches against sample devices
         devices = [
-            {"ip_address": "10.1.1.10", "vendor": "Siemens", "model": "S7-1500", "device_type": "PLC", "protocols": ["s7comm"]},
-            {"ip_address": "10.1.1.20", "vendor": "Schneider Electric", "model": "Modicon M340", "device_type": "PLC", "protocols": ["modbus"]},
-            {"ip_address": "10.1.1.30", "vendor": "Rockwell Automation", "model": "ControlLogix 1756", "device_type": "PLC", "protocols": ["enip"]},
-            {"ip_address": "10.1.2.1", "vendor": "Moxa", "model": "EDR-G9010", "device_type": "ROUTER", "protocols": []},
-            {"ip_address": "10.1.0.1", "vendor": "Fortinet", "model": "FortiGate", "device_type": "FIREWALL", "protocols": []},
+            {
+                "ip_address": "10.1.1.10",
+                "vendor": "Siemens",
+                "model": "S7-1500",
+                "device_type": "PLC",
+                "protocols": ["s7comm"],
+            },
+            {
+                "ip_address": "10.1.1.20",
+                "vendor": "Schneider Electric",
+                "model": "Modicon M340",
+                "device_type": "PLC",
+                "protocols": ["modbus"],
+            },
+            {
+                "ip_address": "10.1.1.30",
+                "vendor": "Rockwell Automation",
+                "model": "ControlLogix 1756",
+                "device_type": "PLC",
+                "protocols": ["enip"],
+            },
+            {
+                "ip_address": "10.1.2.1",
+                "vendor": "Moxa",
+                "model": "EDR-G9010",
+                "device_type": "ROUTER",
+                "protocols": [],
+            },
+            {
+                "ip_address": "10.1.0.1",
+                "vendor": "Fortinet",
+                "model": "FortiGate",
+                "device_type": "FIREWALL",
+                "protocols": [],
+            },
         ]
 
     matches = engine.match_session_devices(devices)

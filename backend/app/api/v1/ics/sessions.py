@@ -1,4 +1,5 @@
 """Session & Project Management API endpoints."""
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -103,6 +104,7 @@ async def delete_session(session_id: str, db: AsyncSession = Depends(get_db)):
 
 
 # ─── Projects ──────────────────────────────────────────
+
 
 @router.get("/projects/list")
 async def list_projects(

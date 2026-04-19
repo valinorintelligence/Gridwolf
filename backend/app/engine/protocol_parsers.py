@@ -15,28 +15,28 @@ logger = logging.getLogger(__name__)
 ICS_PORTS = {
     502: "modbus",
     503: "modbus",
-    802: "modbus",          # Modbus alternate
+    802: "modbus",  # Modbus alternate
     102: "s7comm",
-    5026: "s7comm",         # Siemens S7 routing / SIMATIC NET
+    5026: "s7comm",  # Siemens S7 routing / SIMATIC NET
     44818: "enip",
     2222: "enip",
     20000: "dnp3",
-    19999: "dnp3",          # DNP3 alternate
+    19999: "dnp3",  # DNP3 alternate
     47808: "bacnet",
     2404: "iec104",
     4840: "opcua",
     4843: "opcua",
     161: "snmp",
     162: "snmp",
-    34962: "profinet",      # PROFINET RT
-    34963: "profinet",      # PROFINET RT
-    34964: "profinet",      # PROFINET Context Manager
-    1089: "ff-hsE",         # FOUNDATION Fieldbus HSE
+    34962: "profinet",  # PROFINET RT
+    34963: "profinet",  # PROFINET RT
+    34964: "profinet",  # PROFINET Context Manager
+    1089: "ff-hsE",  # FOUNDATION Fieldbus HSE
     1090: "ff-hsE",
     1091: "ff-hsE",
-    18245: "gdsf",          # GE SRTP / GDS
-    789: "trivial-file",    # Trivial File Transfer (ICS firmware)
-    2111: "dsatp",          # DSATP (Emerson/Fisher)
+    18245: "gdsf",  # GE SRTP / GDS
+    789: "trivial-file",  # Trivial File Transfer (ICS firmware)
+    2111: "dsatp",  # DSATP (Emerson/Fisher)
 }
 
 # ─── OUI Vendor Database (common ICS vendors) ──────────
@@ -85,6 +85,7 @@ OUI_VENDORS = {
 
 # ─── Protocol Identification ───────────────────────────
 
+
 def identify_protocol(dport: int, sport: int, payload: bytes) -> str:
     """Identify ICS protocol from port numbers and payload heuristics."""
     # Check destination port first
@@ -96,7 +97,7 @@ def identify_protocol(dport: int, sport: int, payload: bytes) -> str:
     # Payload-based heuristics for non-standard ports
     if len(payload) >= 7:
         # Modbus TCP: Transaction ID (2) + Protocol ID (2, always 0x0000) + Length (2) + Unit ID (1)
-        if payload[2:4] == b'\x00\x00':
+        if payload[2:4] == b"\x00\x00":
             # Validate length field matches actual payload
             try:
                 modbus_len = struct.unpack_from(">H", payload, 4)[0]
@@ -106,7 +107,7 @@ def identify_protocol(dport: int, sport: int, payload: bytes) -> str:
                 pass
 
         # S7comm: TPKT header (0x03, 0x00) + valid length
-        if payload[0:2] == b'\x03\x00' and len(payload) >= 4:
+        if payload[0:2] == b"\x03\x00" and len(payload) >= 4:
             try:
                 tpkt_len = struct.unpack_from(">H", payload, 2)[0]
                 if 7 <= tpkt_len <= len(payload):
@@ -124,7 +125,7 @@ def identify_protocol(dport: int, sport: int, payload: bytes) -> str:
                 pass
 
         # DNP3: start bytes 0x0564
-        if payload[0:2] == b'\x05\x64':
+        if payload[0:2] == b"\x05\x64":
             return "dnp3"
 
         # IEC 104: start byte 0x68 with valid APDU length
@@ -287,7 +288,8 @@ def parse_s7comm(payload: bytes, src_ip: str, dst_ip: str, ts: datetime) -> list
                     "function_code": func_code,
                     "function_name": fc_info[0],
                     "is_write": fc_info[1],
-                    "is_critical": func_code in (0x1A, 0x1B, 0x28, 0x29),  # Download, PLC Control/Stop
+                    "is_critical": func_code
+                    in (0x1A, 0x1B, 0x28, 0x29),  # Download, PLC Control/Stop
                     "role": "master",
                     "timestamp": ts.isoformat(),
                     "details": {
@@ -492,9 +494,14 @@ def parse_bacnet(payload: bytes, src_ip: str, dst_ip: str, ts: datetime) -> list
 
                 service_choice = None
                 if len(payload) > apdu_offset + 2:
-                    service_choice = payload[apdu_offset + 2] if pdu_type == 0x00 else payload[apdu_offset + 1]
+                    service_choice = (
+                        payload[apdu_offset + 2] if pdu_type == 0x00 else payload[apdu_offset + 1]
+                    )
 
-                svc_info = BACNET_SERVICES.get(service_choice, (f"Service 0x{service_choice:02X}" if service_choice else "Unknown", False))
+                svc_info = BACNET_SERVICES.get(
+                    service_choice,
+                    (f"Service 0x{service_choice:02X}" if service_choice else "Unknown", False),
+                )
 
                 event = {
                     "protocol": "bacnet",

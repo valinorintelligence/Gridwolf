@@ -161,9 +161,7 @@ async def create_object(db: AsyncSession, data: ObjectCreate) -> ObjectResponse:
     return resp
 
 
-async def update_object(
-    db: AsyncSession, object_id: str, data: ObjectUpdate
-) -> ObjectResponse:
+async def update_object(db: AsyncSession, object_id: str, data: ObjectUpdate) -> ObjectResponse:
     result = await db.execute(
         select(ObjectInstance)
         .options(selectinload(ObjectInstance.object_type))
@@ -259,9 +257,7 @@ async def get_object_links(db: AsyncSession, object_id: str) -> List[LinkRespons
 # --- Graph ---
 
 
-async def get_graph(
-    db: AsyncSession, type_id: Optional[str] = None
-) -> GraphResponse:
+async def get_graph(db: AsyncSession, type_id: Optional[str] = None) -> GraphResponse:
     obj_query = select(ObjectInstance).options(selectinload(ObjectInstance.object_type))
     if type_id:
         obj_query = obj_query.where(ObjectInstance.type_id == type_id)

@@ -6,6 +6,7 @@ Techniques:
 - Shannon entropy analysis for DNS exfiltration
 - Asymmetric flow analysis for data staging/exfil
 """
+
 from __future__ import annotations
 
 import math
@@ -25,8 +26,16 @@ class C2Detector:
         self.dns_queries: dict[str, list[dict]] = defaultdict(list)
         self.findings: list[dict] = []
 
-    def add_packet(self, src_ip: str, dst_ip: str, src_port: int, dst_port: int,
-                   pkt_len: int, timestamp: float, dns_query: Optional[str] = None):
+    def add_packet(
+        self,
+        src_ip: str,
+        dst_ip: str,
+        src_port: int,
+        dst_port: int,
+        pkt_len: int,
+        timestamp: float,
+        dns_query: Optional[str] = None,
+    ):
         """Accumulate packet data for analysis."""
         # Track flow timestamps for IAT analysis
         flow_key = f"{src_ip}->{dst_ip}:{dst_port}"
@@ -41,10 +50,12 @@ class C2Detector:
 
         # Track DNS queries
         if dns_query:
-            self.dns_queries[src_ip].append({
-                "query": dns_query,
-                "timestamp": timestamp,
-            })
+            self.dns_queries[src_ip].append(
+                {
+                    "query": dns_query,
+                    "timestamp": timestamp,
+                }
+            )
 
     def analyze(self) -> list[dict]:
         """Run all detection methods and return findings."""
@@ -68,7 +79,7 @@ class C2Detector:
             timestamps.sort()
 
             # Calculate inter-arrival times
-            iats = [timestamps[i+1] - timestamps[i] for i in range(len(timestamps)-1)]
+            iats = [timestamps[i + 1] - timestamps[i] for i in range(len(timestamps) - 1)]
 
             if not iats:
                 continue
@@ -82,7 +93,7 @@ class C2Detector:
             std_dev = math.sqrt(variance)
 
             # Coefficient of variation (lower = more periodic = more beacon-like)
-            cv = std_dev / mean_iat if mean_iat > 0 else float('inf')
+            cv = std_dev / mean_iat if mean_iat > 0 else float("inf")
 
             # Jitter percentage
             jitter_pct = (std_dev / mean_iat * 100) if mean_iat > 0 else 100
@@ -104,29 +115,31 @@ class C2Detector:
                 src_ip = parts[0]
                 dst_part = parts[1].split(":")[0]
 
-                self.findings.append({
-                    "finding_type": "beacon",
-                    "severity": "critical" if confidence > 85 else "high",
-                    "title": f"Suspected C2 Beacon: {flow_key}",
-                    "description": (
-                        f"Periodic communication detected with {mean_iat:.1f}s ± {std_dev:.1f}s interval. "
-                        f"CV={cv:.3f}, jitter={jitter_pct:.1f}%, {len(timestamps)} packets over "
-                        f"{timestamps[-1] - timestamps[0]:.0f}s."
-                    ),
-                    "src_ip": src_ip,
-                    "dst_ip": dst_part,
-                    "protocol": "tcp",
-                    "confidence": confidence,
-                    "evidence": {
-                        "mean_interval": round(mean_iat, 2),
-                        "std_dev": round(std_dev, 2),
-                        "coefficient_of_variation": round(cv, 4),
-                        "jitter_pct": round(jitter_pct, 1),
-                        "sample_count": len(timestamps),
-                        "duration_seconds": round(timestamps[-1] - timestamps[0], 0),
-                        "dst_port": dst_port,
-                    },
-                })
+                self.findings.append(
+                    {
+                        "finding_type": "beacon",
+                        "severity": "critical" if confidence > 85 else "high",
+                        "title": f"Suspected C2 Beacon: {flow_key}",
+                        "description": (
+                            f"Periodic communication detected with {mean_iat:.1f}s ± {std_dev:.1f}s interval. "
+                            f"CV={cv:.3f}, jitter={jitter_pct:.1f}%, {len(timestamps)} packets over "
+                            f"{timestamps[-1] - timestamps[0]:.0f}s."
+                        ),
+                        "src_ip": src_ip,
+                        "dst_ip": dst_part,
+                        "protocol": "tcp",
+                        "confidence": confidence,
+                        "evidence": {
+                            "mean_interval": round(mean_iat, 2),
+                            "std_dev": round(std_dev, 2),
+                            "coefficient_of_variation": round(cv, 4),
+                            "jitter_pct": round(jitter_pct, 1),
+                            "sample_count": len(timestamps),
+                            "duration_seconds": round(timestamps[-1] - timestamps[0], 0),
+                            "dst_port": dst_port,
+                        },
+                    }
+                )
 
     def _detect_dns_exfiltration(self):
         """
@@ -159,36 +172,40 @@ class C2Detector:
                 total_entropy += entropy
 
                 if entropy > 4.0:
-                    high_entropy_queries.append({
-                        "query": domain,
-                        "entropy": round(entropy, 2),
-                        "subdomain_length": len(subdomain),
-                    })
+                    high_entropy_queries.append(
+                        {
+                            "query": domain,
+                            "entropy": round(entropy, 2),
+                            "subdomain_length": len(subdomain),
+                        }
+                    )
 
             if len(high_entropy_queries) >= 3:
                 avg_entropy = total_entropy / len(queries) if queries else 0
                 estimated_data = sum(len(q["query"]) for q in high_entropy_queries)
 
-                self.findings.append({
-                    "finding_type": "dns_exfil",
-                    "severity": "critical" if avg_entropy > 4.5 else "high",
-                    "title": f"DNS Exfiltration Suspected from {src_ip}",
-                    "description": (
-                        f"{len(high_entropy_queries)} high-entropy DNS queries detected. "
-                        f"Average entropy: {avg_entropy:.2f}. "
-                        f"Estimated exfiltrated data: ~{estimated_data} bytes."
-                    ),
-                    "src_ip": src_ip,
-                    "protocol": "dns",
-                    "confidence": min(int(avg_entropy * 20), 100),
-                    "evidence": {
-                        "high_entropy_queries": high_entropy_queries[:10],
-                        "total_queries": len(queries),
-                        "suspicious_queries": len(high_entropy_queries),
-                        "avg_entropy": round(avg_entropy, 2),
-                        "estimated_data_bytes": estimated_data,
-                    },
-                })
+                self.findings.append(
+                    {
+                        "finding_type": "dns_exfil",
+                        "severity": "critical" if avg_entropy > 4.5 else "high",
+                        "title": f"DNS Exfiltration Suspected from {src_ip}",
+                        "description": (
+                            f"{len(high_entropy_queries)} high-entropy DNS queries detected. "
+                            f"Average entropy: {avg_entropy:.2f}. "
+                            f"Estimated exfiltrated data: ~{estimated_data} bytes."
+                        ),
+                        "src_ip": src_ip,
+                        "protocol": "dns",
+                        "confidence": min(int(avg_entropy * 20), 100),
+                        "evidence": {
+                            "high_entropy_queries": high_entropy_queries[:10],
+                            "total_queries": len(queries),
+                            "suspicious_queries": len(high_entropy_queries),
+                            "avg_entropy": round(avg_entropy, 2),
+                            "estimated_data_bytes": estimated_data,
+                        },
+                    }
+                )
 
     def _detect_asymmetric_flows(self):
         """
@@ -212,24 +229,26 @@ class C2Detector:
                 # pair_key is a tuple of two IP strings — extract directly
                 ip_a, ip_b = pair_key[0], pair_key[1]
 
-                self.findings.append({
-                    "finding_type": "asymmetric_flow",
-                    "severity": "high" if ratio > 50 else "medium",
-                    "title": f"Asymmetric Flow: {ip_a} ↔ {ip_b} (ratio {ratio:.0f}:1)",
-                    "description": (
-                        f"Highly asymmetric data flow detected: TX={self._human_bytes(tx)}, "
-                        f"RX={self._human_bytes(rx)} (ratio {ratio:.1f}:1). "
-                        f"Direction: {direction}."
-                    ),
-                    "protocol": "tcp",
-                    "confidence": min(int(ratio * 2), 100),
-                    "evidence": {
-                        "tx_bytes": tx,
-                        "rx_bytes": rx,
-                        "ratio": round(ratio, 1),
-                        "direction": direction,
-                    },
-                })
+                self.findings.append(
+                    {
+                        "finding_type": "asymmetric_flow",
+                        "severity": "high" if ratio > 50 else "medium",
+                        "title": f"Asymmetric Flow: {ip_a} ↔ {ip_b} (ratio {ratio:.0f}:1)",
+                        "description": (
+                            f"Highly asymmetric data flow detected: TX={self._human_bytes(tx)}, "
+                            f"RX={self._human_bytes(rx)} (ratio {ratio:.1f}:1). "
+                            f"Direction: {direction}."
+                        ),
+                        "protocol": "tcp",
+                        "confidence": min(int(ratio * 2), 100),
+                        "evidence": {
+                            "tx_bytes": tx,
+                            "rx_bytes": rx,
+                            "ratio": round(ratio, 1),
+                            "direction": direction,
+                        },
+                    }
+                )
 
     @staticmethod
     def _shannon_entropy(data: str) -> float:

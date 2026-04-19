@@ -4,6 +4,7 @@ PDF Report Generator for ICS/SCADA Security Assessments.
 Generates professional PDF reports using HTML templates + WeasyPrint,
 with fallback to simple HTML if WeasyPrint is not available.
 """
+
 from __future__ import annotations
 
 import os
@@ -19,6 +20,7 @@ REPORTS_DIR.mkdir(exist_ok=True)
 
 try:
     from weasyprint import HTML as WeasyHTML
+
     WEASYPRINT_AVAILABLE = True
 except ImportError:
     WEASYPRINT_AVAILABLE = False
@@ -75,9 +77,9 @@ def generate_report(
     }
 
 
-def _build_html_report(session_data: dict, report_type: str,
-                       client_name: str, assessor_name: str,
-                       sections: list[str]) -> str:
+def _build_html_report(
+    session_data: dict, report_type: str, client_name: str, assessor_name: str, sections: list[str]
+) -> str:
     """Build HTML report content."""
     devices = session_data.get("devices", [])
     connections = session_data.get("connections", [])
@@ -91,21 +93,31 @@ def _build_html_report(session_data: dict, report_type: str,
 
     def esc(v: object) -> str:
         """HTML-escape any value to prevent XSS in generated reports."""
-        return html.escape(str(v)) if v is not None else '-'
+        return html.escape(str(v)) if v is not None else "-"
 
     # Build findings HTML
     findings_rows = ""
-    for f in sorted(findings, key=lambda x: {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}.get(x.get("severity", "info"), 5)):
+    for f in sorted(
+        findings,
+        key=lambda x: {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}.get(
+            x.get("severity", "info"), 5
+        ),
+    ):
         sev = f.get("severity", "info")
-        sev_color = {"critical": "#ef4444", "high": "#f97316", "medium": "#eab308", "low": "#3b82f6"}.get(sev, "#6b7280")
+        sev_color = {
+            "critical": "#ef4444",
+            "high": "#f97316",
+            "medium": "#eab308",
+            "low": "#3b82f6",
+        }.get(sev, "#6b7280")
         findings_rows += f"""
         <tr>
             <td style="color:{sev_color};font-weight:bold;text-transform:uppercase">{esc(sev)}</td>
-            <td>{esc(f.get('title', ''))}</td>
-            <td>{esc(f.get('src_ip', '-'))}</td>
-            <td>{esc(f.get('dst_ip', '-'))}</td>
-            <td>{esc(f.get('protocol', '-'))}</td>
-            <td>{esc(f.get('confidence', '-'))}%</td>
+            <td>{esc(f.get("title", ""))}</td>
+            <td>{esc(f.get("src_ip", "-"))}</td>
+            <td>{esc(f.get("dst_ip", "-"))}</td>
+            <td>{esc(f.get("protocol", "-"))}</td>
+            <td>{esc(f.get("confidence", "-"))}%</td>
         </tr>"""
 
     # Build devices HTML
@@ -113,12 +125,12 @@ def _build_html_report(session_data: dict, report_type: str,
     for d in devices:
         devices_rows += f"""
         <tr>
-            <td>{esc(d.get('ip_address', ''))}</td>
-            <td>{esc(d.get('hostname', '-'))}</td>
-            <td>{esc(d.get('vendor', '-'))}</td>
-            <td>{esc(d.get('device_type', '-'))}</td>
-            <td>{esc(d.get('purdue_level', '-'))}</td>
-            <td>{esc(', '.join(d.get('protocols', [])))}</td>
+            <td>{esc(d.get("ip_address", ""))}</td>
+            <td>{esc(d.get("hostname", "-"))}</td>
+            <td>{esc(d.get("vendor", "-"))}</td>
+            <td>{esc(d.get("device_type", "-"))}</td>
+            <td>{esc(d.get("purdue_level", "-"))}</td>
+            <td>{esc(", ".join(d.get("protocols", [])))}</td>
         </tr>"""
 
     html = f"""<!DOCTYPE html>
@@ -153,11 +165,11 @@ def _build_html_report(session_data: dict, report_type: str,
         <div class="subtitle">ICS/SCADA Network Security Assessment Report</div>
         <hr style="border:1px solid #e5e7eb;width:60%;margin:20px auto">
         <div class="meta">
-            <p><strong>Report Type:</strong> {esc(report_type.replace('_', ' ').title())}</p>
-            <p><strong>Client:</strong> {esc(client_name) if client_name else 'N/A'}</p>
-            <p><strong>Assessor:</strong> {esc(assessor_name) if assessor_name else 'N/A'}</p>
+            <p><strong>Report Type:</strong> {esc(report_type.replace("_", " ").title())}</p>
+            <p><strong>Client:</strong> {esc(client_name) if client_name else "N/A"}</p>
+            <p><strong>Assessor:</strong> {esc(assessor_name) if assessor_name else "N/A"}</p>
             <p><strong>Date:</strong> {esc(now)}</p>
-            <p><strong>Session:</strong> {esc(session_data.get('name', 'N/A'))}</p>
+            <p><strong>Session:</strong> {esc(session_data.get("name", "N/A"))}</p>
         </div>
         <div class="confidential">CONFIDENTIAL</div>
     </div>
@@ -192,7 +204,9 @@ def _build_html_report(session_data: dict, report_type: str,
     <p>Protocols observed in network traffic:</p>
     <table>
         <thead><tr><th>Protocol</th><th>Packet Count</th></tr></thead>
-        <tbody>{''.join(f"<tr><td>{p}</td><td>{c:,}</td></tr>" for p, c in sorted(protocol_summary.items(), key=lambda x: x[1], reverse=True))}</tbody>
+        <tbody>{"".join(f"<tr><td>{p}</td><td>{c:,}</td></tr>" for p, c in sorted(protocol_summary.items(), key=lambda x: (
+                x[1]
+            ), reverse=True))}</tbody>
     </table>
 
     <h2>4. Security Findings</h2>

@@ -75,15 +75,11 @@ async def get_dashboard_stats(
         .where(ObjectInstance.status.isnot(None))
         .group_by(ObjectInstance.status)
     )
-    objects_by_status = [
-        {"status": s, "count": count} for s, count in status_counts.all()
-    ]
+    objects_by_status = [{"status": s, "count": count} for s, count in status_counts.all()]
 
     # Recent objects
     recent_result = await db.execute(
-        select(ObjectInstance)
-        .order_by(ObjectInstance.created_at.desc())
-        .limit(10)
+        select(ObjectInstance).order_by(ObjectInstance.created_at.desc()).limit(10)
     )
     recent = recent_result.scalars().all()
     recent_objects = [

@@ -136,9 +136,7 @@ async def execute_action_endpoint(
     current_user: User = Depends(get_current_user),
 ):
     # Verify object exists
-    result = await db.execute(
-        select(ObjectInstance).where(ObjectInstance.id == object_id)
-    )
+    result = await db.execute(select(ObjectInstance).where(ObjectInstance.id == object_id))
     obj = result.scalar_one_or_none()
     if obj is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Object not found")

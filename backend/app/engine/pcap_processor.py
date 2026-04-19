@@ -3,6 +3,7 @@ PCAP Processing Engine — Real packet analysis using Scapy.
 
 Pipeline: Ingest → Dissect → Topology → Risk
 """
+
 from __future__ import annotations
 
 import os
@@ -13,10 +14,12 @@ from collections import defaultdict
 
 try:
     from scapy.all import rdpcap, PcapReader, IP, TCP, UDP, Ether, DNS, DNSQR, Raw
+
     SCAPY_AVAILABLE = True
     # pcapng support (Scapy 2.5+)
     try:
         from scapy.utils import PcapNgReader
+
         PCAPNG_AVAILABLE = True
     except ImportError:
         PCAPNG_AVAILABLE = False
@@ -25,16 +28,22 @@ except ImportError:
     PCAPNG_AVAILABLE = False
 
 from app.engine.protocol_parsers import (
-    parse_modbus, parse_s7comm, parse_enip, parse_dnp3,
-    parse_bacnet, parse_iec104, identify_protocol, OUI_VENDORS
+    parse_modbus,
+    parse_s7comm,
+    parse_enip,
+    parse_dnp3,
+    parse_bacnet,
+    parse_iec104,
+    identify_protocol,
+    OUI_VENDORS,
 )
 
 # Valid PCAP/PCAPNG magic bytes
-PCAP_MAGIC_LE = b'\xd4\xc3\xb2\xa1'      # pcap little-endian
-PCAP_MAGIC_BE = b'\xa1\xb2\xc3\xd4'      # pcap big-endian
-PCAP_MAGIC_NS_LE = b'\x4d\x3c\xb2\xa1'   # pcap nanosecond LE
-PCAP_MAGIC_NS_BE = b'\xa1\xb2\x3c\x4d'   # pcap nanosecond BE
-PCAPNG_MAGIC = b'\x0a\x0d\x0d\x0a'        # pcapng Section Header Block
+PCAP_MAGIC_LE = b"\xd4\xc3\xb2\xa1"  # pcap little-endian
+PCAP_MAGIC_BE = b"\xa1\xb2\xc3\xd4"  # pcap big-endian
+PCAP_MAGIC_NS_LE = b"\x4d\x3c\xb2\xa1"  # pcap nanosecond LE
+PCAP_MAGIC_NS_BE = b"\xa1\xb2\x3c\x4d"  # pcap nanosecond BE
+PCAPNG_MAGIC = b"\x0a\x0d\x0d\x0a"  # pcapng Section Header Block
 VALID_PCAP_MAGICS = {PCAP_MAGIC_LE, PCAP_MAGIC_BE, PCAP_MAGIC_NS_LE, PCAP_MAGIC_NS_BE}
 
 logger = logging.getLogger(__name__)
@@ -44,10 +53,10 @@ class PcapProcessor:
     """Process PCAP files and extract ICS/SCADA network topology."""
 
     def __init__(self):
-        self.devices: dict[str, dict] = {}          # ip -> device info
-        self.connections: dict[str, dict] = {}       # flow_key -> connection info
-        self.protocol_events: list[dict] = []        # parsed ICS protocol events
-        self.findings: list[dict] = []               # security findings
+        self.devices: dict[str, dict] = {}  # ip -> device info
+        self.connections: dict[str, dict] = {}  # flow_key -> connection info
+        self.protocol_events: list[dict] = []  # parsed ICS protocol events
+        self.findings: list[dict] = []  # security findings
         self.packet_count = 0
         self.start_time: Optional[datetime] = None
         self.end_time: Optional[datetime] = None
@@ -70,8 +79,8 @@ class PcapProcessor:
         with open(filepath, "rb") as fh:
             magic = fh.read(4)
 
-        is_pcapng = (magic == PCAPNG_MAGIC)
-        is_pcap = (magic in VALID_PCAP_MAGICS)
+        is_pcapng = magic == PCAPNG_MAGIC
+        is_pcap = magic in VALID_PCAP_MAGICS
 
         if not is_pcap and not is_pcapng:
             raise RuntimeError(
@@ -79,7 +88,9 @@ class PcapProcessor:
                 f"File may be corrupted during upload."
             )
 
-        logger.info(f"Processing {'pcapng' if is_pcapng else 'pcap'}: {filepath} ({file_size:,} bytes)")
+        logger.info(
+            f"Processing {'pcapng' if is_pcapng else 'pcap'}: {filepath} ({file_size:,} bytes)"
+        )
 
         # Read packets using the appropriate reader
         self._read_packets(filepath, file_size, is_pcapng)
@@ -92,7 +103,9 @@ class PcapProcessor:
         return {
             "packet_count": self.packet_count,
             "file_size": file_size,
-            "duration_seconds": (self.end_time - self.start_time).total_seconds() if self.start_time and self.end_time else 0,
+            "duration_seconds": (self.end_time - self.start_time).total_seconds()
+            if self.start_time and self.end_time
+            else 0,
             "start_time": self.start_time.isoformat() if self.start_time else None,
             "end_time": self.end_time.isoformat() if self.end_time else None,
             "devices": list(self.devices.values()),
@@ -150,10 +163,7 @@ class PcapProcessor:
                 logger.warning(f"{reader_name} failed: {e}")
                 continue
 
-        raise RuntimeError(
-            f"Could not read capture file with any parser. "
-            f"Last error: {last_error}"
-        )
+        raise RuntimeError(f"Could not read capture file with any parser. Last error: {last_error}")
 
     def _process_packet(self, pkt):
         """Process a single packet — Stage 2 (Dissect) + Stage 3 (Topology)."""
@@ -281,8 +291,16 @@ class PcapProcessor:
             oui = mac[:8].upper().replace(":", "-")
             dev["vendor"] = OUI_VENDORS.get(oui, dev.get("vendor"))
 
-    def _dissect_protocol(self, protocol: str, src_ip: str, dst_ip: str,
-                          sport: int, dport: int, payload: bytes, ts: datetime) -> list[dict]:
+    def _dissect_protocol(
+        self,
+        protocol: str,
+        src_ip: str,
+        dst_ip: str,
+        sport: int,
+        dport: int,
+        payload: bytes,
+        ts: datetime,
+    ) -> list[dict]:
         """Deep protocol dissection — parse ICS protocol payloads."""
         events = []
         try:
@@ -343,6 +361,7 @@ class PcapProcessor:
     def _analyze_dns(self, src_ip: str, qname: str, ts: datetime):
         """Analyze DNS queries for potential exfiltration."""
         import math
+
         # Shannon entropy calculation
         if len(qname) > 0:
             prob = [float(qname.count(c)) / len(qname) for c in set(qname)]
@@ -351,16 +370,22 @@ class PcapProcessor:
             # High entropy + long subdomain = potential exfiltration
             subdomain = qname.split(".")[0] if "." in qname else qname
             if entropy > 4.0 and len(subdomain) > 20:
-                self.findings.append({
-                    "finding_type": "dns_exfil",
-                    "severity": "high",
-                    "title": f"Potential DNS Exfiltration from {src_ip}",
-                    "description": f"High-entropy DNS query detected: {qname} (entropy: {entropy:.2f})",
-                    "src_ip": src_ip,
-                    "protocol": "dns",
-                    "confidence": min(int(entropy * 20), 100),
-                    "evidence": {"query": qname, "entropy": round(entropy, 2), "subdomain_length": len(subdomain)},
-                })
+                self.findings.append(
+                    {
+                        "finding_type": "dns_exfil",
+                        "severity": "high",
+                        "title": f"Potential DNS Exfiltration from {src_ip}",
+                        "description": f"High-entropy DNS query detected: {qname} (entropy: {entropy:.2f})",
+                        "src_ip": src_ip,
+                        "protocol": "dns",
+                        "confidence": min(int(entropy * 20), 100),
+                        "evidence": {
+                            "query": qname,
+                            "entropy": round(entropy, 2),
+                            "subdomain_length": len(subdomain),
+                        },
+                    }
+                )
 
     def _run_risk_assessment(self):
         """Stage 4: Run risk assessment on discovered topology."""
@@ -374,58 +399,66 @@ class PcapProcessor:
             if src_level != "UNKNOWN" and dst_level != "UNKNOWN":
                 # L3 → L1 direct (bypassing L2)
                 if src_level == "L3" and dst_level == "L1":
-                    self.findings.append({
-                        "finding_type": "purdue_violation",
-                        "severity": "critical",
-                        "title": f"Purdue Violation: {src_level}→{dst_level} ({conn['src_ip']} → {conn['dst_ip']})",
-                        "description": f"Direct communication from {src_level} to {dst_level} bypassing supervisory layer",
-                        "src_ip": conn["src_ip"],
-                        "dst_ip": conn["dst_ip"],
-                        "protocol": conn["protocol"],
-                        "confidence": 90,
-                        "mitre_technique": "T0886",
-                    })
+                    self.findings.append(
+                        {
+                            "finding_type": "purdue_violation",
+                            "severity": "critical",
+                            "title": f"Purdue Violation: {src_level}→{dst_level} ({conn['src_ip']} → {conn['dst_ip']})",
+                            "description": f"Direct communication from {src_level} to {dst_level} bypassing supervisory layer",
+                            "src_ip": conn["src_ip"],
+                            "dst_ip": conn["dst_ip"],
+                            "protocol": conn["protocol"],
+                            "confidence": 90,
+                            "mitre_technique": "T0886",
+                        }
+                    )
                 # DMZ → L1/L2 (external zone to control zone)
                 elif src_level == "DMZ" and dst_level in ("L1", "L2"):
-                    self.findings.append({
-                        "finding_type": "purdue_violation",
-                        "severity": "critical",
-                        "title": f"Purdue Violation: DMZ→{dst_level} ({conn['src_ip']} → {conn['dst_ip']})",
-                        "description": f"Communication from DMZ to control zone ({dst_level})",
-                        "src_ip": conn["src_ip"],
-                        "dst_ip": conn["dst_ip"],
-                        "protocol": conn["protocol"],
-                        "confidence": 95,
-                        "mitre_technique": "T0886",
-                    })
+                    self.findings.append(
+                        {
+                            "finding_type": "purdue_violation",
+                            "severity": "critical",
+                            "title": f"Purdue Violation: DMZ→{dst_level} ({conn['src_ip']} → {conn['dst_ip']})",
+                            "description": f"Communication from DMZ to control zone ({dst_level})",
+                            "src_ip": conn["src_ip"],
+                            "dst_ip": conn["dst_ip"],
+                            "protocol": conn["protocol"],
+                            "confidence": 95,
+                            "mitre_technique": "T0886",
+                        }
+                    )
 
         # Check for write operations (dangerous control paths)
         for event in self.protocol_events:
             if event.get("is_write") or event.get("is_critical"):
-                self.findings.append({
-                    "finding_type": "write_path",
-                    "severity": "high" if event.get("is_write") else "critical",
-                    "title": f"Write/Program Path: {event.get('function_name', 'Unknown')}",
-                    "description": f"{event['protocol'].upper()} write operation from {event['src_ip']} to {event['dst_ip']}",
-                    "src_ip": event["src_ip"],
-                    "dst_ip": event["dst_ip"],
-                    "protocol": event["protocol"],
-                    "confidence": 85,
-                    "evidence": event.get("details", {}),
-                })
+                self.findings.append(
+                    {
+                        "finding_type": "write_path",
+                        "severity": "high" if event.get("is_write") else "critical",
+                        "title": f"Write/Program Path: {event.get('function_name', 'Unknown')}",
+                        "description": f"{event['protocol'].upper()} write operation from {event['src_ip']} to {event['dst_ip']}",
+                        "src_ip": event["src_ip"],
+                        "dst_ip": event["dst_ip"],
+                        "protocol": event["protocol"],
+                        "confidence": 85,
+                        "evidence": event.get("details", {}),
+                    }
+                )
 
         # Check for default credential indicators (common ICS ports without auth)
         for ip, dev in self.devices.items():
             ports = dev.get("open_ports", [])
             if 23 in ports:  # Telnet
-                self.findings.append({
-                    "finding_type": "default_credential",
-                    "severity": "high",
-                    "title": f"Telnet Service Enabled on {ip}",
-                    "description": f"Plaintext authentication protocol on {dev.get('hostname', ip)}",
-                    "src_ip": ip,
-                    "confidence": 80,
-                    "remediation": "Disable Telnet and enable SSH",
-                })
+                self.findings.append(
+                    {
+                        "finding_type": "default_credential",
+                        "severity": "high",
+                        "title": f"Telnet Service Enabled on {ip}",
+                        "description": f"Plaintext authentication protocol on {dev.get('hostname', ip)}",
+                        "src_ip": ip,
+                        "confidence": 80,
+                        "remediation": "Disable Telnet and enable SSH",
+                    }
+                )
 
         logger.info(f"Risk assessment complete: {len(self.findings)} findings generated")

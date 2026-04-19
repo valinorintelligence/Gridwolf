@@ -3,6 +3,7 @@
 Every endpoint here requires an authenticated user. Endpoints that mutate
 require role == 'admin'.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -99,7 +100,7 @@ async def create_api_key(
 
     raw_secret = secrets.token_urlsafe(32)
     full_token = f"gw_{data.environment}_{raw_secret}"
-    prefix = full_token[: 12] + "..."
+    prefix = full_token[:12] + "..."
 
     key = APIKey(
         name=data.name,
@@ -113,7 +114,9 @@ async def create_api_key(
     await db.commit()
     await db.refresh(key)
 
-    logger.info("API key created: id=%s name=%s by user=%s", key.id, key.name, current_user.username)
+    logger.info(
+        "API key created: id=%s name=%s by user=%s", key.id, key.name, current_user.username
+    )
 
     return APIKeyCreateResponse(
         **_serialize_key(key).model_dump(),
@@ -172,6 +175,7 @@ def _cpu_percent() -> float:
     """Best-effort CPU usage without adding psutil as a hard dependency."""
     try:
         import psutil  # type: ignore
+
         return float(psutil.cpu_percent(interval=0.1))
     except Exception:
         try:
@@ -185,6 +189,7 @@ def _cpu_percent() -> float:
 def _memory_percent() -> float:
     try:
         import psutil  # type: ignore
+
         return float(psutil.virtual_memory().percent)
     except Exception:
         try:
@@ -218,9 +223,9 @@ async def get_system_stats(
     disk_total, _, disk_free = shutil.disk_usage("/")
     disk_used = disk_total - disk_free
 
-    active_users = (await db.execute(
-        select(func.count()).select_from(User).where(User.is_active.is_(True))
-    )).scalar_one()
+    active_users = (
+        await db.execute(select(func.count()).select_from(User).where(User.is_active.is_(True)))
+    ).scalar_one()
 
     return SystemStats(
         cpu_percent=round(_cpu_percent(), 1),
@@ -427,6 +432,7 @@ async def test_signature(
     valid = True
     try:
         import yaml  # PyYAML is a transitive dep of FastAPI — usually available
+
         yaml.safe_load(sig.yaml_content)
     except ImportError:
         valid = True  # Assume valid if parser absent
@@ -438,6 +444,7 @@ async def test_signature(
     devices: list[str] = []
     try:
         from app.models.ics import Device  # type: ignore
+
         q = select(Device).where(Device.vendor == sig.vendor) if sig.vendor else select(Device)
         result = await db.execute(q.limit(50))
         for dev in result.scalars().all():

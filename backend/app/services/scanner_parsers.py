@@ -16,20 +16,22 @@ def parse_semgrep(data: dict[str, Any]) -> list[dict[str, Any]]:
             "INFO": "medium",
         }
         raw_severity = finding.get("extra", {}).get("severity", "INFO")
-        results.append({
-            "title": finding.get("check_id", "Unknown finding"),
-            "severity": severity_map.get(raw_severity, "low"),
-            "status": "open",
-            "properties": {
-                "source": "semgrep",
-                "check_id": finding.get("check_id"),
-                "path": finding.get("path"),
-                "start_line": finding.get("start", {}).get("line"),
-                "end_line": finding.get("end", {}).get("line"),
-                "message": finding.get("extra", {}).get("message", ""),
-                "metadata": finding.get("extra", {}).get("metadata", {}),
-            },
-        })
+        results.append(
+            {
+                "title": finding.get("check_id", "Unknown finding"),
+                "severity": severity_map.get(raw_severity, "low"),
+                "status": "open",
+                "properties": {
+                    "source": "semgrep",
+                    "check_id": finding.get("check_id"),
+                    "path": finding.get("path"),
+                    "start_line": finding.get("start", {}).get("line"),
+                    "end_line": finding.get("end", {}).get("line"),
+                    "message": finding.get("extra", {}).get("message", ""),
+                    "metadata": finding.get("extra", {}).get("metadata", {}),
+                },
+            }
+        )
     return results
 
 
@@ -46,22 +48,24 @@ def parse_trivy(data: dict[str, Any]) -> list[dict[str, Any]]:
                 "LOW": "low",
                 "UNKNOWN": "info",
             }
-            results.append({
-                "title": f"{vuln.get('VulnerabilityID', 'Unknown')} - {vuln.get('PkgName', '')}",
-                "severity": severity_map.get(vuln.get("Severity", "UNKNOWN"), "info"),
-                "status": "open",
-                "properties": {
-                    "source": "trivy",
-                    "vulnerability_id": vuln.get("VulnerabilityID"),
-                    "pkg_name": vuln.get("PkgName"),
-                    "installed_version": vuln.get("InstalledVersion"),
-                    "fixed_version": vuln.get("FixedVersion"),
-                    "target": target_name,
-                    "title": vuln.get("Title", ""),
-                    "description": vuln.get("Description", ""),
-                    "references": vuln.get("References", []),
-                },
-            })
+            results.append(
+                {
+                    "title": f"{vuln.get('VulnerabilityID', 'Unknown')} - {vuln.get('PkgName', '')}",
+                    "severity": severity_map.get(vuln.get("Severity", "UNKNOWN"), "info"),
+                    "status": "open",
+                    "properties": {
+                        "source": "trivy",
+                        "vulnerability_id": vuln.get("VulnerabilityID"),
+                        "pkg_name": vuln.get("PkgName"),
+                        "installed_version": vuln.get("InstalledVersion"),
+                        "fixed_version": vuln.get("FixedVersion"),
+                        "target": target_name,
+                        "title": vuln.get("Title", ""),
+                        "description": vuln.get("Description", ""),
+                        "references": vuln.get("References", []),
+                    },
+                }
+            )
     return results
 
 
@@ -94,20 +98,22 @@ def parse_sarif(data: dict[str, Any]) -> list[dict[str, Any]]:
                     "end_line": phys.get("region", {}).get("endLine"),
                 }
 
-            results.append({
-                "title": f"{rule_id}: {result.get('message', {}).get('text', 'No message')}",
-                "severity": severity_map.get(level, "medium"),
-                "status": "open",
-                "properties": {
-                    "source": "sarif",
-                    "tool": tool_name,
-                    "rule_id": rule_id,
-                    **location_info,
-                    "rule_description": rules.get(rule_id, {})
-                    .get("shortDescription", {})
-                    .get("text", ""),
-                },
-            })
+            results.append(
+                {
+                    "title": f"{rule_id}: {result.get('message', {}).get('text', 'No message')}",
+                    "severity": severity_map.get(level, "medium"),
+                    "status": "open",
+                    "properties": {
+                        "source": "sarif",
+                        "tool": tool_name,
+                        "rule_id": rule_id,
+                        **location_info,
+                        "rule_description": rules.get(rule_id, {})
+                        .get("shortDescription", {})
+                        .get("text", ""),
+                    },
+                }
+            )
     return results
 
 
@@ -130,10 +136,12 @@ def parse_generic(data: dict[str, Any]) -> list[dict[str, Any]]:
     findings = data.get("findings", data.get("results", data.get("items", [])))
     if isinstance(findings, list):
         for finding in findings:
-            results.append({
-                "title": finding.get("title", finding.get("name", "Untitled finding")),
-                "severity": finding.get("severity", "medium"),
-                "status": finding.get("status", "open"),
-                "properties": finding.get("properties", finding.get("metadata", {})),
-            })
+            results.append(
+                {
+                    "title": finding.get("title", finding.get("name", "Untitled finding")),
+                    "severity": finding.get("severity", "medium"),
+                    "status": finding.get("status", "open"),
+                    "properties": finding.get("properties", finding.get("metadata", {})),
+                }
+            )
     return results

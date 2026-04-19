@@ -1,4 +1,5 @@
 """Device Inventory & Topology API endpoints."""
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -33,9 +34,9 @@ async def list_devices(
         query = query.where(Device.purdue_level == purdue_level)
     if search:
         query = query.where(
-            (Device.ip_address.ilike(f"%{search}%")) |
-            (Device.hostname.ilike(f"%{search}%")) |
-            (Device.vendor.ilike(f"%{search}%"))
+            (Device.ip_address.ilike(f"%{search}%"))
+            | (Device.hostname.ilike(f"%{search}%"))
+            | (Device.vendor.ilike(f"%{search}%"))
         )
 
     query = query.offset(offset).limit(limit)
@@ -125,7 +126,7 @@ async def device_stats(session_id: str = None, db: AsyncSession = Depends(get_db
         purdue_counts[d.purdue_level] = purdue_counts.get(d.purdue_level, 0) + 1
         if d.vendor:
             vendor_counts[d.vendor] = vendor_counts.get(d.vendor, 0) + 1
-        for p in (d.protocols or []):
+        for p in d.protocols or []:
             protocol_counts[p] = protocol_counts.get(p, 0) + 1
 
     return {
@@ -147,10 +148,9 @@ async def get_device(device_id: str, db: AsyncSession = Depends(get_db)):
 
     # Get connections involving this device
     conn_result = await db.execute(
-        select(Connection).where(
-            (Connection.src_ip == device.ip_address) |
-            (Connection.dst_ip == device.ip_address)
-        ).where(Connection.session_id == device.session_id)
+        select(Connection)
+        .where((Connection.src_ip == device.ip_address) | (Connection.dst_ip == device.ip_address))
+        .where(Connection.session_id == device.session_id)
     )
     connections = conn_result.scalars().all()
 

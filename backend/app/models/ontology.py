@@ -12,9 +12,7 @@ from app.core.database import Base
 class ObjectType(Base):
     __tablename__ = "object_types"
 
-    id: Mapped[str] = mapped_column(
-        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
-    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False, index=True)
     icon: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     color: Mapped[Optional[str]] = mapped_column(String(7), nullable=True)
@@ -35,12 +33,8 @@ class ObjectType(Base):
 class ObjectInstance(Base):
     __tablename__ = "objects"
 
-    id: Mapped[str] = mapped_column(
-        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
-    )
-    type_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("object_types.id"), nullable=False
-    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    type_id: Mapped[str] = mapped_column(String(36), ForeignKey("object_types.id"), nullable=False)
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     properties: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     status: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
@@ -69,17 +63,13 @@ class ObjectInstance(Base):
         cascade="all, delete-orphan",
     )
 
-    __table_args__ = (
-        Index("ix_objects_type_status", "type_id", "status"),
-    )
+    __table_args__ = (Index("ix_objects_type_status", "type_id", "status"),)
 
 
 class Link(Base):
     __tablename__ = "links"
 
-    id: Mapped[str] = mapped_column(
-        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
-    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     source_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("objects.id", ondelete="CASCADE"), nullable=False
     )
@@ -108,9 +98,7 @@ class Link(Base):
 class Action(Base):
     __tablename__ = "actions"
 
-    id: Mapped[str] = mapped_column(
-        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
-    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     object_type_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("object_types.id"), nullable=False
@@ -127,9 +115,7 @@ class Action(Base):
 class AuditLog(Base):
     __tablename__ = "audit_logs"
 
-    id: Mapped[str] = mapped_column(
-        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
-    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     object_id: Mapped[Optional[str]] = mapped_column(
         String(36), ForeignKey("objects.id"), nullable=True
     )
@@ -146,13 +132,9 @@ class AuditLog(Base):
 class SavedDashboard(Base):
     __tablename__ = "saved_dashboards"
 
-    id: Mapped[str] = mapped_column(
-        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
-    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    user_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("users.id"), nullable=False
-    )
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), nullable=False)
     layout: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     is_default: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
@@ -169,9 +151,7 @@ class SavedDashboard(Base):
 class Integration(Base):
     __tablename__ = "integrations"
 
-    id: Mapped[str] = mapped_column(
-        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
-    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     type: Mapped[str] = mapped_column(String(50), nullable=False)
     config: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)

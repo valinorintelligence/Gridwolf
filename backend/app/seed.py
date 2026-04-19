@@ -206,9 +206,7 @@ async def seed_database() -> None:
 
         # Seed demo user
         created_user = False
-        existing_user = await db.execute(
-            select(User).where(User.username == DEMO_USER["username"])
-        )
+        existing_user = await db.execute(select(User).where(User.username == DEMO_USER["username"]))
         if existing_user.scalar_one_or_none() is None:
             user = User(
                 username=DEMO_USER["username"],

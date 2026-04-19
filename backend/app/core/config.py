@@ -15,7 +15,11 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://localhost:6379/0"
     SECRET_KEY: str = ""
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 720
-    CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:5173", "http://localhost:5174"]
+    CORS_ORIGINS: list[str] = [
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://localhost:5174",
+    ]
     NVD_API_KEY: str = ""
     UPLOAD_DIR: str = "./uploads"
     REPORTS_DIR: str = "./reports"
@@ -34,7 +38,7 @@ class Settings(BaseSettings):
                 # provides no real security if never explicitly set.
                 print(
                     "\n[GRIDWOLF] FATAL: GRIDWOLF_SECRET_KEY is not set.\n"
-                    "  Generate one with:  python -c \"import secrets; print(secrets.token_urlsafe(64))\"\n"
+                    '  Generate one with:  python -c "import secrets; print(secrets.token_urlsafe(64))"\n'
                     "  Then set it in your .env file or environment before starting.\n",
                     file=sys.stderr,
                 )

@@ -10,7 +10,8 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.0.0--beta-blue" />
+  <img src="https://img.shields.io/badge/version-1.0.0-blue" />
+  <img src="https://img.shields.io/badge/docker-gridwolf%2Fbackend-2496ED?logo=docker" />
   <img src="https://img.shields.io/badge/ICS%20Protocols-6%20Deep%20Parsers-orange" />
   <img src="https://img.shields.io/badge/MITRE%20ATT%26CK-ICS-red" />
   <img src="https://img.shields.io/badge/ICS%20Advisories-7%20Sources-purple" />
@@ -23,7 +24,10 @@
   <a href="https://valinorintelligence.github.io/Gridwolf/"><strong>🔴 Live Demo</strong></a> &middot;
   <a href="https://gridwolf.net">Website</a> &middot;
   <a href="#screenshots">Screenshots</a> &middot;
-  <a href="#installation">Installation</a> &middot;
+  <a href="#option-1-docker-hub-recommended">🐳 Docker Hub</a> &middot;
+  <a href="#option-2-ova-appliance">💿 OVA</a> &middot;
+  <a href="#option-3-aws-marketplace">☁️ AWS</a> &middot;
+  <a href="#option-4-azure-marketplace">🔷 Azure</a> &middot;
   <a href="#key-features">Features</a>
 </p>
 
@@ -228,124 +232,249 @@ Three independent detection methods run on every session:
 
 ## Installation
 
-### Option 1: Docker (Recommended — Linux & macOS)
+Choose the deployment method that fits your environment:
 
-The fastest way to get Gridwolf running. No Python or Node.js installation needed.
+| Method | Best for | Time to running |
+|---|---|---|
+| [🐳 Docker Hub](#option-1-docker-hub-recommended) | Quick eval, self-hosted | ~2 min |
+| [💿 OVA Appliance](#option-2-ova-appliance) | Air-gapped OT networks, VMware/VirtualBox | ~5 min |
+| [☁️ AWS Marketplace](#option-3-aws-marketplace) | Cloud-hosted, EC2 | ~5 min |
+| [🔷 Azure Marketplace](#option-4-azure-marketplace) | Cloud-hosted, Azure VM | ~5 min |
+| [🔧 Source / Dev](#option-5-source--developer-setup) | Development, customisation | ~10 min |
 
-```bash
-# Clone and start
-git clone https://github.com/valinorintelligence/Gridwolf.git
-cd Gridwolf
-docker compose up --build
+---
 
-# That's it! Open http://localhost:3000
-```
+### Option 1: Docker Hub (Recommended)
 
-| Service | URL |
-|---|---|
-| **Frontend** | http://localhost:3000 |
-| **API Docs** | http://localhost:8000/docs |
-| **Login** | Click "Demo Login" — no credentials needed |
+No source code required. Pull pre-built images and start with two commands.
 
 ```bash
-# Stop
-docker compose down
-
-# Production setup (PostgreSQL + Redis + Celery worker)
-docker compose -f docker-compose.prod.yml up --build
+# 1. Download the compose file and config template
+curl -O https://raw.githubusercontent.com/valinorintelligence/Gridwolf/main/docker-compose.hub.yml
+curl -O https://raw.githubusercontent.com/valinorintelligence/Gridwolf/main/.env.example
+cp .env.example .env
 ```
-
-### Option 2: One-Click Installer (macOS / Linux)
-
-Single command that auto-detects Docker or falls back to native install:
 
 ```bash
-# Run directly from GitHub
-curl -fsSL https://raw.githubusercontent.com/valinorintelligence/Gridwolf/main/scripts/install.sh | bash
-
-# Or clone first, then run
-git clone https://github.com/valinorintelligence/Gridwolf.git
-cd Gridwolf
-bash scripts/install.sh
+# 2. Set two required secrets in .env
+#    Generate SECRET_KEY:
+python3 -c "import secrets; print(secrets.token_urlsafe(64))"
+#    Generate POSTGRES_PASSWORD:
+openssl rand -hex 32
+# → paste both into .env
 ```
-
-The installer will:
-1. Detect Docker → use containerized setup (preferred)
-2. No Docker → install Python + Node.js dependencies natively
-3. Start both backend and frontend
-4. Open your browser automatically
-
-### Option 3: Windows (.bat Launcher)
-
-```powershell
-# PowerShell one-liner
-git clone https://github.com/valinorintelligence/Gridwolf.git
-cd Gridwolf
-
-# Option A: Double-click gridwolf.bat in File Explorer
-# Option B: Run from PowerShell
-.\scripts\install.ps1
-```
-
-**`gridwolf.bat`** — Double-click to launch. Auto-detects Docker Desktop or falls back to native Python + Node.js. Opens browser when ready. Press any key to stop.
-
-> **Prerequisites for native (non-Docker) install:**
-> - [Python 3.9+](https://python.org/downloads/) (check "Add to PATH" during install)
-> - [Node.js 18+](https://nodejs.org/) (LTS recommended)
-> - [Git](https://git-scm.com/download/win)
-
-### Option 4: Manual Setup
 
 ```bash
-# 1. Clone the repository
+# 3. Start
+docker compose -f docker-compose.hub.yml up -d
+
+# → Open http://localhost
+# → API docs: http://localhost/api/docs
+```
+
+The admin password is printed to the backend log on first boot:
+```bash
+docker compose -f docker-compose.hub.yml logs backend | grep -A1 "Password"
+```
+
+**Stop / update:**
+```bash
+docker compose -f docker-compose.hub.yml down          # stop
+docker compose -f docker-compose.hub.yml pull          # update to latest
+docker compose -f docker-compose.hub.yml up -d         # restart
+```
+
+---
+
+### Option 2: OVA Appliance
+
+Purpose-built for **air-gapped OT environments**. All Docker images are pre-loaded — no internet access needed after deployment.
+
+**Download:** Grab `gridwolf-<version>-amd64.ova.gz` from the [latest release](https://github.com/valinorintelligence/Gridwolf/releases/latest).
+
+**Import into VMware ESXi / Workstation / VirtualBox:**
+```
+File → Import Appliance → select gridwolf-<version>-amd64.ova
+Recommended: 2 vCPU · 4 GB RAM · 20 GB disk
+```
+
+**First-boot wizard** runs automatically on the console:
+1. Confirms the VM's IP address
+2. Prompts for an admin password (min 12 chars)
+3. Generates all secrets automatically
+4. Starts Gridwolf and prints the URL
+
+**Minimum requirements:** 2 vCPU · 4 GB RAM · 20 GB storage
+
+**Build your own OVA** (requires Packer + VirtualBox):
+```bash
+export GRIDWOLF_VERSION=v1.0.0
+export DOCKERHUB_USERNAME=gridwolf
+packer init packer/
+packer build -var "gridwolf_version=$GRIDWOLF_VERSION" \
+             -var "dockerhub_username=$DOCKERHUB_USERNAME" \
+             packer/gridwolf.pkr.hcl
+# → output/gridwolf-v1.0.0-amd64.ova
+```
+
+---
+
+### Option 3: AWS Marketplace
+
+One-click deploy via CloudFormation. Gridwolf runs on a single EC2 instance with an encrypted EBS data volume.
+
+**From AWS Console:**
+1. Open [CloudFormation → Create Stack → With new resources](https://console.aws.amazon.com/cloudformation/home#/stacks/create)
+2. Upload `deploy/aws/gridwolf.template.yaml`
+3. Fill in: `KeyPairName`, `InstanceType` (default `t3.large`), `GridwolfVersion`
+4. Deploy — done in ~5 minutes
+
+**Via AWS CLI:**
+```bash
+aws cloudformation create-stack \
+  --stack-name gridwolf \
+  --template-body file://deploy/aws/gridwolf.template.yaml \
+  --parameters \
+    ParameterKey=KeyPairName,ParameterValue=<your-key-pair> \
+    ParameterKey=InstanceType,ParameterValue=t3.large \
+    ParameterKey=GridwolfVersion,ParameterValue=latest \
+  --capabilities CAPABILITY_IAM
+
+# Get the URL when complete:
+aws cloudformation describe-stacks --stack-name gridwolf \
+  --query 'Stacks[0].Outputs'
+```
+
+**Recommended instance sizes:**
+
+| Workload | Instance | vCPU | RAM |
+|---|---|---|---|
+| Evaluation | t3.medium | 2 | 4 GB |
+| Standard | t3.large | 2 | 8 GB |
+| Heavy PCAP | c5.2xlarge | 8 | 16 GB |
+
+The admin password is in the EC2 instance system log (first boot only):
+```bash
+aws ec2 get-console-output --instance-id <id> --query Output --output text | grep -A1 Password
+```
+
+---
+
+### Option 4: Azure Marketplace
+
+Deploy to an Azure VM using Bicep (ARM template).
+
+```bash
+# Create resource group
+az group create --name gridwolf-rg --location eastus
+
+# Deploy
+az deployment group create \
+  --resource-group gridwolf-rg \
+  --template-file deploy/azure/gridwolf.bicep \
+  --parameters \
+    adminPasswordOrKey="$(cat ~/.ssh/id_rsa.pub)" \
+    authenticationType=sshPublicKey \
+    vmSize=Standard_D2s_v3 \
+    gridwolfVersion=latest
+
+# Get the public URL
+az deployment group show \
+  --resource-group gridwolf-rg \
+  --name gridwolf \
+  --query properties.outputs
+```
+
+The admin password is in the VM boot diagnostics on first run:
+```bash
+az vm boot-diagnostics get-boot-log --resource-group gridwolf-rg --name gridwolf-vm \
+  | grep -A1 Password
+```
+
+**Recommended VM sizes:**
+
+| Workload | VM Size | vCPU | RAM |
+|---|---|---|---|
+| Evaluation | Standard_B2s | 2 | 4 GB |
+| Standard | Standard_D2s_v3 | 2 | 8 GB |
+| Heavy PCAP | Standard_F4s_v2 | 4 | 8 GB |
+
+---
+
+### Option 5: Source / Developer Setup
+
+```bash
+# 1. Clone
 git clone https://github.com/valinorintelligence/Gridwolf.git
 cd Gridwolf
 
-# 2. Start the Backend
+# 2. Backend
 cd backend
-python3 -m pip install -e ".[dev]"
-python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+pip install -e ".[dev]"
+cp ../.env.example .env    # set GRIDWOLF_SECRET_KEY + GRIDWOLF_DEBUG=true
+uvicorn app.main:app --reload --port 8000
 
-# 3. In a new terminal — Start the Frontend
+# 3. Frontend (new terminal)
 cd frontend
 npm install
 npm run dev
+# → http://localhost:5173
 ```
 
-- **Backend API**: http://localhost:8000 (Swagger docs at `/docs`)
-- **Frontend UI**: http://localhost:5174
-- **Demo Login**: Click "Demo Login" on the login page — no credentials needed
+**Optional backend extras:**
+```bash
+pip install -e ".[pdf]"       # PDF report generation (WeasyPrint)
+pip install -e ".[postgres]"  # PostgreSQL async driver
+pip install -e ".[full]"      # everything
+```
 
-### Backend Optional Dependencies
+**Production Docker build from source:**
+```bash
+cp .env.example .env   # fill in secrets
+docker compose -f docker-compose.prod.yml up --build
+```
+
+---
+
+### First-Run Admin Account
+
+On a **fresh installation** (empty database), Gridwolf automatically creates an admin account at startup.
+
+- **Username:** `admin` (override with `GRIDWOLF_ADMIN_USERNAME`)
+- **Password:** auto-generated random password printed **once** to the backend log
+- **Retrieve it:**
 
 ```bash
-# For PDF report generation
-pip install "gridwolf[pdf]"
+# Docker Hub / Compose
+docker compose logs backend | grep -A1 "Password"
 
-# For PostgreSQL (production deployments)
-pip install "gridwolf[postgres]"
+# AWS
+aws ec2 get-console-output --instance-id <id> --output text | grep -A1 Password
 
-# Install everything
-pip install "gridwolf[full]"
+# Azure
+az vm boot-diagnostics get-boot-log -g gridwolf-rg -n gridwolf-vm | grep -A1 Password
+
+# OVA
+# Shown directly in the first-boot wizard on the VM console
 ```
 
-### Environment Variables
+Set your own password by adding `GRIDWOLF_ADMIN_PASSWORD=<value>` to `.env` before first start.
 
-Create `backend/.env` for backend configuration:
+---
 
-```env
-GRIDWOLF_DATABASE_URL=sqlite+aiosqlite:///./gridwolf.db
-GRIDWOLF_SECRET_KEY=your-secret-key-change-in-production
-GRIDWOLF_NVD_API_KEY=your-nvd-api-key        # Optional: for faster CVE lookups
-GRIDWOLF_DEBUG=true
-```
+### Environment Variables Reference
 
-Create `frontend/.env.local` for frontend overrides:
+See [`.env.example`](.env.example) for the full list. Essential variables:
 
-```env
-VITE_API_URL=http://localhost:8000
-VITE_DEMO_MODE=true
-```
+| Variable | Required | Description |
+|---|---|---|
+| `GRIDWOLF_SECRET_KEY` | **Yes** | JWT signing key — min 32 chars. Generate: `python3 -c "import secrets; print(secrets.token_urlsafe(64))"` |
+| `POSTGRES_PASSWORD` | Yes (prod) | PostgreSQL password. Generate: `openssl rand -hex 32` |
+| `GRIDWOLF_DATABASE_URL` | No | Default: SQLite. For PostgreSQL: `postgresql+asyncpg://gridwolf:<pw>@postgres:5432/gridwolf` |
+| `GRIDWOLF_CORS_ORIGINS` | No | JSON array of allowed origins. Default: `["http://localhost"]` |
+| `GRIDWOLF_ADMIN_PASSWORD` | No | First-run admin password. Auto-generated if blank. |
+| `GRIDWOLF_NVD_API_KEY` | No | Speeds up CVE lookups. Free at [nvd.nist.gov](https://nvd.nist.gov/developers/request-an-api-key) |
+| `GRIDWOLF_DEBUG` | No | `true` only on dev machines. Default: `false` |
 
 ---
 

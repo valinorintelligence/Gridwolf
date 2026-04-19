@@ -9,6 +9,7 @@ logger = logging.getLogger(__name__)
 
 class Settings(BaseSettings):
     APP_NAME: str = "Gridwolf"
+    APP_VERSION: str = "1.0.0"
     DEBUG: bool = False
     DATABASE_URL: str = "sqlite+aiosqlite:///./gridwolf.db"
     REDIS_URL: str = "redis://localhost:6379/0"
@@ -18,6 +19,12 @@ class Settings(BaseSettings):
     NVD_API_KEY: str = ""
     UPLOAD_DIR: str = "./uploads"
     REPORTS_DIR: str = "./reports"
+
+    # First-run admin account (created automatically if no users exist)
+    ADMIN_USERNAME: str = "admin"
+    ADMIN_EMAIL: str = "admin@gridwolf.local"
+    # If left blank a random password is generated and printed to stdout once
+    ADMIN_PASSWORD: str = ""
 
     def model_post_init(self, __context) -> None:
         if not self.SECRET_KEY:

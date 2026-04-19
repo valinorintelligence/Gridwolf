@@ -82,9 +82,14 @@ echo "  Starting services..."
 cd "$INSTALL_DIR"
 docker compose --env-file "$ENV_FILE" up -d
 
-# Wait for backend health
-for i in $(seq 1 30); do
-  if curl -sf "http://localhost:8000/health" &>/dev/null; then
+# Wait for backend health (up to 80s)
+ADMIN_PASSWORD_SHOWN=""
+for i in $(seq 1 40); do
+  if curl -sf "http://localhost:8000/health" 2>/dev/null | grep -q '"status":"ok"'; then
+    # Scrape the auto-generated admin password from backend startup logs
+    ADMIN_PASSWORD_SHOWN=$(docker compose -f "$INSTALL_DIR/docker-compose.yml" \
+      --env-file "$ENV_FILE" logs backend 2>/dev/null \
+      | grep -A1 "Password " | grep -v "Password" | tr -d ' \r' | head -1 || true)
     break
   fi
   sleep 2
@@ -96,6 +101,7 @@ touch "$DONE_FLAG"
 # Disable this service so it never runs again
 systemctl disable gridwolf-setup.service 2>/dev/null || true
 
+SHOW_PASS="${ADMIN_PASSWORD_SHOWN:-check container logs: docker compose logs backend}"
 clear
 cat <<EOF
 
@@ -105,9 +111,11 @@ cat <<EOF
   ║  Open your browser:  http://${HOST}
   ║  API docs:           http://${HOST}/api/docs
   ║                                                              ║
-  ║  Default credentials:                                        ║
+  ║  First-run admin credentials:                                ║
   ║    Username:  admin                                          ║
-  ║    Password:  (the password you just set)                    ║
+  ║    Password:  ${SHOW_PASS}
+  ║                                                              ║
+  ║  Change this password immediately after first login.         ║
   ╚══════════════════════════════════════════════════════════════╝
 
 EOF

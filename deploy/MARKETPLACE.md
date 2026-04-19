@@ -26,17 +26,14 @@ deploy/azure/
 
 ### Build the submission ZIP
 
-```bash
-# Requires: az CLI with bicep extension installed
-az bicep build --file deploy/azure/gridwolf.bicep \
-  --outfile deploy/azure/mainTemplate.json
+A one-shot script handles bicep compilation + JSON validation + zip assembly:
 
-cd deploy/azure
-zip ../gridwolf-azure-app.zip \
-  mainTemplate.json \
-  createUiDefinition.json \
-  viewDefinition.json
+```bash
+deploy/azure/build-marketplace-zip.sh            # derives version from latest git tag
+deploy/azure/build-marketplace-zip.sh 1.1.0      # or pin it explicitly
 ```
+
+The result lands in `dist/gridwolf-azure-app-<version>.zip`.
 
 ### Validate locally before upload
 
@@ -128,8 +125,11 @@ submit a variant that:
 3. Keeps the same parameters for `InstanceType`, `KeyPairName`, `AllowedCidr`,
    and `DataVolumeSizeGB` so the UX matches.
 
-Save that variant as `deploy/aws/gridwolf.marketplace.template.yaml` before
-uploading to the seller portal.
+That variant is shipped in-repo at
+[`deploy/aws/gridwolf.marketplace.template.yaml`](aws/gridwolf.marketplace.template.yaml) —
+it's the one to upload to the seller portal. The self-launch template at
+`deploy/aws/gridwolf.template.yaml` stays as-is for direct customers who
+don't want to go through Marketplace.
 
 ### Submission checklist
 

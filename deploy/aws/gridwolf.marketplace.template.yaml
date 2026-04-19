@@ -1,0 +1,180 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Gridwolf ICS/OT Security Platform — AWS Marketplace edition.
+  Launches a pre-baked Gridwolf AMI (published via Marketplace) with a
+  security group, Elastic IP, and retained EBS data volume. No Docker Hub
+  pulls at boot — Gridwolf is installed in the AMI and started by systemd.
+
+# ── Marketplace metadata ──────────────────────────────────────────────────────
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label: { default: "Gridwolf AMI" }
+        Parameters: [AmiId]
+      - Label: { default: "Instance configuration" }
+        Parameters: [InstanceType, KeyPairName, AllowedCidr, DataVolumeSizeGB]
+    ParameterLabels:
+      AmiId:              { default: "Gridwolf AMI (auto-populated by Marketplace)" }
+      InstanceType:       { default: "Instance type" }
+      KeyPairName:        { default: "SSH key pair" }
+      AllowedCidr:        { default: "Web UI allowed CIDR" }
+      DataVolumeSizeGB:   { default: "Persistent data volume (GB)" }
+
+# ── Parameters ────────────────────────────────────────────────────────────────
+Parameters:
+  AmiId:
+    Type: AWS::EC2::Image::Id
+    Description: >
+      Gridwolf AMI. AWS Marketplace auto-populates this with the product AMI
+      for the selected region. Do not override unless you've built a custom
+      AMI with the Packer template in the Gridwolf repo.
+
+  InstanceType:
+    Type: String
+    Default: t3.large
+    AllowedValues: [t3.medium, t3.large, t3.xlarge, c5.2xlarge, c5.4xlarge]
+    Description: >
+      t3.medium  — evaluation (2 vCPU, 4 GB)
+      t3.large   — standard (2 vCPU, 8 GB)
+      c5.2xlarge — heavy PCAP workloads (8 vCPU, 16 GB)
+
+  KeyPairName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: SSH key pair for admin access (port 22)
+
+  AllowedCidr:
+    Type: String
+    Default: "0.0.0.0/0"
+    AllowedPattern: "^([0-9]{1,3}\\.){3}[0-9]{1,3}(/([0-9]|[1-2][0-9]|3[0-2]))$"
+    ConstraintDescription: Must be a valid IPv4 CIDR (e.g. 203.0.113.0/24)
+    Description: CIDR range allowed to reach the web UI. Restrict for production.
+
+  DataVolumeSizeGB:
+    Type: Number
+    Default: 64
+    MinValue: 20
+    MaxValue: 2000
+    Description: EBS data volume size in GB (PCAP storage, database). Retained across instance replacements.
+
+# ── Resources ─────────────────────────────────────────────────────────────────
+Resources:
+
+  GridwolfSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Gridwolf ICS Security Platform — Marketplace edition
+      SecurityGroupIngress:
+        - { IpProtocol: tcp, FromPort: 80,  ToPort: 80,  CidrIp: !Ref AllowedCidr, Description: "HTTP (Gridwolf UI)" }
+        - { IpProtocol: tcp, FromPort: 443, ToPort: 443, CidrIp: !Ref AllowedCidr, Description: "HTTPS" }
+        - { IpProtocol: tcp, FromPort: 22,  ToPort: 22,  CidrIp: !Ref AllowedCidr, Description: "SSH admin access" }
+      Tags:
+        - { Key: Name, Value: !Sub "gridwolf-sg-${AWS::StackName}" }
+
+  GridwolfEIP:
+    Type: AWS::EC2::EIP
+    Properties: { Domain: vpc }
+
+  GridwolfDataVolume:
+    Type: AWS::EC2::Volume
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      AvailabilityZone: !GetAtt GridwolfInstance.AvailabilityZone
+      Size: !Ref DataVolumeSizeGB
+      VolumeType: gp3
+      Encrypted: true
+      Tags:
+        - { Key: Name, Value: !Sub "gridwolf-data-${AWS::StackName}" }
+
+  GridwolfVolumeAttachment:
+    Type: AWS::EC2::VolumeAttachment
+    Properties:
+      Device: /dev/xvdf
+      InstanceId: !Ref GridwolfInstance
+      VolumeId: !Ref GridwolfDataVolume
+
+  GridwolfEIPAssociation:
+    Type: AWS::EC2::EIPAssociation
+    Properties:
+      EIP: !Ref GridwolfEIP
+      InstanceId: !Ref GridwolfInstance
+
+  GridwolfRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { Service: ec2.amazonaws.com }
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
+
+  GridwolfInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles: [!Ref GridwolfRole]
+
+  GridwolfInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref KeyPairName
+      # AMI is Marketplace-provided: Gridwolf, Docker, systemd unit, and
+      # first-boot scripts are baked in. No docker pull at launch.
+      ImageId: !Ref AmiId
+      IamInstanceProfile: !Ref GridwolfInstanceProfile
+      SecurityGroupIds: [!GetAtt GridwolfSG.GroupId]
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeSize: 20
+            VolumeType: gp3
+            Encrypted: true
+            DeleteOnTermination: true
+      Tags:
+        - { Key: Name, Value: !Sub "gridwolf-${AWS::StackName}" }
+        - { Key: Application, Value: Gridwolf }
+        - { Key: Channel, Value: aws-marketplace }
+      # Minimal user-data: just mount the persistent volume. The AMI's
+      # first-boot service (/usr/lib/systemd/system/gridwolf-firstboot.service)
+      # handles the rest — generates secrets, seeds the admin account, and
+      # prints credentials to the serial console.
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          set -euo pipefail
+          DATA_DEV=/dev/xvdf
+          DATA_MOUNT=/opt/gridwolf/data
+          if ! blkid "$DATA_DEV" &>/dev/null; then
+            mkfs.ext4 -L gridwolf-data "$DATA_DEV"
+          fi
+          mkdir -p "$DATA_MOUNT"
+          grep -q gridwolf-data /etc/fstab || \
+            echo "LABEL=gridwolf-data  $DATA_MOUNT  ext4  defaults,nofail  0 2" >> /etc/fstab
+          mount -a
+          # Kick the first-boot service now that the data disk is mounted.
+          systemctl start gridwolf-firstboot.service || true
+
+# ── Outputs ───────────────────────────────────────────────────────────────────
+Outputs:
+  WebUI:
+    Description: Gridwolf web interface URL
+    Value: !Sub "http://${GridwolfEIP}"
+
+  APIDoc:
+    Description: Gridwolf REST API documentation
+    Value: !Sub "http://${GridwolfEIP}/api/docs"
+
+  SSHCommand:
+    Description: SSH access command — retrieve admin password from /opt/gridwolf/admin-credentials.txt
+    Value: !Sub "ssh -i ${KeyPairName}.pem ubuntu@${GridwolfEIP}"
+
+  GetAdminPassword:
+    Description: One-liner to retrieve the auto-generated admin password
+    Value: !Sub "ssh -i ${KeyPairName}.pem ubuntu@${GridwolfEIP} 'sudo cat /opt/gridwolf/admin-credentials.txt'"
+
+  PublicIP:
+    Description: Gridwolf public IP address (static, retained across stack updates)
+    Value: !Ref GridwolfEIP

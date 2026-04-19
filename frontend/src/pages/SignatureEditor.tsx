@@ -82,7 +82,7 @@ export default function SignatureEditor() {
     }
   };
 
-  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+  useEffect(() => { load();   }, []);
 
   const selectSig = (s: Signature) => {
     if (dirty && !confirm('Discard unsaved changes?')) return;

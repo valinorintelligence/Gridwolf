@@ -1,12 +1,12 @@
-from __future__ import annotations
 """Device Inventory & Topology API endpoints."""
+from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select
 
 from app.core.database import get_db
-from app.models.ics import Device, Connection, Session
+from app.models.ics import Device, Connection
 
 router = APIRouter(prefix="/devices", tags=["Devices"])
 

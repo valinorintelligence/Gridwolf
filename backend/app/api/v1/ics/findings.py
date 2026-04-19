@@ -1,5 +1,5 @@
-from __future__ import annotations
 """Security Findings, CVE Lookup, and Report Generation API endpoints."""
+from __future__ import annotations
 
 import os
 from fastapi import APIRouter, Depends, HTTPException, Query

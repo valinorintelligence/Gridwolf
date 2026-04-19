@@ -1,14 +1,12 @@
-from __future__ import annotations
 """
 CVE Lookup Engine — Query NVD API and local cache for ICS vulnerabilities.
 """
+from __future__ import annotations
 
 import logging
-import json
 import os
 from pathlib import Path
 from typing import Optional
-from datetime import datetime, timezone
 
 try:
     import httpx

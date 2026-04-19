@@ -1,11 +1,11 @@
-from __future__ import annotations
 """ICS/SCADA-specific database models for Gridwolf."""
+from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
 from sqlalchemy import (
     Column, String, Integer, Float, Boolean, DateTime, Text,
-    ForeignKey, JSON, Enum as SAEnum, Index
+    ForeignKey, JSON, Index
 )
 from sqlalchemy.orm import relationship
 from app.core.database import Base

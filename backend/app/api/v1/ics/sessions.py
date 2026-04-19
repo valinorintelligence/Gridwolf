@@ -1,5 +1,5 @@
-from __future__ import annotations
 """Session & Project Management API endpoints."""
+from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel

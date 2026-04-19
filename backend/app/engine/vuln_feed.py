@@ -1,4 +1,3 @@
-from __future__ import annotations
 """
 ICS/OT Vulnerability Intelligence Feed Engine
 
@@ -16,11 +15,10 @@ Enriches each advisory with:
   - CISA KEV (Known Exploited Vulnerabilities) status
   - EPSS (Exploit Prediction Scoring System) probability from FIRST.org
 """
+from __future__ import annotations
 
 import logging
 import hashlib
-import re
-from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 from dataclasses import dataclass, field, asdict
 

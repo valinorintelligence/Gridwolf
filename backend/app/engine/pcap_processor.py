@@ -1,19 +1,18 @@
-from __future__ import annotations
 """
 PCAP Processing Engine — Real packet analysis using Scapy.
 
 Pipeline: Ingest → Dissect → Topology → Risk
 """
+from __future__ import annotations
 
 import os
-import struct
 import logging
 from datetime import datetime, timezone
 from typing import Optional
 from collections import defaultdict
 
 try:
-    from scapy.all import rdpcap, PcapReader, sniff, IP, TCP, UDP, Ether, DNS, DNSQR, Raw
+    from scapy.all import rdpcap, PcapReader, IP, TCP, UDP, Ether, DNS, DNSQR, Raw
     SCAPY_AVAILABLE = True
     # pcapng support (Scapy 2.5+)
     try:
@@ -25,6 +24,11 @@ except ImportError:
     SCAPY_AVAILABLE = False
     PCAPNG_AVAILABLE = False
 
+from app.engine.protocol_parsers import (
+    parse_modbus, parse_s7comm, parse_enip, parse_dnp3,
+    parse_bacnet, parse_iec104, identify_protocol, OUI_VENDORS
+)
+
 # Valid PCAP/PCAPNG magic bytes
 PCAP_MAGIC_LE = b'\xd4\xc3\xb2\xa1'      # pcap little-endian
 PCAP_MAGIC_BE = b'\xa1\xb2\xc3\xd4'      # pcap big-endian
@@ -32,12 +36,6 @@ PCAP_MAGIC_NS_LE = b'\x4d\x3c\xb2\xa1'   # pcap nanosecond LE
 PCAP_MAGIC_NS_BE = b'\xa1\xb2\x3c\x4d'   # pcap nanosecond BE
 PCAPNG_MAGIC = b'\x0a\x0d\x0d\x0a'        # pcapng Section Header Block
 VALID_PCAP_MAGICS = {PCAP_MAGIC_LE, PCAP_MAGIC_BE, PCAP_MAGIC_NS_LE, PCAP_MAGIC_NS_BE}
-
-from app.engine.protocol_parsers import (
-    parse_modbus, parse_s7comm, parse_enip, parse_dnp3,
-    parse_bacnet, parse_iec104, identify_protocol, ICS_PORTS,
-    OUI_VENDORS
-)
 
 logger = logging.getLogger(__name__)
 
@@ -140,7 +138,7 @@ class PcapProcessor:
                         self._process_packet(pkt)
                     reader.close()
                 else:
-                    logger.info(f"Trying rdpcap (loads entire file into memory)...")
+                    logger.info("Trying rdpcap (loads entire file into memory)...")
                     packets = rdpcap(filepath)
                     for pkt in packets:
                         self._process_packet(pkt)

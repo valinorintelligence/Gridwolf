@@ -1,4 +1,3 @@
-from __future__ import annotations
 """
 ICS/OT Vulnerability Intelligence Feed API
 
@@ -14,6 +13,7 @@ Endpoints:
   GET    /advisories/export/csv    Export advisories as CSV
   GET    /advisories/sources       List available feed sources
 """
+from __future__ import annotations
 
 import logging
 from typing import Optional, List

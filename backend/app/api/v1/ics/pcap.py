@@ -1,7 +1,7 @@
-from __future__ import annotations
 """
 PCAP Upload & Analysis API endpoints.
 """
+from __future__ import annotations
 
 import os
 import uuid
@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.core.database import get_db
-from app.models.ics import PcapFile, Session, Device, Connection, Finding, ProtocolAnalysis
+from app.models.ics import PcapFile, Session, Device, Connection, Finding
 from app.engine.pcap_processor import PcapProcessor
 
 logger = logging.getLogger(__name__)

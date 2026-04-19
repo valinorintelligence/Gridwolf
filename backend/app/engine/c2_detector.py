@@ -1,4 +1,3 @@
-from __future__ import annotations
 """
 C2/Beacon/Exfiltration Detection Engine.
 
@@ -7,11 +6,11 @@ Techniques:
 - Shannon entropy analysis for DNS exfiltration
 - Asymmetric flow analysis for data staging/exfil
 """
+from __future__ import annotations
 
 import math
 import logging
 from collections import defaultdict
-from datetime import datetime, timezone
 from typing import Optional
 
 logger = logging.getLogger(__name__)

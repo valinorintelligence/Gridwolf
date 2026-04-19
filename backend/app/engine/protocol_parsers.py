@@ -7,7 +7,6 @@ Supports: Modbus TCP, S7comm, EtherNet/IP (CIP), DNP3, BACnet, IEC 104
 import struct
 import logging
 from datetime import datetime
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -255,7 +254,7 @@ def parse_s7comm(payload: bytes, src_ip: str, dst_ip: str, ts: datetime) -> list
         if payload[0] != 0x03:
             return events
 
-        tpkt_len = struct.unpack_from(">H", payload, 2)[0]
+        tpkt_len = struct.unpack_from(">H", payload, 2)[0]  # noqa: F841 (parsed protocol field, kept for clarity)
 
         # COTP header: length (1) + PDU type (1)
         cotp_len = payload[4]
@@ -398,7 +397,7 @@ def parse_dnp3(payload: bytes, src_ip: str, dst_ip: str, ts: datetime) -> list[d
         if start != 0x6405:  # 0x0564 little-endian
             return events
 
-        length = payload[2]
+        length = payload[2]  # noqa: F841 (parsed protocol field, kept for clarity)
         control = payload[3]
         dest_addr = struct.unpack_from("<H", payload, 4)[0]
         source_addr = struct.unpack_from("<H", payload, 6)[0]
@@ -407,10 +406,10 @@ def parse_dnp3(payload: bytes, src_ip: str, dst_ip: str, ts: datetime) -> list[d
 
         # Transport layer starts at offset 10 (after DLL + CRC)
         if len(payload) > 12:
-            transport_byte = payload[10]
+            transport_byte = payload[10]  # noqa: F841 (parsed protocol field, kept for clarity)
             # Application layer
             if len(payload) > 13:
-                app_control = payload[11]
+                app_control = payload[11]  # noqa: F841 (parsed protocol field, kept for clarity)
                 func_code = payload[12]
 
                 fc_info = DNP3_FUNCTION_CODES.get(func_code, (f"FC 0x{func_code:02X}", False))
@@ -475,7 +474,7 @@ def parse_bacnet(payload: bytes, src_ip: str, dst_ip: str, ts: datetime) -> list
         # BACnet/IP: Type (1) + Function (1) + Length (2)
         bvlc_type = payload[0]
         bvlc_function = payload[1]
-        bvlc_length = struct.unpack_from(">H", payload, 2)[0]
+        bvlc_length = struct.unpack_from(">H", payload, 2)[0]  # noqa: F841 (parsed protocol field, kept for clarity)
 
         if bvlc_type != 0x81:  # Not BACnet/IP
             return events
@@ -483,7 +482,7 @@ def parse_bacnet(payload: bytes, src_ip: str, dst_ip: str, ts: datetime) -> list
         # NPDU starts after BVLC header
         npdu_offset = 4
         if len(payload) > npdu_offset + 2:
-            npdu_version = payload[npdu_offset]
+            npdu_version = payload[npdu_offset]  # noqa: F841 (parsed protocol field, kept for clarity)
 
             # APDU follows NPDU
             apdu_offset = npdu_offset + 2  # simplified
@@ -553,7 +552,7 @@ def parse_iec104(payload: bytes, src_ip: str, dst_ip: str, ts: datetime) -> list
         if start_byte != 0x68:
             return events
 
-        apdu_length = payload[1]
+        apdu_length = payload[1]  # noqa: F841 (parsed protocol field, kept for clarity)
 
         # Determine APDU type from first control field byte
         cf1 = payload[2]

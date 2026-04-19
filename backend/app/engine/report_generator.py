@@ -1,13 +1,12 @@
-from __future__ import annotations
 """
 PDF Report Generator for ICS/SCADA Security Assessments.
 
 Generates professional PDF reports using HTML templates + WeasyPrint,
 with fallback to simple HTML if WeasyPrint is not available.
 """
+from __future__ import annotations
 
 import os
-import html
 import logging
 from datetime import datetime, timezone
 from pathlib import Path

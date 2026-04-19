@@ -1,7 +1,7 @@
 from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
-from typing import Optional, List, Dict
+from typing import Optional, List
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Index, String, Text, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship

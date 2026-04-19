@@ -1,17 +1,22 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# Gridwolf — Docker Hub multi-arch build & push
+# Gridwolf — Docker Hub multi-arch build, push & keyless cosign signing
 #
 # Triggers:
-#   • Push of any  v*.*.*  tag  →  builds :latest + :<version>
-#   • Manual workflow dispatch  →  builds :edge
+#   • Push of any  v*.*.*  tag  →  builds :latest + :<version>, signs both
+#   • Manual workflow dispatch  →  builds :edge (unsigned)
 #
 # Required GitHub repository secrets:
 #   DOCKERHUB_USERNAME   — Docker Hub user / org (e.g. gridwolf)
 #   DOCKERHUB_TOKEN      — Docker Hub access token (not your password)
 #
 # Images produced:
-#   gridwolf/backend:<version>   linux/amd64  linux/arm64
-#   gridwolf/frontend:<version>  linux/amd64  linux/arm64
+#   gridwolf/backend:<version>   linux/amd64  linux/arm64   (cosign-signed)
+#   gridwolf/frontend:<version>  linux/amd64  linux/arm64   (cosign-signed)
+#
+# Verification (consumer side):
+#   cosign verify gridwolf/backend:1.0.0 \
+#     --certificate-identity-regexp='^https://github.com/valinorintelligence/Gridwolf' \
+#     --certificate-oidc-issuer='https://token.actions.githubusercontent.com'
 # ─────────────────────────────────────────────────────────────────────────────
 
 name: Build & Push to Docker Hub
@@ -30,6 +35,7 @@ on:
 env:
   BACKEND_IMAGE:  ${{ secrets.DOCKERHUB_USERNAME }}/backend
   FRONTEND_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/frontend
+  COSIGN_YES: "true"   # skip the interactive OIDC prompt (we're non-interactive)
 
 jobs:
   # ── Derive the tag names ───────────────────────────────────────────────────
@@ -43,12 +49,12 @@ jobs:
       - id: tag
         run: |
           if [[ "${{ github.event_name }}" == "push" ]]; then
-            VERSION="${GITHUB_REF_NAME}"          # e.g. v0.9.8
+            VERSION="${GITHUB_REF_NAME}"          # e.g. v1.0.0
           else
             VERSION="${{ github.event.inputs.tag || 'edge' }}"
           fi
           IS_SEMVER=$([[ "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+ ]] && echo "true" || echo "false")
-          echo "version=$VERSION"   >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION"     >> "$GITHUB_OUTPUT"
           echo "is_semver=$IS_SEMVER" >> "$GITHUB_OUTPUT"
 
   # ── Backend image ──────────────────────────────────────────────────────────
@@ -56,6 +62,9 @@ jobs:
     name: Backend — ${{ needs.meta.outputs.version }}
     needs: meta
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write   # required for cosign keyless signing via Sigstore
     steps:
       - uses: actions/checkout@v4
 
@@ -64,6 +73,12 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+
+      - name: Install cosign
+        if: needs.meta.outputs.is_semver == 'true'
+        uses: sigstore/cosign-installer@v3
+        with:
+          cosign-release: v2.2.4
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
@@ -83,6 +98,7 @@ jobs:
             type=raw,value=${{ needs.meta.outputs.version }},enable=${{ needs.meta.outputs.is_semver == 'false' }}
 
       - name: Build & push backend
+        id: build
         uses: docker/build-push-action@v5
         with:
           context: ./backend
@@ -91,14 +107,32 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          provenance: true
+          sbom: true
           cache-from: type=gha
           cache-to:   type=gha,mode=max
+
+      - name: Sign backend image (keyless OIDC via Sigstore)
+        if: needs.meta.outputs.is_semver == 'true'
+        env:
+          TAGS:   ${{ steps.meta.outputs.tags }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          # Sign each tag by digest — one signature covers the multi-arch manifest list.
+          echo "${TAGS}" | while IFS= read -r tag; do
+            [ -n "$tag" ] || continue
+            echo "→ cosign sign ${tag}@${DIGEST}"
+            cosign sign --yes "${tag}@${DIGEST}"
+          done
 
   # ── Frontend image ─────────────────────────────────────────────────────────
   frontend:
     name: Frontend — ${{ needs.meta.outputs.version }}
     needs: meta
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v4
 
@@ -107,6 +141,12 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+
+      - name: Install cosign
+        if: needs.meta.outputs.is_semver == 'true'
+        uses: sigstore/cosign-installer@v3
+        with:
+          cosign-release: v2.2.4
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
@@ -126,6 +166,7 @@ jobs:
             type=raw,value=${{ needs.meta.outputs.version }},enable=${{ needs.meta.outputs.is_semver == 'false' }}
 
       - name: Build & push frontend
+        id: build
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -134,8 +175,22 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          provenance: true
+          sbom: true
           cache-from: type=gha
           cache-to:   type=gha,mode=max
+
+      - name: Sign frontend image (keyless OIDC via Sigstore)
+        if: needs.meta.outputs.is_semver == 'true'
+        env:
+          TAGS:   ${{ steps.meta.outputs.tags }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          echo "${TAGS}" | while IFS= read -r tag; do
+            [ -n "$tag" ] || continue
+            echo "→ cosign sign ${tag}@${DIGEST}"
+            cosign sign --yes "${tag}@${DIGEST}"
+          done
 
   # ── Summary comment on the GitHub release ─────────────────────────────────
   release-note:
@@ -151,23 +206,33 @@ jobs:
           script: |
             const version = '${{ needs.meta.outputs.version }}';
             const user    = '${{ secrets.DOCKERHUB_USERNAME }}';
+            const repo    = '${{ github.repository }}';
             const body = [
               `## 🐳 Docker Hub images`,
               ``,
               `\`\`\`bash`,
               `# Quick-start (no source needed)`,
-              `curl -O https://raw.githubusercontent.com/${{ github.repository }}/main/docker-compose.hub.yml`,
-              `curl -O https://raw.githubusercontent.com/${{ github.repository }}/main/.env.example`,
+              `curl -O https://raw.githubusercontent.com/${repo}/main/docker-compose.hub.yml`,
+              `curl -O https://raw.githubusercontent.com/${repo}/main/.env.example`,
               `cp .env.example .env   # edit: set SECRET_KEY and POSTGRES_PASSWORD`,
               `docker compose -f docker-compose.hub.yml up -d`,
               `\`\`\``,
               ``,
-              `| Image | Tag |`,
-              `|---|---|`,
-              `| \`${user}/backend\`  | \`${version}\` / \`latest\` |`,
-              `| \`${user}/frontend\` | \`${version}\` / \`latest\` |`,
+              `| Image | Tag | Platforms |`,
+              `|---|---|---|`,
+              `| \`${user}/backend\`  | \`${version}\` / \`latest\` | \`linux/amd64\` · \`linux/arm64\` |`,
+              `| \`${user}/frontend\` | \`${version}\` / \`latest\` | \`linux/amd64\` · \`linux/arm64\` |`,
               ``,
-              `Platforms: \`linux/amd64\` · \`linux/arm64\``,
+              `### 🔐 Verify signatures (cosign keyless)`,
+              ``,
+              `\`\`\`bash`,
+              `cosign verify ${user}/backend:${version} \\`,
+              `  --certificate-identity-regexp='^https://github.com/${repo}' \\`,
+              `  --certificate-oidc-issuer='https://token.actions.githubusercontent.com'`,
+              `\`\`\``,
+              ``,
+              `Images are signed keyless via Sigstore — no public key required.`,
+              `Provenance (SLSA) and SBOM attestations are attached to every image.`,
             ].join('\n');
 
             const releases = await github.rest.repos.listReleases({

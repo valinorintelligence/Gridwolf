@@ -90,6 +90,22 @@ We will not pursue legal action against researchers who:
 
 ---
 
+## Image Signature Verification
+
+All `gridwolf/backend` and `gridwolf/frontend` images tagged `v1.1.0` or
+later are signed via [Sigstore cosign](https://docs.sigstore.dev/) using
+keyless OIDC — no public key distribution required. Verify before pulling:
+
+```bash
+cosign verify gridwolf/backend:1.1.0 \
+  --certificate-identity-regexp='^https://github.com/valinorintelligence/Gridwolf' \
+  --certificate-oidc-issuer='https://token.actions.githubusercontent.com'
+```
+
+Each image also ships SLSA provenance and a CycloneDX SBOM as attestations.
+
+---
+
 ## Hardening Guidance for Operators
 
 If you deploy Gridwolf, we recommend:

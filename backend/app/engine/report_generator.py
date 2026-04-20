@@ -7,8 +7,9 @@ with fallback to simple HTML if WeasyPrint is not available.
 
 from __future__ import annotations
 
-import os
+import html
 import logging
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -133,7 +134,10 @@ def _build_html_report(
             <td>{esc(", ".join(d.get("protocols", [])))}</td>
         </tr>"""
 
-    html = f"""<!DOCTYPE html>
+    # NOTE: variable name must NOT shadow the top-level `html` module,
+    # otherwise `esc()` above (which calls `html.escape`) resolves `html`
+    # to this local and raises NameError at call time.
+    html_doc = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -247,4 +251,4 @@ def _build_html_report(
 </body>
 </html>"""
 
-    return html
+    return html_doc

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   FileText, Download, Eye, Trash2, FileSpreadsheet, Shield,
   Check, Loader2, Lock, Calendar, User, Building2,
-  FileJson, Package, ClipboardList
+  FileJson, Package, ClipboardList, AlertCircle, CheckCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { api } from '@/services/api';
@@ -22,26 +22,26 @@ interface GeneratedReport {
   status: 'ready' | 'generating' | 'error';
 }
 
+// report_type values MUST match backend ReportRequest enum exactly:
+// full | executive | technical | compliance | delta
 const REPORT_TYPES = [
   { id: 'executive', label: 'Executive Summary', desc: 'High-level findings for management' },
   { id: 'full', label: 'Full Technical Assessment', desc: 'Comprehensive technical report' },
-  { id: 'device', label: 'Device Inventory Report', desc: 'All discovered devices and properties' },
+  { id: 'technical', label: 'Technical Deep-Dive', desc: 'Engineering-detail report with raw data' },
   { id: 'compliance', label: 'Compliance Report', desc: 'IEC 62443 / NIST 800-82 / NERC CIP' },
-  { id: 'findings', label: 'Findings & Remediation', desc: 'Security findings with fix guidance' },
+  { id: 'delta', label: 'Delta / Drift Report', desc: 'Change from prior assessment baseline' },
 ];
 
+// Section ids MUST match backend Valid list exactly:
+// all | compliance | cves | devices | executive_summary | findings | recommendations | topology
 const SECTIONS = [
-  { id: 'exec', label: 'Executive Summary', locked: true },
-  { id: 'topo', label: 'Network Topology Map' },
-  { id: 'assets', label: 'Asset Inventory' },
-  { id: 'protocols', label: 'Protocol Analysis Summary' },
-  { id: 'purdue', label: 'Purdue Model Assessment' },
+  { id: 'executive_summary', label: 'Executive Summary', locked: true },
+  { id: 'topology', label: 'Network Topology Map' },
+  { id: 'devices', label: 'Asset Inventory' },
   { id: 'findings', label: 'Security Findings (ATT&CK Mapped)' },
-  { id: 'cve', label: 'CVE Matches' },
+  { id: 'cves', label: 'CVE Matches' },
   { id: 'compliance', label: 'Compliance Status' },
-  { id: 'matrix', label: 'Communication Matrix' },
-  { id: 'remediation', label: 'Recommendations & Remediation' },
-  { id: 'appendix', label: 'Appendix: Raw Data Tables' },
+  { id: 'recommendations', label: 'Recommendations & Remediation' },
 ];
 
 const EXPORTS = [
@@ -67,6 +67,7 @@ export default function ReportGenerator() {
   const [generating, setGenerating] = useState(false);
   const [reports, setReports] = useState<GeneratedReport[]>([]);
   const [reportsLoading, setReportsLoading] = useState(true);
+  const [feedback, setFeedback] = useState<{ ok: boolean; message: string } | null>(null);
 
   const fetchReports = useCallback(async () => {
     try {
@@ -103,24 +104,47 @@ export default function ReportGenerator() {
   }, [fetchReports]);
 
   const handleGenerate = async () => {
-    if (!selectedSession) return;
+    setFeedback(null);
+    if (!selectedSession) {
+      setFeedback({
+        ok: false,
+        message: 'No source session selected. Upload a PCAP to create a session first.',
+      });
+      return;
+    }
     setGenerating(true);
     try {
+      // Field names and section/report_type enums must match the backend
+      // ReportRequest schema exactly; otherwise the endpoint 422s silently.
       const payload = {
-        report_type: reportType,
         session_id: selectedSession,
+        report_type: reportType,
+        client_name: clientName,
+        assessor_name: assessor,
         sections: Object.entries(sectionChecks)
           .filter(([, v]) => v)
           .map(([k]) => k),
-        client_name: clientName,
-        assessor,
-        classification,
       };
       await api.post('/ics/findings/reports/generate', payload);
-      // Refresh the reports list to show the newly generated report
+      setFeedback({ ok: true, message: 'Report generation started. Refreshing list...' });
       await fetchReports();
-    } catch {
-      // generation failed — user will see no new report appear
+    } catch (err: unknown) {
+      let message = 'Report generation failed.';
+      if (err && typeof err === 'object' && 'response' in err) {
+        const resp = (err as { response?: { data?: unknown } }).response;
+        const detail = (resp?.data as { detail?: unknown })?.detail;
+        if (typeof detail === 'string') {
+          message = detail;
+        } else if (Array.isArray(detail) && detail.length > 0) {
+          // Pydantic validation errors
+          message = detail
+            .map((d: { loc?: unknown[]; msg?: string }) =>
+              `${(d.loc ?? []).slice(-1)[0] ?? 'field'}: ${d.msg ?? 'invalid'}`,
+            )
+            .join('; ');
+        }
+      }
+      setFeedback({ ok: false, message });
     } finally {
       setGenerating(false);
     }
@@ -231,7 +255,31 @@ export default function ReportGenerator() {
             </div>
           </div>
 
-          <Button variant="primary" size="lg" className="w-full" onClick={handleGenerate} loading={generating}>
+          {feedback && (
+            <div
+              className={`flex items-start gap-2 rounded-md border p-3 text-xs ${
+                feedback.ok
+                  ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+                  : 'border-red-500/30 bg-red-500/10 text-red-300'
+              }`}
+            >
+              {feedback.ok ? (
+                <CheckCircle size={14} className="flex-shrink-0 mt-0.5" />
+              ) : (
+                <AlertCircle size={14} className="flex-shrink-0 mt-0.5" />
+              )}
+              <span>{feedback.message}</span>
+            </div>
+          )}
+
+          <Button
+            variant="primary"
+            size="lg"
+            className="w-full"
+            onClick={handleGenerate}
+            loading={generating}
+            disabled={!selectedSession || generating}
+          >
             <FileText size={16} /> Generate Report
           </Button>
         </div>

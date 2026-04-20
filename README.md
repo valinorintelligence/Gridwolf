@@ -21,8 +21,8 @@
 </p>
 
 <p align="center">
-  <a href="https://valinorintelligence.github.io/Gridwolf/"><strong>🔴 Live Demo</strong></a> &middot;
   <a href="https://gridwolf.net">Website</a> &middot;
+  <a href="DEPLOYMENT.md"><strong>📦 Deployment guide</strong></a> &middot;
   <a href="#screenshots">Screenshots</a> &middot;
   <a href="#option-1-docker-hub-recommended">🐳 Docker Hub</a> &middot;
   <a href="#option-2-ova-appliance">💿 OVA</a> &middot;
@@ -216,7 +216,7 @@ Three independent detection methods run on every session:
 
 | Category | Endpoints | Description |
 |---|---|---|
-| **Auth** | 4 | Register, login, demo login, profile |
+| **Auth** | 3 | Register, login, profile |
 | **PCAP** | 3 | Upload, status, list |
 | **Devices** | 4 | List, topology, stats, detail |
 | **Sessions** | 6 | CRUD + projects |

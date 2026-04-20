@@ -11,7 +11,9 @@ services:
       - "8000:8000"
     environment:
       GRIDWOLF_DATABASE_URL: "sqlite+aiosqlite:///./data/gridwolf.db"
-      GRIDWOLF_SECRET_KEY: "${GRIDWOLF_SECRET_KEY:-gridwolf-local-dev-key}"
+      # No fallback: GRIDWOLF_SECRET_KEY must be supplied via environment or .env.
+      # Generate once with:  python -c "import secrets; print(secrets.token_urlsafe(64))"
+      GRIDWOLF_SECRET_KEY: "${GRIDWOLF_SECRET_KEY:?GRIDWOLF_SECRET_KEY must be set — see .env.example}"
       GRIDWOLF_CORS_ORIGINS: '["http://localhost:3000","http://localhost:5173","http://localhost:5174"]'
       GRIDWOLF_DEBUG: "${GRIDWOLF_DEBUG:-false}"
     volumes:

@@ -77,8 +77,9 @@ function page(Element: React.LazyExoticComponent<React.ComponentType>) {
 // Router
 // ---------------------------------------------------------------------------
 
-// Use HashRouter for static hosting (GitHub Pages), BrowserRouter for server deployments
-const isStaticDeploy = import.meta.env.VITE_DEMO_MODE === 'true';
+// Production uses BrowserRouter; static deployments can opt into HashRouter
+// by setting VITE_STATIC_DEPLOY=true at build time.
+const isStaticDeploy = import.meta.env.VITE_STATIC_DEPLOY === 'true';
 const createRouter = isStaticDeploy ? createHashRouter : createBrowserRouter;
 
 export const router = createRouter([

@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import {
   Download, FileText, FileSpreadsheet, FileJson, Package, Shield,
-  Filter, ListChecks, ChevronDown, Copy, Check, ExternalLink,
-  Flame, Target, AlertTriangle, Loader2,
+  Filter, ListChecks, Copy, Check, ExternalLink, AlertCircle,
+  Target, Loader2,
 } from 'lucide-react';
 import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -15,15 +15,6 @@ import { api } from '@/services/api';
 // ---------------------------------------------------------------------------
 
 type FirewallFormat = 'cisco_acl' | 'iptables' | 'windows_firewall';
-
-interface ExportCard {
-  id: string;
-  title: string;
-  description: string;
-  icon: React.ReactNode;
-  format: string;
-  color: string;
-}
 
 interface RemediationItem {
   id: string;
@@ -116,48 +107,58 @@ export default function ExportHub() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const [exportError, setExportError] = useState<string | null>(null);
+
+  /**
+   * Fetch an export blob from the backend and trigger a download. The backend
+   * is the source of truth — no client-side fabrication. If the endpoint is
+   * unavailable or returns no data, surface an error to the user instead of
+   * downloading synthetic placeholder content.
+   */
+  async function downloadFromApi(
+    path: string,
+    filename: string,
+    mimeType: string,
+    params?: Record<string, string>,
+  ) {
+    setExportError(null);
+    try {
+      const res = await api.get(path, {
+        params,
+        responseType: 'blob',
+      });
+      const blob = res.data instanceof Blob ? res.data : new Blob([res.data], { type: mimeType });
+      if (blob.size === 0) {
+        setExportError('Export returned no data. Run a scan or analyze a capture first.');
+        return;
+      }
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      const detail = err?.response?.data?.detail || err?.message || 'Export failed';
+      setExportError(String(detail));
+    }
+  }
+
   const handleCsvExport = (type: string) => {
-    const mockCsv = `# Gridwolf ${type} Export\n# Generated: ${new Date().toISOString()}\n# Project: Acme Power Plant Assessment\nid,name,ip,type,purdue_level,vendor,firmware\nDEV-001,S7-1200 CPU 1215C,10.10.3.10,PLC,L1,Siemens,V4.6\nDEV-002,SCALANCE W788,10.10.3.5,WAP,L2,Siemens,V6.5\n`;
-    triggerBlobDownload(`gridwolf_${type.toLowerCase()}_export.csv`, mockCsv, 'text/csv');
+    const slug = type.toLowerCase();
+    downloadFromApi(`/exports/csv/${slug}`, `gridwolf_${slug}_export.csv`, 'text/csv');
   };
 
   const handleJsonExport = () => {
-    const mockJson = JSON.stringify({
-      gridwolf_version: '1.0.0',
-      project: 'Acme Power Plant Assessment',
-      exported_at: new Date().toISOString(),
-      device_count: 142,
-      connection_count: 312,
-      finding_count: 67,
-      sessions: ['Initial Baseline', 'Post-Maintenance Rescan'],
-    }, null, 2);
-    triggerBlobDownload('gridwolf_session_export.json', mockJson, 'application/json');
+    downloadFromApi('/exports/session', 'gridwolf_session_export.json', 'application/json');
   };
 
   const handleSbomExport = () => {
-    const mockSbom = JSON.stringify({
-      bomFormat: 'CycloneDX',
-      specVersion: '1.5',
-      metadata: { timestamp: new Date().toISOString(), component: { type: 'application', name: 'Acme Power Plant OT Network', version: '2026-03' } },
-      components: [
-        { type: 'firmware', name: 'S7-1200 CPU Firmware', version: 'V4.6', supplier: { name: 'Siemens AG' } },
-        { type: 'firmware', name: 'SCALANCE W788 Firmware', version: 'V6.5', supplier: { name: 'Siemens AG' } },
-      ],
-    }, null, 2);
-    triggerBlobDownload('gridwolf_sbom.json', mockSbom, 'application/json');
+    downloadFromApi('/exports/sbom', 'gridwolf_sbom.json', 'application/json');
   };
 
   const handleStixExport = () => {
-    const mockStix = JSON.stringify({
-      type: 'bundle',
-      id: 'bundle--a1b2c3d4-e5f6-7890-abcd-ef1234567890',
-      spec_version: '2.1',
-      objects: [
-        { type: 'identity', id: 'identity--gridwolf', name: 'Gridwolf ICS Discovery', identity_class: 'system' },
-        { type: 'infrastructure', id: 'infrastructure--plant-ot', name: 'Acme Plant OT Network', infrastructure_types: ['industrial-control-system'] },
-      ],
-    }, null, 2);
-    triggerBlobDownload('gridwolf_stix_bundle.json', mockStix, 'application/json');
+    downloadFromApi('/exports/stix', 'gridwolf_stix_bundle.json', 'application/json');
   };
 
   const handleRemediationExport = () => {
@@ -180,6 +181,13 @@ export default function ExportHub() {
           <p className="text-sm text-content-secondary">Generate reports, compliance artifacts, and machine-readable exports</p>
         </div>
       </div>
+
+      {exportError && (
+        <div className="flex items-start gap-2 rounded-md border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-300">
+          <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+          <span>{exportError}</span>
+        </div>
+      )}
 
       {/* Export option cards — top row */}
       <div className="grid grid-cols-4 gap-4">

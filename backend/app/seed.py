@@ -1,6 +1,11 @@
 """
 Database seeder for Gridwolf.
-Creates default ObjectTypes and a demo user.
+Creates default ObjectTypes only.
+
+The first admin account is bootstrapped by `_seed_first_admin()` in
+`app.core.database` at startup — it uses either the `ADMIN_PASSWORD`
+env var or a one-time auto-generated random password (printed to stdout).
+No hardcoded demo users are seeded by this script.
 
 Usage:
     python -m app.seed
@@ -12,9 +17,7 @@ from sqlalchemy import select
 
 from app.core.database import async_session, engine
 from app.core.database import Base
-from app.core.security import hash_password
 from app.models.ontology import ObjectType
-from app.models.user import User
 
 # 10 default object types matching frontend OBJECT_TYPE_DEFINITIONS
 DEFAULT_OBJECT_TYPES = [
@@ -175,15 +178,6 @@ DEFAULT_OBJECT_TYPES = [
     },
 ]
 
-DEMO_USER = {
-    "username": "demo",
-    "email": "demo@gridwolf.dev",
-    "full_name": "Demo User",
-    "role": "analyst",
-    "password": "demo1234",
-}
-
-
 async def seed_database() -> None:
     # Import all models so Base.metadata is populated
     import app.models.ontology  # noqa: F401
@@ -193,7 +187,6 @@ async def seed_database() -> None:
         await conn.run_sync(Base.metadata.create_all)
 
     async with async_session() as db:
-        # Seed object types
         created_types = 0
         for type_def in DEFAULT_OBJECT_TYPES:
             existing = await db.execute(
@@ -204,24 +197,9 @@ async def seed_database() -> None:
                 db.add(obj_type)
                 created_types += 1
 
-        # Seed demo user
-        created_user = False
-        existing_user = await db.execute(select(User).where(User.username == DEMO_USER["username"]))
-        if existing_user.scalar_one_or_none() is None:
-            user = User(
-                username=DEMO_USER["username"],
-                email=DEMO_USER["email"],
-                full_name=DEMO_USER["full_name"],
-                role=DEMO_USER["role"],
-                hashed_password=hash_password(DEMO_USER["password"]),
-            )
-            db.add(user)
-            created_user = True
-
         await db.commit()
 
         print(f"Seeded {created_types} object types")
-        print(f"Demo user {'created' if created_user else 'already exists'}")
         print("Seed complete.")
 
 

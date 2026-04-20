@@ -32,7 +32,7 @@ export default function Register() {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { register: registerUser, demoLogin } = useAuthStore();
+  const { register: registerUser } = useAuthStore();
   const navigate = useNavigate();
 
   const passwordStrength = PASSWORD_RULES.filter((r) => r.test(password)).length;
@@ -41,28 +41,20 @@ export default function Register() {
   const isStep1Valid = fullName.trim().length > 0 && isEmailValid && organization.trim().length > 0;
   const isStep2Valid = passwordStrength === PASSWORD_RULES.length && passwordsMatch && agreedToTerms;
 
-  const isDemoMode = import.meta.env.VITE_DEMO_MODE === 'true';
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
 
     try {
-      if (isDemoMode) {
-        // Demo mode — no backend available
-        demoLogin();
-      } else {
-        // Real registration via backend API
-        const rawUsername = email.split('@')[0].replace(/[^a-zA-Z0-9_-]/g, '_');
-        const username = rawUsername.length >= 3 ? rawUsername : `user_${rawUsername}`;
-        await registerUser({
-          username,
-          email,
-          password,
-          full_name: fullName,
-        });
-      }
+      const rawUsername = email.split('@')[0].replace(/[^a-zA-Z0-9_-]/g, '_');
+      const username = rawUsername.length >= 3 ? rawUsername : `user_${rawUsername}`;
+      await registerUser({
+        username,
+        email,
+        password,
+        full_name: fullName,
+      });
       navigate('/');
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
@@ -86,16 +78,6 @@ export default function Register() {
           <h1 className="mt-4 text-2xl font-bold text-content-primary">Create Account</h1>
           <p className="mt-1 text-sm text-content-secondary">Passive ICS/SCADA Network Discovery</p>
         </div>
-
-        {/* Demo mode banner */}
-        {isDemoMode && (
-          <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-center">
-            <p className="text-xs font-semibold text-amber-400">Live Demo Mode</p>
-            <p className="text-[11px] text-amber-400/80 mt-0.5">
-              Registration will log you into the demo account — explore all features with pre-loaded ICS data.
-            </p>
-          </div>
-        )}
 
         {/* Step indicator */}
         <div className="flex items-center gap-2 px-2">

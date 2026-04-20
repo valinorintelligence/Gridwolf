@@ -4,10 +4,7 @@ import { Badge } from '@/components/ui/Badge';
 import { cn } from '@/lib/cn';
 import type { OntologyObject } from '@/types/ontology';
 
-// ---------------------------------------------------------------------------
-// Mock fingerprint data keyed by host id
-// ---------------------------------------------------------------------------
-
+// Fingerprint shape read from ontology object properties (persisted server-side).
 interface FingerprintData {
   vendor: string;
   model: string;
@@ -24,128 +21,6 @@ interface FingerprintData {
   macAddress: string;
 }
 
-const FINGERPRINT_DB: Record<string, FingerprintData> = {
-  'h-001': {
-    vendor: 'Siemens',
-    model: 'S7-1500 CPU 1516-3 PN/DP',
-    firmwareVersion: '2.9.4',
-    firmwareStatus: 'outdated',
-    latestFirmware: '3.1.2',
-    protocols: ['S7comm', 'Modbus/TCP', 'PROFINET', 'OPC UA'],
-    cveCount: 12,
-    criticalCves: 3,
-    networkExposure: 'isolated',
-    lastScanTimestamp: '2024-12-18T06:00:00Z',
-    hardwareLifecycle: 'active',
-    serialNumber: 'S7C-2024-001583',
-    macAddress: '00:1C:06:1A:2B:3C',
-  },
-  'h-002': {
-    vendor: 'Rockwell Automation',
-    model: 'PanelView Plus 7 2711P-T10C22D8S',
-    firmwareVersion: '12.011',
-    firmwareStatus: 'current',
-    latestFirmware: '12.011',
-    protocols: ['EtherNet/IP', 'CIP'],
-    cveCount: 4,
-    criticalCves: 1,
-    networkExposure: 'isolated',
-    lastScanTimestamp: '2024-12-18T06:00:00Z',
-    hardwareLifecycle: 'active',
-    serialNumber: 'RA-PV7-089214',
-    macAddress: '00:00:BC:3E:4F:5A',
-  },
-  'h-003': {
-    vendor: 'Schneider Electric',
-    model: 'Engineering Workstation (Unity Pro XL)',
-    firmwareVersion: '14.1',
-    firmwareStatus: 'outdated',
-    latestFirmware: '15.0',
-    protocols: ['Modbus/TCP', 'OPC UA', 'UMAS'],
-    cveCount: 8,
-    criticalCves: 0,
-    networkExposure: 'isolated',
-    lastScanTimestamp: '2024-12-18T06:00:00Z',
-    hardwareLifecycle: 'active',
-    serialNumber: 'SE-EWS-442781',
-    macAddress: '00:80:F4:12:34:56',
-  },
-  'h-004': {
-    vendor: 'Honeywell',
-    model: 'Uniformance PHD Server',
-    firmwareVersion: '2023.2',
-    firmwareStatus: 'outdated',
-    latestFirmware: '2024.1',
-    protocols: ['OPC UA', 'OPC DA', 'ODBC'],
-    cveCount: 6,
-    criticalCves: 2,
-    networkExposure: 'dmz',
-    lastScanTimestamp: '2024-12-18T06:00:00Z',
-    hardwareLifecycle: 'active',
-    serialNumber: 'HW-PHD-119832',
-    macAddress: '00:D0:C9:AA:BB:CC',
-  },
-  'h-005': {
-    vendor: 'ABB',
-    model: 'RTU560',
-    firmwareVersion: '12.4.1',
-    firmwareStatus: 'end-of-life',
-    latestFirmware: 'N/A (EoL)',
-    protocols: ['DNP3', 'IEC 61850', 'Modbus/TCP'],
-    cveCount: 15,
-    criticalCves: 4,
-    networkExposure: 'isolated',
-    lastScanTimestamp: '2024-12-18T06:00:00Z',
-    hardwareLifecycle: 'end-of-life',
-    serialNumber: 'ABB-RTU-005412',
-    macAddress: '00:21:99:DD:EE:FF',
-  },
-  'h-006': {
-    vendor: 'Palo Alto Networks',
-    model: 'PA-3260',
-    firmwareVersion: '11.1.2',
-    firmwareStatus: 'current',
-    latestFirmware: '11.1.2',
-    protocols: ['Syslog', 'SNMP', 'NetFlow'],
-    cveCount: 1,
-    criticalCves: 0,
-    networkExposure: 'dmz',
-    lastScanTimestamp: '2024-12-18T06:00:00Z',
-    hardwareLifecycle: 'active',
-    serialNumber: 'PA-3260-SN88123',
-    macAddress: '00:1B:17:00:01:02',
-  },
-  'h-007': {
-    vendor: 'Inductive Automation',
-    model: 'Ignition Gateway 8.1',
-    firmwareVersion: '8.1.33',
-    firmwareStatus: 'current',
-    latestFirmware: '8.1.33',
-    protocols: ['Modbus/TCP', 'OPC UA', 'EtherNet/IP', 'DNP3', 'BACnet/IP'],
-    cveCount: 3,
-    criticalCves: 0,
-    networkExposure: 'isolated',
-    lastScanTimestamp: '2024-12-18T06:00:00Z',
-    hardwareLifecycle: 'active',
-    serialNumber: 'IA-IGN-771002',
-    macAddress: '08:00:27:1A:2B:3C',
-  },
-  'h-008': {
-    vendor: 'Siemens',
-    model: 'IOT2050 Advanced',
-    firmwareVersion: '1.3.1',
-    firmwareStatus: 'outdated',
-    latestFirmware: '1.4.0',
-    protocols: ['BACnet/IP', 'MQTT', 'Modbus/TCP'],
-    cveCount: 5,
-    criticalCves: 1,
-    networkExposure: 'isolated',
-    lastScanTimestamp: '2024-12-18T06:00:00Z',
-    hardwareLifecycle: 'active',
-    serialNumber: 'SI-IOT-203944',
-    macAddress: '00:1C:06:4D:5E:6F',
-  },
-};
 
 // ---------------------------------------------------------------------------
 // Component
@@ -156,8 +31,25 @@ interface AssetFingerprintProps {
   className?: string;
 }
 
+/**
+ * Read a typed fingerprint out of the ontology object's persisted `properties`
+ * map. Returns null unless every required field is present — we don't want
+ * to render partial fingerprints that imply scan data we don't actually have.
+ */
+function readFingerprint(object: OntologyObject): FingerprintData | null {
+  const p = (object.properties ?? {}) as Partial<FingerprintData>;
+  const required: (keyof FingerprintData)[] = [
+    'vendor', 'model', 'firmwareVersion', 'firmwareStatus', 'protocols',
+    'networkExposure', 'hardwareLifecycle',
+  ];
+  for (const key of required) {
+    if (p[key] === undefined || p[key] === null || p[key] === '') return null;
+  }
+  return p as FingerprintData;
+}
+
 export function AssetFingerprint({ object, className }: AssetFingerprintProps) {
-  const fingerprint = FINGERPRINT_DB[object.id];
+  const fingerprint = readFingerprint(object);
 
   if (!fingerprint) {
     return (

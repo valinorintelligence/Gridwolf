@@ -1,39 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  FileSearch, Upload, Radio, BookOpen, Play, Pause, Square, ChevronRight,
-  Check, Trash2, Eye, RefreshCw, HardDrive, Filter,
-  Download, AlertTriangle, Zap, Server, Activity, Shield, Network, Info, XCircle
+  FileSearch, Upload, Radio, Play, Pause, Square, ChevronRight,
+  Check, Trash2, Eye, RefreshCw, Filter,
+  Download, AlertTriangle, Zap, Server, Activity, Shield, Network, XCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { api } from '@/services/api';
-
-const DEMO_RESULT = {
-  filename: 'gridwolf-sample-ics-capture.pcap',
-  packets: 163,
-  duration: '00:04:12',
-  devices: [
-    { ip: '192.168.1.10', mac: 'DE:AD:BE:EF:01:10', role: 'PLC', vendor: 'Siemens', protocols: ['S7comm', 'LLDP'], zone: 'Level 1 – Control' },
-    { ip: '192.168.1.20', mac: 'DE:AD:BE:EF:01:20', role: 'HMI', vendor: 'Wonderware', protocols: ['Modbus TCP', 'HTTP'], zone: 'Level 2 – Supervisory' },
-    { ip: '192.168.1.30', mac: 'DE:AD:BE:EF:01:30', role: 'RTU', vendor: 'ABB', protocols: ['DNP3', 'IEC 104'], zone: 'Level 1 – Control' },
-    { ip: '10.0.0.5',     mac: 'DE:AD:BE:EF:00:05', role: 'Engineering WS', vendor: 'Unknown', protocols: ['S7comm', 'HTTP'], zone: 'Level 3 – Operations' },
-    { ip: '192.168.1.1',  mac: 'DE:AD:BE:EF:01:01', role: 'Switch', vendor: 'Cisco', protocols: ['LLDP', 'SNMP'], zone: 'Level 2 – Supervisory' },
-  ],
-  protocols: [
-    { name: 'Modbus TCP', packets: 48, color: 'bg-blue-500' },
-    { name: 'S7comm', packets: 36, color: 'bg-purple-500' },
-    { name: 'DNP3', packets: 29, color: 'bg-emerald-500' },
-    { name: 'EtherNet/IP', packets: 22, color: 'bg-amber-500' },
-    { name: 'HTTP/SNMP', packets: 28, color: 'bg-red-400' },
-  ],
-  findings: [
-    { severity: 'Critical', title: 'Plaintext Modbus writes to PLC coils', cve: null, mitre: 'T0831' },
-    { severity: 'High', title: 'SNMP community string "public" detected', cve: 'CVE-2023-1234', mitre: 'T0842' },
-    { severity: 'High', title: 'Purdue zone violation: Engineering WS (L3) → PLC (L1) direct', cve: null, mitre: 'T0886' },
-    { severity: 'Medium', title: 'S7comm SZL enumeration (device fingerprinting)', cve: null, mitre: 'T0888' },
-    { severity: 'Low', title: 'C2 beacon pattern detected (periodic 30s interval)', cve: null, mitre: 'T0885' },
-  ],
-};
 
 const PIPELINE_STAGES = [
   { name: 'Ingest', desc: 'PCAP validation & metadata extraction', icon: Upload },
@@ -42,39 +15,14 @@ const PIPELINE_STAGES = [
   { name: 'Risk', desc: 'Security findings & ATT&CK mapping', icon: AlertTriangle },
 ];
 
-const SAMPLE_LIBRARY = [
-  { category: 'ICS/OT Protocols', items: [
-    { name: 'Modbus TCP', desc: 'Master/slave polling with register reads & writes', size: '4.2 MB', packets: 12_500, protocol: 'Modbus' },
-    { name: 'EtherNet/IP + CIP', desc: 'CIP identity enumeration and I/O messaging', size: '8.1 MB', packets: 24_300, protocol: 'EtherNet/IP' },
-    { name: 'S7comm', desc: 'Siemens S7 PLC read/write with SZL queries', size: '3.8 MB', packets: 9_800, protocol: 'S7comm' },
-    { name: 'DNP3', desc: 'Master/outstation with unsolicited responses', size: '5.5 MB', packets: 15_200, protocol: 'DNP3' },
-    { name: 'BACnet/IP', desc: 'Building automation I-Am broadcasts and reads', size: '2.9 MB', packets: 8_400, protocol: 'BACnet' },
-    { name: 'IEC 60870-5-104', desc: 'Telecontrol with I/S/U frames and ASDUs', size: '6.3 MB', packets: 18_700, protocol: 'IEC 104' },
-    { name: 'PROFINET DCP', desc: 'Device discovery and name assignment', size: '1.8 MB', packets: 4_200, protocol: 'PROFINET' },
-  ]},
-  { category: 'IT Reference', items: [
-    { name: 'HTTP/DNS Baseline', desc: 'Standard enterprise web traffic pattern', size: '12.4 MB', packets: 45_000, protocol: 'HTTP/DNS' },
-    { name: 'SSH/TLS Encrypted', desc: 'Encrypted management sessions', size: '3.2 MB', packets: 8_900, protocol: 'TLS' },
-    { name: 'Mixed Enterprise', desc: 'SMB, LDAP, Kerberos, SMTP mix', size: '18.6 MB', packets: 62_000, protocol: 'Mixed' },
-  ]},
-  { category: 'Digital Bond S4', items: [
-    { name: 'S4x15 ICS Village', desc: 'ICS village captures from S4 conference', size: '45.2 MB', packets: 234_000, protocol: 'Mixed ICS' },
-  ]},
-  { category: 'CTF Challenges', items: [
-    { name: 'ICS CTF - Modbus', desc: 'Find the rogue write operations', size: '2.1 MB', packets: 5_600, protocol: 'Modbus' },
-    { name: 'ICS CTF - S7 Exfil', desc: 'Identify data exfiltration via S7comm', size: '4.8 MB', packets: 11_200, protocol: 'S7comm' },
-  ]},
-];
-
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 export default function PcapImport() {
-  const [tab, setTab] = useState<'import' | 'live' | 'library'>('import');
+  const [tab, setTab] = useState<'import' | 'live'>('import');
   const [files, setFiles] = useState<{ name: string; size: string; raw?: File }[]>([]);
   const [analyzing, setAnalyzing] = useState(false);
   const [pipelineStep, setPipelineStep] = useState(-1);
-  const [showDemoResult, setShowDemoResult] = useState(false);
   const [analysisError, setAnalysisError] = useState('');
   const [realResult, setRealResult] = useState<null | {
     sessionId: string; devices: any[]; findings: any[]; protocols: string[]; packets: number;
@@ -84,12 +32,15 @@ export default function PcapImport() {
   const [liveIface, setLiveIface] = useState('eth0');
   const [liveBpf, setLiveBpf] = useState('');
   const [liveDuration, setLiveDuration] = useState('15min');
+  const [liveStats, setLiveStats] = useState<null | {
+    packets: number; bytes: number; elapsed_seconds: number;
+    devices: number; protocols: number; findings: number;
+  }>(null);
   const [dragOver, setDragOver] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollErrorCount = useRef(0);
   const navigate = useNavigate();
   const [recentImports, setRecentImports] = useState<any[]>([]);
-  const isDemoMode = import.meta.env.VITE_DEMO_MODE === 'true';
 
   // Cleanup polling on unmount
   useEffect(() => {
@@ -100,35 +51,17 @@ export default function PcapImport() {
 
   // Fetch recent imports from backend
   useEffect(() => {
-    if (isDemoMode) return;
     api.get('/ics/pcap/list')
       .then(({ data }) => setRecentImports(Array.isArray(data) ? data : []))
       .catch(() => setRecentImports([]));
-  }, [isDemoMode]);
+  }, []);
 
   const startAnalysis = async () => {
     setAnalyzing(true);
-    setShowDemoResult(false);
     setRealResult(null);
     setAnalysisError('');
     setPipelineStep(0);
 
-    if (isDemoMode) {
-      // Demo mode: simulate pipeline then show mock results
-      let step = 0;
-      const iv = setInterval(() => {
-        step++;
-        if (step >= 4) {
-          clearInterval(iv);
-          setAnalyzing(false);
-          setShowDemoResult(true);
-        }
-        setPipelineStep(step);
-      }, 1500);
-      return;
-    }
-
-    // Real mode: upload PCAP to backend
     const rawFile = files[0]?.raw;
     if (!rawFile) { setAnalyzing(false); return; }
 
@@ -212,10 +145,44 @@ export default function PcapImport() {
     }
   };
 
+  // ── Live capture controls ────────────────────────────────────────────────
+  const startLiveCapture = async () => {
+    setAnalysisError('');
+    try {
+      await api.post('/ics/pcap/live/start', {
+        interface: liveIface,
+        bpf_filter: liveBpf || undefined,
+        duration: liveDuration,
+      });
+      setLiveCapturing(true);
+      setLivePaused(false);
+    } catch (err: any) {
+      setAnalysisError(err?.response?.data?.detail || 'Failed to start live capture');
+    }
+  };
+
+  const stopLiveCapture = async () => {
+    try { await api.post('/ics/pcap/live/stop'); } catch { /* ignore */ }
+    setLiveCapturing(false);
+    setLivePaused(false);
+    setLiveStats(null);
+  };
+
+  // Poll live capture stats from backend while capturing
+  useEffect(() => {
+    if (!liveCapturing || livePaused) return;
+    const iv = setInterval(async () => {
+      try {
+        const { data } = await api.get('/ics/pcap/live/stats');
+        setLiveStats(data);
+      } catch { /* ignore transient errors */ }
+    }, 2000);
+    return () => clearInterval(iv);
+  }, [liveCapturing, livePaused]);
+
   const tabs = [
     { id: 'import' as const, label: 'Import PCAP', icon: Upload },
     { id: 'live' as const, label: 'Live Capture', icon: Radio },
-    { id: 'library' as const, label: 'Sample Library', icon: BookOpen },
   ];
 
   return (
@@ -249,19 +216,6 @@ export default function PcapImport() {
       {tab === 'import' && (
         <div className="space-y-6">
 
-          {/* Demo mode notice */}
-          {isDemoMode && (
-            <div className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3">
-              <Info size={16} className="text-amber-400 mt-0.5 shrink-0" />
-              <div>
-                <p className="text-xs font-semibold text-amber-400">Live Demo — Simulated Analysis</p>
-                <p className="text-[11px] text-amber-400/80 mt-0.5">
-                  Upload any PCAP (or use the sample below) and click <strong>Start Analysis Pipeline</strong> to see a simulated ICS discovery result with real findings, devices, and protocol breakdown. Full backend processing requires self-hosted install.
-                </p>
-              </div>
-            </div>
-          )}
-
           {/* Drop zone */}
           <div
             onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
@@ -279,9 +233,6 @@ export default function PcapImport() {
             <Upload size={40} className="mx-auto text-content-tertiary mb-3" />
             <p className="text-content-primary font-medium">Drop PCAP/PCAPNG files here</p>
             <p className="text-xs text-content-tertiary mt-1">or click to browse &middot; up to 500 MB per file &middot; multiple files supported</p>
-            <a href={`${import.meta.env.BASE_URL}sample-capture.pcap`} download="gridwolf-sample-ics-capture.pcap" className="inline-flex items-center gap-1.5 mt-3 px-3 py-1.5 rounded-md border border-accent/30 bg-accent/10 text-xs font-medium text-accent hover:bg-accent/20 transition-colors">
-              <Download size={12} /> Download Sample ICS PCAP (163 packets &middot; Modbus, S7comm, DNP3, CIP)
-            </a>
             <input
               type="file"
               accept=".pcap,.pcapng"
@@ -346,121 +297,6 @@ export default function PcapImport() {
                     {i < 3 && <ChevronRight size={14} className="text-content-tertiary shrink-0" />}
                   </div>
                 ))}
-              </div>
-            </div>
-          )}
-
-          {/* Demo analysis results */}
-          {isDemoMode && showDemoResult && (
-            <div className="space-y-4 rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Check size={18} className="text-emerald-400" />
-                  <p className="text-sm font-semibold text-content-primary">Analysis Complete — {DEMO_RESULT.filename}</p>
-                </div>
-                <div className="flex gap-3 text-[11px] text-content-tertiary">
-                  <span>{DEMO_RESULT.packets} packets</span>
-                  <span>·</span>
-                  <span>{DEMO_RESULT.duration} duration</span>
-                </div>
-              </div>
-
-              {/* Summary stats */}
-              <div className="grid grid-cols-4 gap-3">
-                {[
-                  { label: 'Devices Found', value: String(DEMO_RESULT.devices.length), color: 'text-accent' },
-                  { label: 'Protocols', value: String(DEMO_RESULT.protocols.length), color: 'text-blue-400' },
-                  { label: 'Findings', value: String(DEMO_RESULT.findings.length), color: 'text-amber-400' },
-                  { label: 'Critical', value: String(DEMO_RESULT.findings.filter(f => f.severity === 'Critical').length), color: 'text-red-400' },
-                ].map(s => (
-                  <div key={s.label} className="rounded-lg border border-border-default bg-surface-card p-3 text-center">
-                    <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
-                    <p className="text-[10px] text-content-tertiary mt-1">{s.label}</p>
-                  </div>
-                ))}
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                {/* Devices */}
-                <div className="rounded-lg border border-border-default bg-surface-card overflow-hidden">
-                  <div className="px-3 py-2 border-b border-border-default flex items-center gap-1.5">
-                    <Server size={13} className="text-accent" />
-                    <p className="text-xs font-semibold text-content-primary">Discovered Devices</p>
-                  </div>
-                  <div className="divide-y divide-border-default">
-                    {DEMO_RESULT.devices.map(d => (
-                      <div key={d.ip} className="px-3 py-2 flex items-center justify-between">
-                        <div>
-                          <p className="text-xs font-medium text-content-primary">{d.ip} <span className="text-content-tertiary font-normal">— {d.role}</span></p>
-                          <p className="text-[10px] text-content-tertiary">{d.vendor} · {d.zone}</p>
-                        </div>
-                        <div className="flex gap-1 flex-wrap justify-end max-w-[120px]">
-                          {d.protocols.map(p => (
-                            <span key={p} className="px-1.5 py-0.5 rounded text-[9px] bg-accent/15 text-accent">{p}</span>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Findings */}
-                <div className="rounded-lg border border-border-default bg-surface-card overflow-hidden">
-                  <div className="px-3 py-2 border-b border-border-default flex items-center gap-1.5">
-                    <Shield size={13} className="text-amber-400" />
-                    <p className="text-xs font-semibold text-content-primary">Security Findings</p>
-                  </div>
-                  <div className="divide-y divide-border-default">
-                    {DEMO_RESULT.findings.map((f, i) => (
-                      <div key={i} className="px-3 py-2">
-                        <div className="flex items-start justify-between gap-2">
-                          <p className="text-xs text-content-primary leading-snug">{f.title}</p>
-                          <span className={`shrink-0 px-1.5 py-0.5 rounded text-[9px] font-bold ${
-                            f.severity === 'Critical' ? 'bg-red-500/20 text-red-400' :
-                            f.severity === 'High' ? 'bg-orange-500/20 text-orange-400' :
-                            f.severity === 'Medium' ? 'bg-amber-500/20 text-amber-400' :
-                            'bg-blue-500/20 text-blue-400'
-                          }`}>{f.severity}</span>
-                        </div>
-                        <p className="text-[10px] text-content-tertiary mt-0.5">MITRE {f.mitre}{f.cve ? ` · ${f.cve}` : ''}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Protocol breakdown */}
-              <div className="rounded-lg border border-border-default bg-surface-card p-4">
-                <div className="flex items-center gap-1.5 mb-3">
-                  <Network size={13} className="text-blue-400" />
-                  <p className="text-xs font-semibold text-content-primary">Protocol Distribution</p>
-                </div>
-                <div className="flex h-3 rounded-full overflow-hidden gap-0.5 mb-2">
-                  {DEMO_RESULT.protocols.map(p => (
-                    <div key={p.name} className={`${p.color} opacity-80`} style={{ width: `${(p.packets / DEMO_RESULT.packets) * 100}%` }} />
-                  ))}
-                </div>
-                <div className="flex flex-wrap gap-3">
-                  {DEMO_RESULT.protocols.map(p => (
-                    <div key={p.name} className="flex items-center gap-1.5">
-                      <div className={`w-2 h-2 rounded-full ${p.color}`} />
-                      <span className="text-[11px] text-content-secondary">{p.name}</span>
-                      <span className="text-[11px] text-content-tertiary">{p.packets} pkts</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex gap-2">
-                <Button variant="primary" size="md" onClick={() => navigate('/network')} icon={<Network size={14} />}>
-                  View Network Topology
-                </Button>
-                <Button variant="outline" size="md" onClick={() => navigate('/vulnerabilities')} icon={<Shield size={14} />}>
-                  View Findings
-                </Button>
-                <Button variant="outline" size="md" onClick={() => navigate('/reports')} icon={<Download size={14} />}>
-                  Download Report
-                </Button>
               </div>
             </div>
           )}
@@ -637,11 +473,13 @@ export default function PcapImport() {
               <p className="text-sm font-medium text-content-primary">Capture Configuration</p>
               <div>
                 <label className="block text-xs font-medium text-content-secondary mb-1">Network Interface</label>
-                <select value={liveIface} onChange={(e) => setLiveIface(e.target.value)} className="w-full rounded border border-border-default bg-bg-secondary text-content-primary text-sm px-3 py-1.5">
-                  <option value="eth0">eth0 (Primary)</option>
-                  <option value="ens192">ens192 (SPAN Port)</option>
-                  <option value="any">any (All Interfaces)</option>
-                </select>
+                <input
+                  value={liveIface}
+                  onChange={(e) => setLiveIface(e.target.value)}
+                  placeholder="e.g. eth0, ens192, any"
+                  className="w-full rounded border border-border-default bg-bg-secondary text-content-primary text-sm px-3 py-1.5 placeholder:text-content-muted"
+                />
+                <p className="text-[10px] text-content-tertiary mt-1">Interface name as reported by the backend host (must exist on the server).</p>
               </div>
               <div>
                 <label className="block text-xs font-medium text-content-secondary mb-1">BPF Filter</label>
@@ -658,16 +496,9 @@ export default function PcapImport() {
                   <option value="continuous">Continuous</option>
                 </select>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-content-secondary">Ring Buffer</span>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" className="sr-only peer" />
-                  <div className="w-9 h-5 bg-border-default rounded-full peer peer-checked:bg-accent transition-colors" />
-                </label>
-              </div>
               <div className="flex gap-2 pt-2">
                 {!liveCapturing ? (
-                  <Button variant="primary" size="md" className="flex-1" onClick={() => { setLiveCapturing(true); setLivePaused(false); }}>
+                  <Button variant="primary" size="md" className="flex-1" onClick={startLiveCapture}>
                     <Play size={14} /> Start
                   </Button>
                 ) : (
@@ -675,7 +506,7 @@ export default function PcapImport() {
                     <Button variant={livePaused ? 'primary' : 'outline'} size="md" className="flex-1" onClick={() => setLivePaused(!livePaused)}>
                       {livePaused ? <><Play size={14} /> Resume</> : <><Pause size={14} /> Pause</>}
                     </Button>
-                    <Button variant="danger" size="md" className="flex-1" onClick={() => { setLiveCapturing(false); setLivePaused(false); }}>
+                    <Button variant="danger" size="md" className="flex-1" onClick={stopLiveCapture}>
                       <Square size={14} /> Stop
                     </Button>
                   </>
@@ -683,16 +514,16 @@ export default function PcapImport() {
               </div>
             </div>
 
-            {/* Live stats */}
+            {/* Live stats — populated from /ics/pcap/live/stats backend poll */}
             <div className="col-span-2 space-y-4">
               <div className="grid grid-cols-3 gap-3">
                 {[
-                  { label: 'Packets Captured', value: liveCapturing ? '34,521' : '0', color: 'text-accent' },
-                  { label: 'Bytes', value: liveCapturing ? '4.8 MB' : '0 B', color: 'text-content-primary' },
-                  { label: 'Elapsed', value: liveCapturing ? '02:34' : '00:00', color: 'text-content-primary' },
-                  { label: 'Devices Discovered', value: liveCapturing ? '12' : '0', color: 'text-emerald-400' },
-                  { label: 'Protocols', value: liveCapturing ? '5' : '0', color: 'text-blue-400' },
-                  { label: 'Findings', value: liveCapturing ? '3' : '0', color: 'text-amber-400' },
+                  { label: 'Packets Captured', value: liveStats ? liveStats.packets.toLocaleString() : '—', color: 'text-accent' },
+                  { label: 'Bytes', value: liveStats ? `${(liveStats.bytes / 1024 / 1024).toFixed(1)} MB` : '—', color: 'text-content-primary' },
+                  { label: 'Elapsed', value: liveStats ? formatElapsed(liveStats.elapsed_seconds) : '—', color: 'text-content-primary' },
+                  { label: 'Devices Discovered', value: liveStats ? String(liveStats.devices) : '—', color: 'text-emerald-400' },
+                  { label: 'Protocols', value: liveStats ? String(liveStats.protocols) : '—', color: 'text-blue-400' },
+                  { label: 'Findings', value: liveStats ? String(liveStats.findings) : '—', color: 'text-amber-400' },
                 ].map((s) => (
                   <div key={s.label} className="rounded-lg border border-border-default bg-surface-card p-3">
                     <p className="text-[10px] text-content-tertiary">{s.label}</p>
@@ -701,73 +532,38 @@ export default function PcapImport() {
                 ))}
               </div>
 
-              {/* Mini topology placeholder */}
-              <div className="rounded-lg border border-border-default bg-surface-card p-4 h-52 flex items-center justify-center">
-                {liveCapturing ? (
-                  <div className="text-center space-y-2">
-                    <div className="flex items-center justify-center gap-4">
-                      {['PLC', 'HMI', 'RTU', 'Switch', 'SCADA'].slice(0, liveCapturing ? 5 : 0).map((d, i) => (
-                        <div key={d} className="flex flex-col items-center gap-1 animate-pulse" style={{ animationDelay: `${i * 0.3}s` }}>
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                            i < 2 ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
-                            i < 4 ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
-                            'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                          }`}>{d[0]}</div>
-                          <span className="text-[9px] text-content-tertiary">{d}</span>
-                        </div>
-                      ))}
-                    </div>
-                    <p className="text-xs text-content-tertiary">Topology building in real-time...</p>
-                  </div>
-                ) : (
-                  <div className="text-center">
-                    <Radio size={32} className="mx-auto text-content-tertiary mb-2" />
-                    <p className="text-sm text-content-tertiary">Start capture to see live topology</p>
-                  </div>
-                )}
-              </div>
+              {!liveCapturing && (
+                <div className="rounded-lg border border-border-default bg-surface-card p-8 text-center">
+                  <Radio size={32} className="mx-auto text-content-tertiary mb-2" />
+                  <p className="text-sm text-content-tertiary">Configure an interface and click Start to begin live capture.</p>
+                  <p className="text-xs text-content-tertiary mt-1">The backend host must have raw-packet capture privileges (CAP_NET_RAW) on the selected interface.</p>
+                </div>
+              )}
 
               {liveCapturing && (
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm"><Download size={14} /> Save PCAP</Button>
-                  <Button variant="outline" size="sm"><Eye size={14} /> View Full Topology</Button>
+                  <Button variant="outline" size="sm" onClick={() => api.get('/ics/pcap/live/download', { responseType: 'blob' })
+                    .then(({ data }) => {
+                      const url = URL.createObjectURL(new Blob([data]));
+                      const a = document.createElement('a');
+                      a.href = url; a.download = `live-capture-${Date.now()}.pcap`; a.click();
+                      URL.revokeObjectURL(url);
+                    })}>
+                    <Download size={14} /> Save PCAP
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => navigate('/network')}><Eye size={14} /> View Full Topology</Button>
                 </div>
               )}
             </div>
           </div>
         </div>
       )}
-
-      {/* ============ SAMPLE LIBRARY TAB ============ */}
-      {tab === 'library' && (
-        <div className="space-y-6">
-          {SAMPLE_LIBRARY.map((cat) => (
-            <div key={cat.category}>
-              <h3 className="text-sm font-semibold text-content-primary mb-3">{cat.category}</h3>
-              <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                {cat.items.map((item) => (
-                  <div key={item.name} className="rounded-lg border border-border-default bg-surface-card p-3 hover:border-border-hover transition-colors group">
-                    <div className="flex items-start justify-between mb-2">
-                      <span className="px-1.5 py-0.5 rounded text-[10px] bg-accent/15 text-accent font-medium">{item.protocol}</span>
-                      <HardDrive size={14} className="text-content-tertiary" />
-                    </div>
-                    <p className="text-sm font-medium text-content-primary">{item.name}</p>
-                    <p className="text-[11px] text-content-tertiary mt-1 line-clamp-2">{item.desc}</p>
-                    <div className="flex items-center justify-between mt-3">
-                      <div className="text-[10px] text-content-tertiary">
-                        {item.size} &middot; {item.packets.toLocaleString()} pkts
-                      </div>
-                      <Button variant="primary" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Zap size={12} /> Analyze
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
+}
+
+function formatElapsed(seconds: number): string {
+  const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+  const s = Math.floor(seconds % 60).toString().padStart(2, '0');
+  return `${m}:${s}`;
 }

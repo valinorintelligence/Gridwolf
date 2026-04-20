@@ -23,7 +23,6 @@ interface AuthState {
   isLoading: boolean;
   login: (username: string, password: string) => Promise<void>;
   register: (data: { username: string; email: string; password: string; full_name: string }) => Promise<void>;
-  demoLogin: () => void;
   logout: () => void;
   loadUser: () => Promise<void>;
 }
@@ -62,25 +61,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  demoLogin: () => {
-    const demoUser: User = {
-      id: 'demo-user',
-      username: 'demo',
-      email: 'demo@gridwolf.io',
-      fullName: 'Demo User',
-      role: 'admin',
-      isActive: true,
-    };
-    const demoToken = 'demo-token';
-    localStorage.setItem(TOKEN_KEY, demoToken);
-    set({
-      user: demoUser,
-      token: demoToken,
-      isAuthenticated: true,
-      isLoading: false,
-    });
-  },
-
   logout: () => {
     localStorage.removeItem(TOKEN_KEY);
     set({
@@ -99,13 +79,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
 
     set({ token, isLoading: true });
-
-    // If it's the demo token, restore demo session without API call
-    if (token === 'demo-token') {
-      const { demoLogin } = get();
-      demoLogin();
-      return;
-    }
 
     try {
       const { data: raw } = await api.get('/auth/me');

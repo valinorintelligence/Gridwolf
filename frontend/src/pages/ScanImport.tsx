@@ -74,6 +74,16 @@ const pcapStatusConfig: Record<PcapFileStatus, { icon: React.ElementType; color:
   error: { icon: XCircle, color: 'text-red-400', bg: 'bg-red-500/15' },
 };
 
+// Map arbitrary backend status strings onto our four canonical UI states so
+// we never hand the renderer an unknown key (which used to crash the page).
+function normalizeStatus(raw: unknown): PcapFileStatus {
+  const s = String(raw ?? '').toLowerCase();
+  if (s === 'complete' || s === 'completed' || s === 'done' || s === 'success') return 'complete';
+  if (s === 'processing' || s === 'analyzing' || s === 'running' || s === 'in_progress') return 'processing';
+  if (s === 'error' || s === 'failed' || s === 'failure') return 'error';
+  return 'queued';
+}
+
 // ---------------------------------------------------------------------------
 // Sub-components
 // ---------------------------------------------------------------------------
@@ -300,15 +310,17 @@ export default function ScanImport() {
       try {
         const res = await api.get('/ics/pcap/list').catch(() => ({ data: [] }));
         const data = Array.isArray(res.data) ? res.data : res.data?.results ?? [];
-        const mapped: PcapFile[] = data.map((p: Record<string, unknown>) => ({
+        const mapped: PcapFile[] = data.map((p: Record<string, unknown>) => {
+          const status = normalizeStatus(p.status);
+          return {
           id: String(p.pcap_id ?? p.id ?? ''),
           filename: String(p.filename ?? ''),
           size: String(p.file_size ?? '0 B'),
           packets: Number(p.packet_count ?? 0),
-          status: (String(p.status ?? 'queued') as PcapFileStatus),
+          status,
           currentStage: 'create_topology' as PcapStage,
-          stageProgress: p.status === 'complete' ? 100 : p.status === 'processing' ? 50 : 0,
-          results: p.status === 'complete' ? {
+          stageProgress: status === 'complete' ? 100 : status === 'processing' ? 50 : 0,
+          results: status === 'complete' ? {
             devicesDiscovered: 0,
             connectionsFound: 0,
             protocolsIdentified:
@@ -318,7 +330,8 @@ export default function ScanImport() {
             newDevices: 0,
             knownDevices: 0,
           } : undefined,
-        }));
+          };
+        });
         setPcapFiles(mapped);
       } catch {
         setPcapFiles([]);
@@ -401,7 +414,7 @@ export default function ScanImport() {
                 <CardHeader title="Import Queue" action={<Badge variant="info">{pcapFiles.length} files</Badge>} />
                 <CardContent className="space-y-4">
                   {pcapFiles.map((file) => {
-                    const sc = pcapStatusConfig[file.status];
+                    const sc = pcapStatusConfig[file.status] ?? pcapStatusConfig.queued;
                     const StatusIcon = sc.icon;
                     return (
                       <div key={file.id} className="rounded-lg border border-border-default p-4">

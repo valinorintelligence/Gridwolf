@@ -117,6 +117,31 @@ body {
   background-clip: text;
 }
 
+/* ─────────────────────────────────────────────────────────────
+   Auth page ICS illustration animations
+   ───────────────────────────────────────────────────────────── */
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.35; filter: drop-shadow(0 0 0 rgba(34, 211, 238, 0)); }
+  50%      { opacity: 1;    filter: drop-shadow(0 0 6px rgba(34, 211, 238, 0.7)); }
+}
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.animate-float-slow { animation: float-slow 4s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+.animate-pulse-glow { animation: pulse-glow 2.4s ease-in-out infinite; }
+.animate-spin-slow  { animation: spin-slow 3.5s linear infinite; transform-box: fill-box; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-float-slow,
+  .animate-pulse-glow,
+  .animate-spin-slow { animation: none; }
+}
+
 /* Glow effects */
 .glow-purple {
   box-shadow: 0 0 20px rgba(124, 58, 237, 0.3), 0 0 60px rgba(124, 58, 237, 0.1);

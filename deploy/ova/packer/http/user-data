@@ -1,0 +1,26 @@
+#cloud-config
+# Ubuntu 24.04 autoinstall — consumed by Packer's HTTP server during OVA build.
+# Creates a minimal server that provision.sh then hardens into a Gridwolf
+# appliance. The ssh password here is temporary (Packer tears it down).
+
+autoinstall:
+  version: 1
+  locale: en_US.UTF-8
+  keyboard: { layout: us }
+  identity:
+    hostname: gridwolf
+    username: gridwolf
+    # Bcrypt hash of 'gridwolf' — replaced during first boot / provision.sh
+    password: "$6$rounds=4096$CIgh6WCg$C5GQ6tR2JaR1CqG.xb4q6ZZLwXzQH.K4vYxWqS2Q2f/NzxIkOt1aQqDZTfVYlmC3jD2YhSyjTC5vkFQgQbXF91"
+  ssh:
+    install-server: true
+    allow-pw: true
+  packages:
+    - openssh-server
+    - qemu-guest-agent
+    - cloud-init
+  storage:
+    layout: { name: direct }
+  late-commands:
+    - "echo 'gridwolf ALL=(ALL) NOPASSWD:ALL' > /target/etc/sudoers.d/gridwolf"
+    - "chmod 440 /target/etc/sudoers.d/gridwolf"

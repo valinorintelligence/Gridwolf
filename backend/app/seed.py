@@ -178,6 +178,7 @@ DEFAULT_OBJECT_TYPES = [
     },
 ]
 
+
 async def seed_database() -> None:
     # Import all models so Base.metadata is populated
     import app.models.ontology  # noqa: F401

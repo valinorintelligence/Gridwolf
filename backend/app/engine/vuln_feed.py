@@ -151,7 +151,6 @@ VENDOR_SECTOR_MAP = {
 PRELOADED_ADVISORIES: list[dict] = []
 
 
-
 class VulnFeedEngine:
     """ICS/OT Vulnerability Intelligence Feed Engine."""
 

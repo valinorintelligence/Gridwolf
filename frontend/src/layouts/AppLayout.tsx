@@ -52,7 +52,9 @@ export function AppLayout() {
         style={{ marginLeft: sidebarWidth }}
       >
         <TopBar />
-        <main className="flex-1 overflow-auto p-6 pt-20">
+        <main className="grid-backdrop flex-1 overflow-auto p-6 pt-20">
+          <div className="ambient-glow-violet" aria-hidden="true" />
+          <div className="ambient-glow-cyan" aria-hidden="true" />
           <Outlet />
         </main>
       </div>

@@ -1,6 +1,11 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
 
-/* Gridwolf Design System — Logo-matched Theme */
+/* Gridwolf Design System — "Gridwolf Control" theme
+   Primary signal: cyan #22d3ee — data, telemetry, "live" indicators
+   Structural accent: violet #7c3aed — brand, primary actions, focus rings
+   Magenta #d946ef reserved for rare highlights (gradient text, feature callouts)
+   Numeric displays use JetBrains Mono (.font-numeric) */
 
 :root {
   --bg-primary: #080b1a;
@@ -140,6 +145,98 @@ body {
   .animate-float-slow,
   .animate-pulse-glow,
   .animate-spin-slow { animation: none; }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   "Gridwolf Control" ambient chrome — reused behind Auth + App
+   ───────────────────────────────────────────────────────────── */
+
+/* 40px technical grid backdrop — low-opacity cyan + violet rules.
+   Apply to a position:relative container; renders as a pseudo-bg. */
+.grid-backdrop {
+  position: relative;
+}
+.grid-backdrop::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    linear-gradient(to right, rgba(124, 58, 237, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(34, 211, 238, 0.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+  mask-image: radial-gradient(ellipse at center, black 40%, transparent 85%);
+  -webkit-mask-image: radial-gradient(ellipse at center, black 40%, transparent 85%);
+}
+.grid-backdrop > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Ambient corner glows — soft violet + cyan blobs matching auth page.
+   Use inside a .grid-backdrop (or any relative container). */
+.ambient-glow-violet,
+.ambient-glow-cyan {
+  position: absolute;
+  pointer-events: none;
+  border-radius: 9999px;
+  filter: blur(80px);
+  z-index: 0;
+}
+.ambient-glow-violet {
+  width: 480px;
+  height: 480px;
+  background: rgba(124, 58, 237, 0.06);
+  top: -120px;
+  left: -120px;
+}
+.ambient-glow-cyan {
+  width: 420px;
+  height: 420px;
+  background: rgba(34, 211, 238, 0.05);
+  bottom: -140px;
+  right: -100px;
+}
+
+/* Bus-shimmer — animated data-flow divider.
+   Apply to an <hr> or <div class="bus-shimmer h-px"> to get a cyan→violet
+   gradient that "flows" left→right. */
+@keyframes bus-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+.bus-shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(34, 211, 238, 0.6) 25%,
+    rgba(124, 58, 237, 0.7) 50%,
+    rgba(34, 211, 238, 0.6) 75%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: bus-shimmer 3.5s linear infinite;
+  border: none;
+}
+
+/* Numeric / monospace — JetBrains Mono for counters, metrics, timestamps,
+   IP/MAC addresses, hex, CVE IDs. Leaves narrative text on Inter. */
+.font-numeric,
+.numeric {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* Subtle cyan hairline rim for cards — opt-in via .card-rim.
+   Adds a 1px inner cyan highlight without changing the border API. */
+.card-rim {
+  box-shadow: inset 0 0 0 1px rgba(34, 211, 238, 0.08);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bus-shimmer { animation: none; }
 }
 
 /* Glow effects */

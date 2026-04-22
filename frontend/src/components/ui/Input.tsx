@@ -53,6 +53,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
               'w-full rounded border bg-bg-secondary text-content-primary placeholder:text-content-muted',
               'border-border-default hover:border-border-hover',
               'focus:outline-none focus:border-border-active focus:ring-1 focus:ring-accent/30',
+              '[&:valid:not(:placeholder-shown)]:border-accent-cyan/30',
               'transition-colors duration-150',
               'disabled:opacity-50 disabled:cursor-not-allowed',
               error && 'border-severity-critical focus:border-severity-critical focus:ring-red-500/30',

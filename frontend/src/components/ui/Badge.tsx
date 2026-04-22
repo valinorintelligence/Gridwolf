@@ -10,17 +10,17 @@ interface BadgeProps {
 
 function Badge({ variant = 'default', dot = false, children, className }: BadgeProps) {
   const variantStyles: Record<string, string> = {
-    default: 'bg-accent-muted text-accent border-accent/30',
+    default: 'bg-accent-cyan/8 text-accent-cyan border-accent-cyan/20',
     critical: 'bg-red-950/60 text-red-400 border-red-500/30',
     high: 'bg-orange-950/60 text-orange-400 border-orange-500/30',
     medium: 'bg-amber-950/60 text-amber-400 border-amber-500/30',
     low: 'bg-blue-950/60 text-blue-400 border-blue-500/30',
     info: 'bg-surface-hover text-content-secondary border-border-default',
-    outline: 'bg-transparent text-content-secondary border-border-default',
+    outline: 'bg-transparent text-content-tertiary border-accent-cyan/15',
   };
 
   const dotColors: Record<string, string> = {
-    default: 'bg-accent',
+    default: 'bg-accent-cyan',
     critical: 'bg-red-500',
     high: 'bg-orange-500',
     medium: 'bg-amber-500',

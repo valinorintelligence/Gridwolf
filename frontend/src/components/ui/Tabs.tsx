@@ -75,8 +75,8 @@ function Tab({ value, children, className, disabled = false }: TabProps) {
         'hover:text-content-primary',
         'disabled:opacity-50 disabled:cursor-not-allowed',
         isActive
-          ? 'text-accent border-b-2 border-accent'
-          : 'text-content-secondary border-b-2 border-transparent',
+          ? 'text-accent-cyan border-b border-accent-cyan'
+          : 'text-content-secondary border-b border-transparent',
         className
       )}
     >

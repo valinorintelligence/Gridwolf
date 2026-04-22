@@ -3,14 +3,16 @@ import { cn } from '@/lib/cn';
 
 interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   accentColor?: string;
+  rim?: boolean;
 }
 
-function Card({ accentColor, className, style, children, ...props }: CardProps) {
+function Card({ accentColor, rim = false, className, style, children, ...props }: CardProps) {
   return (
     <div
       className={cn(
         'bg-surface-card border border-border-default rounded-lg overflow-hidden',
         accentColor && 'border-l-2',
+        rim && 'card-rim',
         className
       )}
       style={{
@@ -77,4 +79,11 @@ CardHeader.displayName = 'CardHeader';
 CardContent.displayName = 'CardContent';
 CardFooter.displayName = 'CardFooter';
 
-export { Card, CardHeader, CardContent, CardFooter, type CardProps, type CardHeaderProps };
+export {
+  Card,
+  CardHeader,
+  CardContent,
+  CardFooter,
+  type CardProps,
+  type CardHeaderProps,
+};

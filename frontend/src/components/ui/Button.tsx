@@ -28,7 +28,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       secondary:
         'bg-surface-card text-content-primary border border-border-default hover:bg-surface-hover active:bg-surface-active',
       ghost:
-        'bg-transparent text-content-secondary hover:bg-surface-hover hover:text-content-primary active:bg-surface-active',
+        'bg-transparent text-content-secondary hover:bg-surface-hover hover:text-accent active:bg-surface-active',
       danger:
         'bg-severity-critical text-white hover:bg-red-700 active:bg-red-800 shadow-sm',
       outline:
@@ -47,6 +47,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         disabled={disabled || loading}
         className={cn(
           'inline-flex items-center justify-center font-medium rounded transition-colors duration-150 cursor-pointer select-none',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40',
           'disabled:opacity-50 disabled:cursor-not-allowed',
           variantStyles[variant],
           sizeStyles[size],

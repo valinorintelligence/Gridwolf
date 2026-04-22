@@ -264,6 +264,8 @@ body {
   --color-accent: var(--accent);
   --color-accent-hover: var(--accent-hover);
   --color-accent-muted: var(--accent-muted);
+  --color-accent-cyan: var(--accent-cyan);
+  --color-accent-magenta: var(--accent-magenta);
   --color-content-primary: var(--content-primary);
   --color-content-secondary: var(--content-secondary);
   --color-content-tertiary: var(--content-tertiary);

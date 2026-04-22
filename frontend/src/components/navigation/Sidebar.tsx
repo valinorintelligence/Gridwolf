@@ -147,8 +147,8 @@ export default function Sidebar({ onWidthChange }: SidebarProps) {
                       'group flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-all duration-150',
                       collapsed && 'justify-center px-0',
                       isActive
-                        ? 'bg-accent/10 text-accent shadow-sm shadow-accent/5'
-                        : 'text-content-secondary hover:bg-surface-hover hover:text-content-primary'
+                        ? 'bg-accent/10 text-accent border-l-2 border-accent-cyan shadow-sm shadow-accent/5'
+                        : 'text-content-secondary hover:bg-surface-hover hover:text-content-primary border-l-2 border-transparent'
                     )
                   }
                   title={collapsed ? item.label : undefined}

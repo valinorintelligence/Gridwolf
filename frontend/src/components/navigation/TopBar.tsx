@@ -89,7 +89,7 @@ export default function TopBar({ className }: TopBarProps) {
   return (
     <header
       className={cn(
-        'sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between border-b border-border-default bg-surface-card/80 px-6 backdrop-blur-xl',
+        'sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between border-b border-border-default bg-surface-card/80 px-6 backdrop-blur-xl relative',
         className
       )}
     >
@@ -117,6 +117,8 @@ export default function TopBar({ className }: TopBarProps) {
         </kbd>
       </div>
 
+      <div className="bus-shimmer h-px absolute bottom-0 left-0 right-0" />
+
       {/* Right section */}
       <div className="flex items-center gap-2">
         {/* Notification bell */}
@@ -128,7 +130,7 @@ export default function TopBar({ className }: TopBarProps) {
           >
             <Bell className="h-5 w-5" />
             {unreadCount > 0 && (
-              <span className="absolute right-1.5 top-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-severity-critical px-1 text-[10px] font-bold text-white">
+              <span className="absolute right-1.5 top-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-severity-critical px-1 text-[10px] font-bold text-white font-numeric">
                 {unreadCount > 9 ? '9+' : unreadCount}
               </span>
             )}

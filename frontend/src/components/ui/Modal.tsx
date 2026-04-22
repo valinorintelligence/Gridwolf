@@ -44,13 +44,14 @@ function Modal({ isOpen, onClose, title, children, footer, className }: ModalPro
         role="dialog"
         aria-modal="true"
         className={cn(
-          'relative z-10 w-full max-w-lg mx-4 bg-surface-card border border-border-default rounded-lg shadow-2xl',
+          'relative z-10 w-full max-w-lg mx-4 bg-surface-card border border-accent-cyan/15 rounded-lg shadow-2xl',
           'animate-[scaleIn_150ms_ease-out]',
           className
         )}
       >
         {/* Header */}
         {title && (
+          <>
           <div className="flex items-center justify-between px-5 py-3 border-b border-border-default">
             <h2 className="text-sm font-semibold text-content-primary">{title}</h2>
             <button
@@ -68,6 +69,8 @@ function Modal({ isOpen, onClose, title, children, footer, className }: ModalPro
               </svg>
             </button>
           </div>
+          <div className="bus-shimmer h-px" />
+          </>
         )}
         {/* Body */}
         <div className="px-5 py-4 text-sm text-content-secondary">{children}</div>

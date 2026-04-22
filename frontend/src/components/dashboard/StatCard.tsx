@@ -73,7 +73,9 @@ export default function StatCard({
 
       <div className="mt-3">
         <p className="text-sm text-[var(--color-text-secondary)]">{label}</p>
-        <p className="mt-1 text-2xl font-bold text-[var(--color-text-primary)]">{value}</p>
+        <p className="mt-1 text-2xl font-bold text-[var(--color-text-primary)]">
+          <span className="font-numeric">{value}</span>
+        </p>
       </div>
 
       {/* Sparkline placeholder */}

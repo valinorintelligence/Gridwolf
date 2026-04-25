@@ -1,16 +1,27 @@
 #cloud-config
 # Ubuntu 24.04 autoinstall — consumed by Packer's HTTP server during OVA build.
 # Creates a minimal server that provision.sh then hardens into a Gridwolf
-# appliance. The ssh password here is temporary (Packer tears it down).
+# appliance. The ssh password here is temporary (Packer tears it down and
+# the first-boot wizard sets the real admin password).
+#
+# Schema reference:
+#   https://canonical-subiquity.readthedocs-hosted.com/en/latest/reference/autoinstall-reference.html
+#
+# 24.04 strictly validates the schema and will fail non-interactively on
+# unknown keys — keep this minimal. `interactive-sections: []` is required
+# to suppress all serial-console prompts.
 
 autoinstall:
   version: 1
+  interactive-sections: []
   locale: en_US.UTF-8
   keyboard: { layout: us }
   identity:
+    realname: Gridwolf
     hostname: gridwolf
     username: gridwolf
-    # Bcrypt hash of 'gridwolf' — replaced during first boot / provision.sh
+    # SHA-512 crypt of 'gridwolf' — temporary; replaced during first boot / provision.sh.
+    # Regenerate with: mkpasswd -m sha-512 'gridwolf'
     password: "$6$rounds=4096$CIgh6WCg$C5GQ6tR2JaR1CqG.xb4q6ZZLwXzQH.K4vYxWqS2Q2f/NzxIkOt1aQqDZTfVYlmC3jD2YhSyjTC5vkFQgQbXF91"
   ssh:
     install-server: true
@@ -20,7 +31,10 @@ autoinstall:
     - qemu-guest-agent
     - cloud-init
   storage:
-    layout: { name: direct }
+    layout:
+      name: lvm
+      sizing-policy: all
   late-commands:
     - "echo 'gridwolf ALL=(ALL) NOPASSWD:ALL' > /target/etc/sudoers.d/gridwolf"
     - "chmod 440 /target/etc/sudoers.d/gridwolf"
+    - "curtin in-target -- rm -rf /var/log/installer || true"

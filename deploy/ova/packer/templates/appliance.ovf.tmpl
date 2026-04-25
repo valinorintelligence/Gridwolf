@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Gridwolf appliance — OVF 1.0 envelope.
+  Lowest-common-denominator profile: VMware Workstation/ESXi 8 + VirtualBox 7
+  + Proxmox VE 8 all accept this without manual edits.
+
+  IDE disk controller, E1000 NIC, hardware version vmx-13. No vmw:/vbox:
+  vendor extensions beyond the single vmw:osType attribute (VBox tolerates
+  unknown attributes, only rejects unknown elements).
+
+  Substituted at build time by deploy/ova/packer/assemble-ova.sh:
+    @VM_NAME@      - virtual system id / name
+    @DISK_FILE@    - vmdk filename (relative)
+    @DISK_SIZE@    - vmdk file size in bytes
+    @CAPACITY@     - virtual disk capacity in bytes
+    @CPUS@         - vCPU count
+    @MEMORY_MB@    - memory in MiB
+-->
+<Envelope xmlns="http://schemas.dmtf.org/ovf/envelope/1"
+          xmlns:ovf="http://schemas.dmtf.org/ovf/envelope/1"
+          xmlns:rasd="http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/CIM_ResourceAllocationSettingData"
+          xmlns:vssd="http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/CIM_VirtualSystemSettingData"
+          xmlns:vmw="http://www.vmware.com/schema/ovf"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <References>
+    <File ovf:id="file1" ovf:href="@DISK_FILE@" ovf:size="@DISK_SIZE@"/>
+  </References>
+  <DiskSection>
+    <Info>Virtual disks</Info>
+    <Disk ovf:diskId="vmdisk1" ovf:fileRef="file1"
+          ovf:capacity="@CAPACITY@" ovf:capacityAllocationUnits="byte"
+          ovf:format="http://www.vmware.com/interfaces/specifications/vmdk.html#streamOptimized"/>
+  </DiskSection>
+  <NetworkSection>
+    <Info>Networks</Info>
+    <Network ovf:name="VM Network">
+      <Description>Default appliance network (NAT or bridged)</Description>
+    </Network>
+  </NetworkSection>
+  <VirtualSystem ovf:id="@VM_NAME@">
+    <Info>Gridwolf passive ICS/SCADA discovery appliance</Info>
+    <Name>@VM_NAME@</Name>
+    <OperatingSystemSection ovf:id="94" ovf:version="24.04" vmw:osType="ubuntu64Guest">
+      <Info>Ubuntu Linux 64-bit (24.04 LTS)</Info>
+      <Description>Ubuntu 24.04 LTS (Noble Numbat)</Description>
+    </OperatingSystemSection>
+    <VirtualHardwareSection>
+      <Info>Virtual hardware requirements</Info>
+      <System>
+        <vssd:ElementName>Virtual Hardware Family</vssd:ElementName>
+        <vssd:InstanceID>0</vssd:InstanceID>
+        <vssd:VirtualSystemIdentifier>@VM_NAME@</vssd:VirtualSystemIdentifier>
+        <vssd:VirtualSystemType>vmx-13</vssd:VirtualSystemType>
+      </System>
+      <Item>
+        <rasd:Description>Number of Virtual CPUs</rasd:Description>
+        <rasd:ElementName>@CPUS@ virtual CPU(s)</rasd:ElementName>
+        <rasd:InstanceID>1</rasd:InstanceID>
+        <rasd:ResourceType>3</rasd:ResourceType>
+        <rasd:VirtualQuantity>@CPUS@</rasd:VirtualQuantity>
+      </Item>
+      <Item>
+        <rasd:AllocationUnits>byte * 2^20</rasd:AllocationUnits>
+        <rasd:Description>Memory Size</rasd:Description>
+        <rasd:ElementName>@MEMORY_MB@ MB of memory</rasd:ElementName>
+        <rasd:InstanceID>2</rasd:InstanceID>
+        <rasd:ResourceType>4</rasd:ResourceType>
+        <rasd:VirtualQuantity>@MEMORY_MB@</rasd:VirtualQuantity>
+      </Item>
+      <Item>
+        <rasd:Address>0</rasd:Address>
+        <rasd:Description>IDE Controller</rasd:Description>
+        <rasd:ElementName>ideController0</rasd:ElementName>
+        <rasd:InstanceID>3</rasd:InstanceID>
+        <rasd:ResourceType>5</rasd:ResourceType>
+      </Item>
+      <Item>
+        <rasd:AddressOnParent>0</rasd:AddressOnParent>
+        <rasd:ElementName>disk1</rasd:ElementName>
+        <rasd:HostResource>ovf:/disk/vmdisk1</rasd:HostResource>
+        <rasd:InstanceID>4</rasd:InstanceID>
+        <rasd:Parent>3</rasd:Parent>
+        <rasd:ResourceType>17</rasd:ResourceType>
+      </Item>
+      <Item>
+        <rasd:AutomaticAllocation>true</rasd:AutomaticAllocation>
+        <rasd:Connection>VM Network</rasd:Connection>
+        <rasd:Description>E1000 ethernet adapter</rasd:Description>
+        <rasd:ElementName>nic0</rasd:ElementName>
+        <rasd:InstanceID>5</rasd:InstanceID>
+        <rasd:ResourceSubType>E1000</rasd:ResourceSubType>
+        <rasd:ResourceType>10</rasd:ResourceType>
+      </Item>
+    </VirtualHardwareSection>
+    <AnnotationSection>
+      <Info>Annotation</Info>
+      <Annotation>Gridwolf passive ICS/SCADA discovery + vulnerability intelligence appliance.
+
+First boot: connect to the hypervisor console — the Gridwolf setup wizard runs on tty1.
+After the wizard completes, Cockpit is reachable on https://&lt;ip&gt;:9090 and the Gridwolf
+UI on https://&lt;ip&gt;:3000.
+
+https://github.com/valinorintelligence/Gridwolf</Annotation>
+    </AnnotationSection>
+  </VirtualSystem>
+</Envelope>

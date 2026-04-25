@@ -30,6 +30,9 @@ set -euo pipefail
 : "${GRIDWOLF_ADMIN_PASSWORD:=}"
 : "${GRIDWOLF_VERSION:=latest}"
 : "${GRIDWOLF_BIND_ADDRESS:=0.0.0.0}"
+# Set to 1 by the Packer build so the first-boot wizard gating is installed.
+# Manual installs on an already-running host leave this unset and skip the gate.
+: "${GRIDWOLF_APPLIANCE_BUILD:=0}"
 
 INSTALL_ROOT=/opt/gridwolf
 ENV_FILE="${INSTALL_ROOT}/.env"
@@ -57,7 +60,7 @@ apt-get install -y -q \
     ufw fail2ban unattended-upgrades \
     cockpit cockpit-podman cockpit-networkmanager cockpit-storaged \
     cockpit-packagekit cockpit-pcp cockpit-sosreport \
-    jq python3-venv openssl
+    jq python3-venv openssl whiptail
 
 # Docker (official repo for a sane compose version)
 if ! command -v docker >/dev/null 2>&1; then
@@ -181,8 +184,17 @@ systemctl daemon-reload
 systemctl enable gridwolf.service
 
 # ---- Cockpit: enable + brand ------------------------------------------------
-log "enabling Cockpit on :9090..."
-systemctl enable --now cockpit.socket
+# In appliance-build mode, cockpit.socket is enabled by gridwolf-firstboot.service
+# AFTER the operator completes the wizard on tty1. On manual installs Cockpit
+# starts immediately (admin is already at the console).
+if [[ "${GRIDWOLF_APPLIANCE_BUILD}" == "1" ]]; then
+    log "appliance build: deferring cockpit.socket until first-boot wizard completes"
+    systemctl disable cockpit.socket || true
+    systemctl stop cockpit.socket || true
+else
+    log "enabling Cockpit on :9090..."
+    systemctl enable --now cockpit.socket
+fi
 
 # Custom Cockpit landing page with a big "Launch Gridwolf" tile
 install -d -m 0755 "${COCKPIT_ASSETS_DIR}"
@@ -312,23 +324,178 @@ APT::Periodic::Unattended-Upgrade "1";
 APT::Periodic::AutocleanInterval "7";
 EOF
 
+# ---- first-boot wizard (Tenable-Core style) ---------------------------------
+# Installs an interactive whiptail wizard that runs on tty1 the first time the
+# appliance boots. Gates Cockpit + the Gridwolf service behind operator setup of
+# hostname, timezone, NTP, network, and admin password. Marker file at
+# /var/lib/gridwolf/.setup-complete makes the unit idempotent — once cleared
+# by the wizard the unit becomes a no-op on every subsequent boot.
+log "installing first-boot wizard..."
+install -d -m 0755 /var/lib/gridwolf
+
+cat > /usr/local/sbin/gridwolf-firstboot <<'WIZARD'
+#!/usr/bin/env bash
+# Gridwolf appliance first-boot wizard. Runs on tty1, gates cockpit.socket and
+# the gridwolf service behind operator-supplied configuration.
+set -euo pipefail
+
+MARKER=/var/lib/gridwolf/.setup-complete
+ENV_FILE=/opt/gridwolf/.env
+TITLE="Gridwolf Appliance — First Boot Setup"
+
+if [[ -f "$MARKER" ]]; then
+    exit 0
+fi
+
+# Make sure we own tty1 and stdin is a real terminal.
+exec </dev/tty1 >/dev/tty1 2>&1
+
+whiptail --title "$TITLE" --msgbox \
+"Welcome to the Gridwolf appliance.\n\n\
+This one-time wizard configures hostname, time, network, and the admin\n\
+password. After it finishes, the Gridwolf UI and Cockpit web console come\n\
+online and all further administration happens through the browser." 14 72
+
+# ---- hostname --------------------------------------------------------------
+NEW_HOST=$(whiptail --title "$TITLE" --inputbox \
+    "Hostname for this appliance:" 10 60 "$(hostname)" 3>&1 1>&2 2>&3) || exit 1
+hostnamectl set-hostname "$NEW_HOST"
+
+# ---- timezone --------------------------------------------------------------
+TZ_LIST=$(timedatectl list-timezones | awk '{print $1, $1}')
+NEW_TZ=$(whiptail --title "$TITLE" --menu "Select timezone:" 22 70 14 \
+    $TZ_LIST 3>&1 1>&2 2>&3) || exit 1
+timedatectl set-timezone "$NEW_TZ"
+
+# ---- NTP -------------------------------------------------------------------
+if whiptail --title "$TITLE" --yesno \
+    "Enable network time synchronization (systemd-timesyncd)?" 8 60; then
+    timedatectl set-ntp true
+else
+    timedatectl set-ntp false
+fi
+
+# ---- network ---------------------------------------------------------------
+PRIMARY_IFACE=$(ip -o route get 1.1.1.1 2>/dev/null | awk '{print $5; exit}' || true)
+PRIMARY_IFACE=${PRIMARY_IFACE:-$(ip -o link show | awk -F': ' '$2 != "lo" {print $2; exit}')}
+
+NET_MODE=$(whiptail --title "$TITLE" --menu \
+    "Network configuration for ${PRIMARY_IFACE}:" 12 60 2 \
+    "dhcp"   "Obtain an address automatically (default)" \
+    "static" "Configure a static IPv4 address" 3>&1 1>&2 2>&3) || exit 1
+
+if [[ "$NET_MODE" == "static" ]]; then
+    IP_ADDR=$(whiptail --title "$TITLE" --inputbox "IPv4 address with CIDR (e.g. 10.0.0.20/24):" 10 60 3>&1 1>&2 2>&3) || exit 1
+    GATEWAY=$(whiptail --title "$TITLE" --inputbox "Default gateway:" 10 60 3>&1 1>&2 2>&3) || exit 1
+    DNS=$(whiptail --title "$TITLE" --inputbox "DNS servers (space separated):" 10 60 "1.1.1.1 9.9.9.9" 3>&1 1>&2 2>&3) || exit 1
+    cat > /etc/netplan/60-gridwolf.yaml <<EOF
+network:
+  version: 2
+  ethernets:
+    ${PRIMARY_IFACE}:
+      dhcp4: false
+      addresses: [${IP_ADDR}]
+      routes:
+        - to: default
+          via: ${GATEWAY}
+      nameservers:
+        addresses: [${DNS// /, }]
+EOF
+    chmod 0600 /etc/netplan/60-gridwolf.yaml
+    netplan apply || true
+fi
+
+# ---- admin password --------------------------------------------------------
+while true; do
+    PW1=$(whiptail --title "$TITLE" --passwordbox "Set Gridwolf admin password (min 12 chars):" 10 60 3>&1 1>&2 2>&3) || exit 1
+    PW2=$(whiptail --title "$TITLE" --passwordbox "Confirm admin password:" 10 60 3>&1 1>&2 2>&3) || exit 1
+    if [[ "$PW1" != "$PW2" ]]; then
+        whiptail --title "$TITLE" --msgbox "Passwords do not match. Try again." 8 50
+        continue
+    fi
+    if [[ ${#PW1} -lt 12 ]]; then
+        whiptail --title "$TITLE" --msgbox "Password must be at least 12 characters." 8 50
+        continue
+    fi
+    break
+done
+
+# Update Gridwolf admin password in .env (used on next backend start).
+if [[ -f "$ENV_FILE" ]]; then
+    sed -i "s|^GRIDWOLF_ADMIN_PASSWORD=.*|GRIDWOLF_ADMIN_PASSWORD=${PW1}|" "$ENV_FILE"
+    rm -f /opt/gridwolf/.admin-password
+fi
+
+# Mirror to the local 'gridwolf' OS account so SSH/Cockpit logins work.
+if id gridwolf >/dev/null 2>&1; then
+    echo "gridwolf:${PW1}" | chpasswd
+fi
+
+# ---- bring services online -------------------------------------------------
+whiptail --title "$TITLE" --infobox \
+    "Starting Cockpit and Gridwolf services..." 6 60
+systemctl enable --now cockpit.socket
+systemctl start gridwolf.service || true
+
+touch "$MARKER"
+
+IP=$(hostname -I | awk '{print $1}')
+whiptail --title "$TITLE" --msgbox \
+"Setup complete.\n\n\
+  Gridwolf UI    : https://${IP}:3000\n\
+  Cockpit console: https://${IP}:9090\n\n\
+You can now manage the appliance from your browser." 12 60
+WIZARD
+chmod 0755 /usr/local/sbin/gridwolf-firstboot
+
+cat > /etc/systemd/system/gridwolf-firstboot.service <<'EOF'
+[Unit]
+Description=Gridwolf appliance first-boot setup wizard
+ConditionPathExists=!/var/lib/gridwolf/.setup-complete
+After=systemd-user-sessions.service network-online.target
+Before=cockpit.socket gridwolf.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+StandardInput=tty
+StandardOutput=tty
+StandardError=tty
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+ExecStart=/usr/local/sbin/gridwolf-firstboot
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl daemon-reload
+if [[ "${GRIDWOLF_APPLIANCE_BUILD}" == "1" ]]; then
+    systemctl enable gridwolf-firstboot.service
+fi
+
 # ---- pull & launch ----------------------------------------------------------
 log "pulling gridwolf images (this may take a few minutes)..."
 (cd "${INSTALL_ROOT}" && docker compose pull)
 
-log "starting gridwolf service..."
-systemctl start gridwolf.service
+if [[ "${GRIDWOLF_APPLIANCE_BUILD}" == "1" ]]; then
+    log "appliance build: skipping service start — first-boot wizard will start it"
+else
+    log "starting gridwolf service..."
+    systemctl start gridwolf.service
 
-# ---- wait for health --------------------------------------------------------
-log "waiting for Gridwolf health endpoint..."
-for i in {1..30}; do
-    if curl -sf http://localhost:8000/health >/dev/null 2>&1; then
-        log "backend healthy"
-        break
-    fi
-    sleep 2
-    [[ $i -eq 30 ]] && die "backend did not come up — check: journalctl -u gridwolf"
-done
+    log "waiting for Gridwolf health endpoint..."
+    for i in {1..30}; do
+        if curl -sf http://localhost:8000/health >/dev/null 2>&1; then
+            log "backend healthy"
+            break
+        fi
+        sleep 2
+        [[ $i -eq 30 ]] && die "backend did not come up — check: journalctl -u gridwolf"
+    done
+fi
 
 # ---- summary ----------------------------------------------------------------
 IP=$(hostname -I | awk '{print $1}')

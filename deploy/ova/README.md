@@ -42,7 +42,26 @@ All other inbound traffic is blocked by the default UFW policy.
 
 ## Building the OVA
 
-Packer + cloud-init autoinstall. Run on any Linux host with KVM.
+### Recommended: GitHub Actions (reproducible release builds)
+
+Push a tag of the form `release/v<semver>` and the
+[`Build Gridwolf OVA`](../../.github/workflows/build-ova.yml) workflow will
+build the appliance on a hosted `ubuntu-24.04` runner with KVM acceleration
+and attach `gridwolfOS-<version>.ova` (plus `.sha256`) to a draft GitHub
+Release.
+
+```bash
+git tag release/v1.1.0
+git push origin release/v1.1.0
+```
+
+Plain `v*` tags are reserved for Docker-only releases and do **not** trigger
+the OVA build (saves ~30 min of CI per point release).
+
+### Developer / airgap rebuild
+
+Any Linux host with KVM, Packer 1.11+, and `qemu-utils` can reproduce the
+artifact locally:
 
 ```bash
 cd deploy/ova/packer
@@ -50,7 +69,9 @@ packer init .
 packer build -var gridwolf_version=1.1.0 gridwolf.pkr.hcl
 ```
 
-Output: `build/gridwolf-<version>-<yyyymmdd>.ova` + SHA256 checksum.
+Output: `build/gridwolf-<version>-<yyyymmdd>.ova` + SHA256 checksum. The OVA
+is assembled by `assemble-ova.sh` (qemu-img + hand-rendered OVF 1.0 + tar) —
+no dependency on VMware's proprietary `ovftool`.
 
 The same template supports:
 
@@ -72,15 +93,29 @@ The same template supports:
 4. Power on. First boot takes ~60 seconds.
 5. Retrieve the appliance IP from the hypervisor console or your DHCP server.
 
-### First login
+### First boot — interactive setup wizard
 
-- Connect to **`https://<ip>:9090`** (Cockpit login)
-  - Username: `gridwolf`
-  - Password: see the hypervisor console on first boot — a generated password is printed there and stored at `/opt/gridwolf/.admin-password` on the VM.
-- From the Cockpit overview, click the **Gridwolf** menu entry → **Open Gridwolf UI** → opens `https://<ip>:3000`.
-- Log in to Gridwolf with the admin credentials printed on the same first-boot banner.
+The appliance ships with Cockpit and the Gridwolf service **disabled**. On
+first boot a whiptail wizard runs on `tty1` (the hypervisor console) and
+walks the operator through:
 
-**Rotate both passwords immediately** and delete `/opt/gridwolf/.admin-password`.
+1. Hostname
+2. Timezone
+3. Network time sync (systemd-timesyncd) on/off
+4. Network — DHCP or static IPv4 (with gateway + DNS)
+5. Admin password (minimum 12 characters, set for both Gridwolf and the
+   `gridwolf` OS account)
+
+When the wizard finishes it enables `cockpit.socket`, starts the Gridwolf
+service, drops a marker at `/var/lib/gridwolf/.setup-complete`, and prints
+the URLs. The wizard is one-shot — subsequent boots skip it.
+
+After setup:
+
+- **`https://<ip>:9090`** — Cockpit (Linux host management). Log in as
+  `gridwolf` with the password set in the wizard.
+- From the Cockpit overview, click the **Gridwolf** menu entry → **Open
+  Gridwolf UI** → opens `https://<ip>:3000`.
 
 ---
 

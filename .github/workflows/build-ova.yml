@@ -1,84 +1,114 @@
-# ─────────────────────────────────────────────────────────────────────────────
-# Gridwolf — OVA build workflow
-#
-# Triggers on every v*.*.* release tag AFTER docker-hub.yml succeeds.
-# Produces an .ova file and attaches it to the GitHub release as an asset.
-#
-# Required secrets:
-#   DOCKERHUB_USERNAME   — used to pull the just-published images into the OVA
-# ─────────────────────────────────────────────────────────────────────────────
+name: Build Gridwolf OVA
 
-name: Build OVA
-
+# Triggered when an OVA-bearing release tag is pushed (e.g. release/v1.1.0).
+# Plain `v*` tags do NOT trigger this workflow — that lets us cut Docker-only
+# point releases without paying for a 30-min appliance rebuild.
 on:
-  workflow_run:
-    workflows: ["Build & Push to Docker Hub"]
-    types: [completed]
-    branches-ignore: []
-
-  # Manual trigger for testing
+  push:
+    tags:
+      - "release/v*"
   workflow_dispatch:
     inputs:
-      version:
-        description: "Gridwolf version tag (e.g. v0.9.8)"
+      gridwolf_version:
+        description: "Gridwolf image tag to bake into the OVA (e.g. 1.1.0)"
         required: true
         default: "latest"
 
+permissions:
+  contents: write   # required for softprops/action-gh-release
+
 jobs:
   build-ova:
-    name: Packer OVA
-    # Only run when the Docker Hub workflow succeeded (or manual dispatch)
-    if: >
-      github.event_name == 'workflow_dispatch' ||
-      github.event.workflow_run.conclusion == 'success'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 90
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Resolve version
+      - name: Resolve Gridwolf version from tag or input
         id: ver
         run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            echo "version=${{ github.event.inputs.version }}" >> "$GITHUB_OUTPUT"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VER="${{ github.event.inputs.gridwolf_version }}"
           else
-            echo "version=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+            # tag form: refs/tags/release/v1.1.0  → 1.1.0
+            VER="${GITHUB_REF##*/v}"
           fi
+          echo "version=${VER}" >> "$GITHUB_OUTPUT"
+          echo "Building OVA for Gridwolf ${VER}"
 
-      - name: Install VirtualBox
+      - name: Enable KVM acceleration on the runner
+        # GitHub-hosted ubuntu-24.04 runners expose /dev/kvm but the default
+        # udev rule denies access to the runner user. Standard fix per
+        # https://github.blog/changelog/2023-02-23-hardware-accelerated-android-virtualization-on-actions
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          ls -l /dev/kvm
+
+      - name: Install Packer + qemu toolchain
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends virtualbox
+          sudo apt-get install -y -qq \
+              qemu-system-x86 qemu-utils ovmf \
+              gnupg software-properties-common
+          curl -fsSL https://apt.releases.hashicorp.com/gpg \
+            | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+          echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" \
+            | sudo tee /etc/apt/sources.list.d/hashicorp.list
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq packer
+          packer version
+          qemu-img --version
 
-      - name: Setup Packer
-        uses: hashicorp/setup-packer@main
-        with:
-          version: "1.11.0"
+      - name: packer init
+        working-directory: deploy/ova/packer
+        run: packer init .
 
-      - name: Packer init
-        run: packer init packer/gridwolf.pkr.hcl
-
-      - name: Packer build
+      - name: packer build
+        working-directory: deploy/ova/packer
         env:
-          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-          GRIDWOLF_VERSION:   ${{ steps.ver.outputs.version }}
+          PACKER_LOG: "1"
         run: |
           packer build \
-            -var "gridwolf_version=${GRIDWOLF_VERSION}" \
-            -var "dockerhub_username=${DOCKERHUB_USERNAME}" \
-            packer/gridwolf.pkr.hcl
+            -var "gridwolf_version=${{ steps.ver.outputs.version }}" \
+            gridwolf.pkr.hcl
 
-      - name: Compress OVA
+      - name: Locate and rename artifact
+        id: artifact
+        working-directory: deploy/ova/packer/build
         run: |
-          VERSION="${{ steps.ver.outputs.version }}"
-          OVA=$(ls output/*.ova | head -1)
-          mv "$OVA" "output/gridwolf-${VERSION}-amd64.ova"
-          gzip -9 "output/gridwolf-${VERSION}-amd64.ova"
+          shopt -s nullglob
+          OVA=( *.ova )
+          [ ${#OVA[@]} -eq 1 ] || { echo "expected exactly one .ova, found ${#OVA[@]}"; ls -la; exit 1; }
+          NEW="gridwolfOS-${{ steps.ver.outputs.version }}.ova"
+          mv "${OVA[0]}"        "${NEW}"
+          mv "${OVA[0]}.sha256" "${NEW}.sha256" 2>/dev/null || sha256sum "${NEW}" > "${NEW}.sha256"
+          ls -lh "${NEW}" "${NEW}.sha256"
+          echo "path=deploy/ova/packer/build/${NEW}" >> "$GITHUB_OUTPUT"
+          echo "sha256=deploy/ova/packer/build/${NEW}.sha256" >> "$GITHUB_OUTPUT"
 
-      - name: Upload OVA to GitHub release
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: Upload OVA as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gridwolfOS-${{ steps.ver.outputs.version }}
+          path: |
+            ${{ steps.artifact.outputs.path }}
+            ${{ steps.artifact.outputs.sha256 }}
+          retention-days: 14
+          if-no-files-found: error
+
+      - name: Create draft GitHub Release
+        if: github.event_name == 'push'
         uses: softprops/action-gh-release@v2
         with:
-          files: output/gridwolf-*.ova.gz
-          tag_name: ${{ steps.ver.outputs.version }}
+          draft: true
+          name: "Gridwolf v${{ steps.ver.outputs.version }}"
+          tag_name: ${{ github.ref_name }}
+          generate_release_notes: true
+          files: |
+            ${{ steps.artifact.outputs.path }}
+            ${{ steps.artifact.outputs.sha256 }}

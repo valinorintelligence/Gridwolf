@@ -1,0 +1,306 @@
+# Gridwolf — Session Handoff Log
+
+Repo: valinorintelligence/Gridwolf
+Branch: main (committing directly, no PR flow yet)
+Working dir: C:\Users\admin\OneDrive - Gulf Business Machines\Documents\Gridwolf-com
+Date range: 2026-04-20 → 2026-04-22
+
+================================================================
+WHAT GRIDWOLF IS
+================================================================
+Passive ICS/SCADA network discovery + vulnerability intelligence
+platform. Packaged for OVA, Docker Hub, Azure Marketplace, AWS
+Marketplace, airgap, and an enterprise-appliance build.
+
+Stack:
+  backend/   FastAPI + SQLAlchemy async + Pydantic + JWT + SQLite (default)
+  frontend/  React 19 + Vite + Tailwind 4.2 + Zustand + React Query
+  deploy/    per-channel packaging (aws, azure, airgap, kubernetes, ova)
+
+Port plan (appliance):
+   22  SSH
+  3000 Gridwolf UI
+  8000 Gridwolf API
+  9090 Cockpit web console
+
+Key convention: NO demo / mock data in production code. Seed files,
+vuln feeds, fingerprint DBs and export payloads are empty — repopulate
+from backend at runtime. Frontend aligns to backend enums, not vice
+versa. Status/severity/type color tokens are SEMANTIC — do not re-theme.
+
+CI jobs (all must be green): lint-backend, lint-frontend, build-frontend.
+`.gitattributes` forces LF on source files — ruff format --check is
+fragile on Windows CRLF.
+
+================================================================
+COMMITS SHIPPED THIS SESSION (newest last)
+================================================================
+
+[pending]  feat(ova): reproducible gridwolfOS build pipeline + first-boot wizard
+         Phase 1 — Packer template refresh
+           - deploy/ova/packer/gridwolf.pkr.hcl: ISO bumped to 24.04.2,
+             build-time sizing trimmed to 4 GB / 2 vCPU (prod sizing
+             declared in OVF, not Packer), GRUB `c` console boot path
+             instead of fragile F6/Esc tab path, ssh_timeout 45m,
+             disk_compression on, GRIDWOLF_APPLIANCE_BUILD=1 env
+             passed to provision.sh
+           - deploy/ova/packer/http/user-data: rewritten for strict
+             24.04 schema — interactive-sections: [], LVM all-disk
+             layout, identity block w/ SHA-512 password, late-commands
+             curtin in-target log cleanup
+         Phase 2 — OSS OVA assembly (no ovftool)
+           - deploy/ova/packer/templates/appliance.ovf.tmpl: hand-
+             written OVF 1.0 envelope, IDE controller + E1000 NIC +
+             vmx-13 (LCD profile accepted by VMware/VBox/Proxmox)
+           - deploy/ova/packer/assemble-ova.sh: qemu-img streamOptimized
+             vmdk + sed-rendered OVF + SHA-256 .mf + tar (ovf, mf, vmdk
+             order per DSP0243). No proprietary deps.
+           - gridwolf.pkr.hcl post-processor swapped to call assembler
+         Phase 3 — Tenable-Core-style first-boot wizard
+           - deploy/ova/provision.sh: GRIDWOLF_APPLIANCE_BUILD gate;
+             installs whiptail wizard /usr/local/sbin/gridwolf-firstboot
+             (hostname / timezone / NTP / network DHCP-or-static / admin
+             password ≥12 chars), systemd unit gridwolf-firstboot.service
+             with Before=cockpit.socket gridwolf.service +
+             ConditionPathExists=!/var/lib/gridwolf/.setup-complete,
+             cockpit.socket disabled at build time (wizard re-enables)
+         Phase 4 — Reproducible CI build
+           - .github/workflows/build-ova.yml: rewritten. Triggers on
+             release/v* tags (plain v* stays Docker-only). Hosted
+             ubuntu-24.04 runner with KVM udev rule, packer + qemu-utils,
+             rename to gridwolfOS-<ver>.ova, upload artifact, draft
+             GH release via softprops/action-gh-release@v2
+           - deploy/ova/README.md: leads with CI build path; manual
+             packer build demoted to "developer / airgap rebuild";
+             first-login section rewritten around the wizard
+         Phase 5 — DEFERRED to user (real release/v1.1.0-rc.1 tag +
+           hypervisor smoke test in VBox/VMware/Proxmox)
+         Plan of record: plans/build-gridwolfOS-ova.md
+
+c83a0fa  style(theme): Stage 2 — component-level Gridwolf Control re-skin
+         - Button: focus-visible cyan ring, ghost hover violet
+         - Badge: default + outline → cyan tones, default dot → cyan
+         - Card: opt-in `rim` prop applies card-rim hairline
+         - Tabs: active tab → 1px cyan hairline under text
+         - Modal: cyan border + bus-shimmer divider under title
+         - Sidebar: active item → cyan left-rail (2px)
+         - TopBar: bus-shimmer at bottom, .font-numeric on count badge
+         - StatCard: big number wrapped in <span class="font-numeric">
+         - Input: :valid:not(:placeholder-shown) → cyan border tint
+         Semantic tokens (severity/status/type) untouched. LF enforced.
+
+17c696b  chore: strip demo/mock data across production paths
+20109a1  fix(reports): generate-report button did nothing + backend NameError
+         - Frontend: section IDs, report_type enum, payload field name
+           (assessor → assessor_name), visible error banner w/ Pydantic parse
+         - Backend: added `import html`, renamed local shadowing var to html_doc
+eef8e75  feat(auth): split-pane login/register with animated ICS illustration
+         - New ICSIllustration.tsx (inline SVG, cyan/violet gradients,
+           isometric PLC/VFD/HMI/servo modules, data-particle animateMotion)
+         - AuthLayout rewritten as flex split-pane (left=illustration, right=form)
+         - index.css: float-slow / pulse-glow / spin-slow keyframes +
+           prefers-reduced-motion guard
+72b24bf  feat(ova): Tenable-Core-style appliance with Cockpit web console
+         - deploy/ova/provision.sh — idempotent Ubuntu 24.04 → appliance
+           (Cockpit + podman/networkmanager/storaged/packagekit/pcp/sosreport,
+           Docker, docker-compose.yml w/ Hub tags, systemd unit, UFW,
+           unattended-upgrades, branded Cockpit tile + login page)
+         - deploy/ova/packer/gridwolf.pkr.hcl — Packer template (qemu source,
+           Ubuntu 24.04.1 ISO, cloud-init autoinstall, qcow2→vmdk→ova via ovftool,
+           SHA256 checksum, 40GB/8GB/4CPU defaults)
+         - deploy/ova/packer/http/{user-data,meta-data} — cloud-init
+         - deploy/ova/README.md — operator guide (build/deploy/first-login/
+           day-2 ops/hardening/troubleshooting/disk layout)
+         - CLAUDE.md — repo orientation + deferred theme spec
+e9cc956  style(theme): extend Gridwolf Control theme across authed app shell
+         - Stage 1 of deferred theme revamp — tokens + utilities only
+         - Added: .grid-backdrop (40px cyan/violet grid w/ radial mask),
+           .ambient-glow-violet, .ambient-glow-cyan, .bus-shimmer animated
+           divider, .font-numeric / .numeric (JetBrains Mono + tabular-nums),
+           .card-rim (opt-in cyan hairline), JetBrains Mono Google Fonts import
+         - AppLayout <main> wrapped with grid-backdrop + ambient glows so
+           every authed page sits on the same chrome as auth pages
+         - ZERO component-logic changes. Semantic tokens untouched.
+
+================================================================
+FILES TOUCHED / CREATED
+================================================================
+
+NEW:
+  CLAUDE.md
+  log.txt                          (this file)
+  deploy/ova/README.md
+  deploy/ova/provision.sh
+  deploy/ova/packer/gridwolf.pkr.hcl
+  deploy/ova/packer/http/user-data
+  deploy/ova/packer/http/meta-data
+  deploy/ova/packer/templates/appliance.ovf.tmpl   (Phase 2)
+  deploy/ova/packer/assemble-ova.sh                (Phase 2)
+  plans/build-gridwolfOS-ova.md                    (5-phase plan)
+  frontend/src/components/shared/ICSIllustration.tsx
+
+MODIFIED (this session — OVA work + Stage 2 theme):
+  .github/workflows/build-ova.yml          (rewritten — release/v* tag,
+                                            hosted runner KVM, OSS assembly)
+  deploy/ova/README.md                     (CI build path leads;
+                                            wizard-based first-login section)
+  deploy/ova/provision.sh                  (GRIDWOLF_APPLIANCE_BUILD gate +
+                                            whiptail wizard + systemd unit)
+  deploy/ova/packer/gridwolf.pkr.hcl       (24.04.2 ISO; OSS post-processor)
+  deploy/ova/packer/http/user-data         (strict 24.04 schema)
+  frontend/src/components/ui/Button.tsx    (focus ring, ghost hover)
+  frontend/src/components/ui/Badge.tsx     (default + outline → cyan)
+  frontend/src/components/ui/Card.tsx      (rim prop)
+  frontend/src/components/ui/Tabs.tsx      (cyan hairline)
+  frontend/src/components/ui/Modal.tsx     (cyan border + bus-shimmer)
+  frontend/src/components/ui/Input.tsx     (cyan on :valid)
+  frontend/src/components/navigation/Sidebar.tsx  (cyan left-rail)
+  frontend/src/components/navigation/TopBar.tsx   (bus-shimmer + numeric badge)
+  frontend/src/components/dashboard/StatCard.tsx  (font-numeric on value)
+  frontend/src/index.css                   (--color-accent-cyan/magenta tokens)
+
+MODIFIED:
+  backend/app/engine/report_generator.py    (import html, renamed html_doc)
+  frontend/src/index.css                    (keyframes + Gridwolf Control utilities)
+  frontend/src/layouts/AuthLayout.tsx       (split-pane + illustration)
+  frontend/src/layouts/AppLayout.tsx        (grid-backdrop + ambient glows on <main>)
+  frontend/src/pages/ExportHub.tsx          (downloadFromApi, removed 4 mocks)
+  frontend/src/pages/ScanImport.tsx         (normalizeStatus + render fallback)
+  frontend/src/pages/ReportGenerator.tsx    (section IDs, report_type, payload,
+                                             error banner)
+  frontend/src/components/navigation/TopBar.tsx  (real notification dropdown,
+                                                  30s polling, severity dots)
+
+================================================================
+DEFERRED / OPEN WORK
+================================================================
+
+0. OVA SMOKE TEST (Phase 5)
+   The build pipeline lands this session but the artifact has NOT been
+   booted in a hypervisor yet. Cut a `release/v1.1.0-rc.1` tag, let
+   the workflow build, download the OVA, then verify in at least one
+   of: VirtualBox 7, VMware Workstation 17, Proxmox VE 8.
+   Acceptance: import succeeds, console shows wizard on tty1, after
+   wizard Cockpit on :9090 + Gridwolf UI on :3000 reachable.
+
+1. THEME REVAMP — STAGE 2 (component re-skin)  ✅ DONE in c83a0fa
+   Stage 1 (tokens + app-shell chrome) landed in e9cc956.
+   Stage 2 was:
+     - Button.tsx       audit primary / ghost / outline variants for cyan accent
+     - Badge.tsx        keep severity mapping; tune "default" + "outline" tones
+     - Card.tsx         opt-in card-rim or make rim default via new prop
+     - Tabs.tsx         active tab indicator → cyan hairline under text
+     - Modal.tsx        cyan hairline on border, bus-shimmer under title
+     - Sidebar.tsx      active item: cyan left-rail indicator (keep violet bg tint)
+     - TopBar.tsx       bus-shimmer under TopBar for "live"; .font-numeric on badge
+     - StatCard         wrap the big number in <span className="font-numeric">
+     - Input / Select   focus ring → ring-accent/30 (already there) + cyan on :valid
+   DO NOT change SeverityBadge / StatusBadge / ObjectCard TYPE_COLOR_MAP —
+   those are semantic.
+
+2. DEPLOYMENT.md UPDATE
+   Top-level DEPLOYMENT.md should reference the new deploy/ova/ path and
+   the Cockpit + Gridwolf port split. Not done yet.
+
+3. DOCKER HUB IMAGE TAGS
+   provision.sh uses `${GRIDWOLF_IMAGE}` / `${GRIDWOLF_FRONTEND_IMAGE}` from
+   .env. Need real Docker Hub repo names confirmed — currently defaults to
+   `gridwolf/backend:<ver>` and `gridwolf/frontend:<ver>`. Verify org name
+   before first marketplace release.
+
+4. MARKETPLACE LISTINGS
+   deploy/aws, deploy/azure, deploy/airgap, deploy/kubernetes folders exist
+   but have not been touched this session. Status unknown.
+
+5. PR WORKFLOW
+   All work so far is committed directly to main. User chose "Option A"
+   (leave direct pushes in place, don't retroactively reconstruct PRs).
+   If you want feature-branch + PR flow going forward, establish it
+   before the next change.
+
+================================================================
+GRIDWOLF CONTROL THEME — FULL SPEC (for Stage 2)
+================================================================
+
+Colors (already in index.css):
+  --accent:         #7c3aed   violet  — brand, primary CTAs, focus rings
+  --accent-cyan:    #22d3ee   cyan    — data, live signals, telemetry
+  --accent-magenta: #d946ef   magenta — rare highlights only (gradients)
+  --accent-blue:    #3b82f6
+  Surfaces unchanged (#080b1a / #0d1029 / #151937 / #1e2346)
+
+Typography:
+  Inter for narrative text (existing)
+  JetBrains Mono via .font-numeric for numbers, CVE IDs, IPs, MACs,
+    timestamps, hex, counter displays
+
+Chrome utilities (already in index.css after e9cc956):
+  .grid-backdrop         container-scoped 40px grid w/ radial mask
+  .ambient-glow-violet   corner blob (top-left default)
+  .ambient-glow-cyan     corner blob (bottom-right default)
+  .bus-shimmer           animated cyan→violet gradient divider (3.5s)
+  .font-numeric          JetBrains Mono + tabular-nums
+  .card-rim              inset 1px cyan hairline (opt-in)
+  .glow-purple / .glow-cyan / .glow-magenta   box-shadow accents
+  .animate-float-slow / .animate-pulse-glow / .animate-spin-slow
+    (all guarded by prefers-reduced-motion)
+
+Rollout rule (from CLAUDE.md):
+  STAGED — first commit is tokens + animations only (DONE, e9cc956).
+  Second commit is component-level re-skinning (PENDING).
+
+================================================================
+HOW TO CONTINUE IN CLAUDE CODE CLI
+================================================================
+
+Paste this to Claude:
+
+  "I'm continuing work on Gridwolf. Read log.txt at the repo root for
+   full session context. The next task is Stage 2 of the Gridwolf Control
+   theme revamp — component-level re-skin per the spec in log.txt section
+   'GRIDWOLF CONTROL THEME — FULL SPEC'. Commit to main, watch CI green
+   (lint-backend, lint-frontend, build-frontend), then stop for review."
+
+Guardrails Claude should keep:
+  - No demo/mock data anywhere in production code
+  - Frontend payloads align to backend enums (backend is source of truth)
+  - Semantic color tokens (severity / status / type) are off-limits
+  - Run `npx tsc --noEmit` + `npm run lint` + `npm run build` locally
+    before pushing — CI is strict
+  - Backend: `cd backend && ruff check . && ruff format --check .` must pass
+  - Prefer one logical commit per theme stage, not per component file
+  - When committing from Windows editor, watch for CRLF → ruff format
+    failures (use LF; .gitattributes enforces)
+
+================================================================
+QUICK REFERENCE
+================================================================
+
+Build OVA:
+  cd deploy/ova/packer
+  packer init .
+  packer build -var gridwolf_version=1.1.0 gridwolf.pkr.hcl
+
+Manual provision on bare Ubuntu 24.04 VM:
+  sudo GRIDWOLF_ADMIN_USERNAME=admin \
+       GRIDWOLF_ADMIN_PASSWORD='...' \
+       GRIDWOLF_VERSION=1.1.0 \
+       ./deploy/ova/provision.sh
+
+Run locally for manual test:
+  docker compose up -d --build
+  open http://localhost:3000
+
+Frontend checks:
+  cd frontend && npx tsc --noEmit && npm run lint && npm run build
+
+Backend checks:
+  cd backend && ruff check . && ruff format --check .
+
+CI watch after push:
+  gh run list --branch main --limit 1
+  gh run watch <id> --exit-status
+
+================================================================
+END OF LOG
+================================================================

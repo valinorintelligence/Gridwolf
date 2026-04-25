@@ -30,7 +30,7 @@ variable "gridwolf_version" {
 
 variable "ubuntu_iso_url" {
   type    = string
-  default = "https://releases.ubuntu.com/24.04/ubuntu-24.04.1-live-server-amd64.iso"
+  default = "https://releases.ubuntu.com/24.04/ubuntu-24.04.2-live-server-amd64.iso"
 }
 
 variable "ubuntu_iso_checksum" {
@@ -44,13 +44,17 @@ variable "disk_size_mb" {
 }
 
 variable "memory_mb" {
+  # NOTE: this is build-time memory only. The OVF declares 8192 MB for the
+  # production appliance (see deploy/ova/packer/templates/appliance.ovf.tmpl).
+  # 4 GB is plenty for the autoinstall + provisioning pass and frees CI runner headroom.
   type    = number
-  default = 8192
+  default = 4096
 }
 
 variable "cpus" {
+  # Build-time CPU count. Production OVF declares 4 vCPU. 2 is enough for install.
   type    = number
-  default = 4
+  default = 2
 }
 
 locals {
@@ -64,29 +68,32 @@ source "qemu" "gridwolf" {
   output_directory = "build"
   vm_name          = "${local.vm_name}.qcow2"
 
-  disk_size     = var.disk_size_mb
-  memory        = var.memory_mb
-  cpus          = var.cpus
-  format        = "qcow2"
-  accelerator   = "kvm"
-  headless      = true
-  net_device    = "virtio-net"
-  disk_interface = "virtio"
+  disk_size        = var.disk_size_mb
+  disk_compression = true
+  memory           = var.memory_mb
+  cpus             = var.cpus
+  format           = "qcow2"
+  accelerator      = "kvm"
+  headless         = true
+  net_device       = "virtio-net"
+  disk_interface   = "virtio"
 
-  # Autoinstall via cloud-init (http_directory serves user-data + meta-data)
+  # Autoinstall via cloud-init (http_directory serves user-data + meta-data).
+  # GRUB `c` console boot path — more robust than the F6/Esc tab path on
+  # UEFI casper as shipped with 24.04.2.
   http_directory = "http"
   boot_wait      = "5s"
   boot_command = [
-    "<esc><wait><esc><wait>",
-    "<f6><wait><esc><wait>",
-    "<bs><bs><bs><bs><bs>",
-    "autoinstall ds=nocloud-net;s=http://{{ .HTTPIP }}:{{ .HTTPPort }}/ ---<enter>",
+    "c<wait>",
+    "linux /casper/vmlinuz autoinstall ds=nocloud-net;s=http://{{ .HTTPIP }}:{{ .HTTPPort }}/ ---<enter>",
+    "initrd /casper/initrd<enter>",
+    "boot<enter>",
   ]
 
-  shutdown_command = "sudo shutdown -P now"
+  shutdown_command = "echo 'gridwolf' | sudo -S shutdown -P now"
   ssh_username     = "gridwolf"
   ssh_password     = "gridwolf" # rotated during provision.sh
-  ssh_timeout      = "30m"
+  ssh_timeout      = "45m"
 }
 
 build {
@@ -102,7 +109,7 @@ build {
   provisioner "shell" {
     inline = [
       "chmod +x /tmp/provision.sh",
-      "sudo GRIDWOLF_VERSION=${var.gridwolf_version} /tmp/provision.sh",
+      "sudo GRIDWOLF_VERSION=${var.gridwolf_version} GRIDWOLF_APPLIANCE_BUILD=1 /tmp/provision.sh",
       "sudo rm -f /tmp/provision.sh",
     ]
   }
@@ -121,12 +128,12 @@ build {
     ]
   }
 
-  # Convert qcow2 → OVA
+  # Convert qcow2 → OVA via the in-repo assembler (no proprietary ovftool dep).
+  # Production hardware sizing (8 GB / 4 vCPU / 40 GB) is declared here, not at
+  # build time — the qemu builder runs leaner to keep CI runners happy.
   post-processor "shell-local" {
     inline = [
-      "qemu-img convert -O vmdk -o subformat=streamOptimized build/${local.vm_name}.qcow2 build/${local.vm_name}.vmdk",
-      "cd build && ovftool --diskMode=streamOptimized ${local.vm_name}.vmdk ${local.vm_name}.ova",
-      "sha256sum build/${local.vm_name}.ova > build/${local.vm_name}.ova.sha256",
+      "bash ${path.root}/assemble-ova.sh --qcow2 build/${local.vm_name}.qcow2 --name ${local.vm_name} --out-dir build --cpus 4 --memory-mb 8192 --capacity-gb 40",
     ]
   }
 }

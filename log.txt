@@ -204,11 +204,15 @@ DEFERRED / OPEN WORK
    the first-boot wizard, and Proxmox `qm importovf`. Upgrade
    row now points at `sudo /opt/gridwolf/provision.sh`.
 
-3. DOCKER HUB IMAGE TAGS
-   provision.sh uses `${GRIDWOLF_IMAGE}` / `${GRIDWOLF_FRONTEND_IMAGE}` from
-   .env. Need real Docker Hub repo names confirmed — currently defaults to
-   `gridwolf/backend:<ver>` and `gridwolf/frontend:<ver>`. Verify org name
-   before first marketplace release.
+3. DOCKER HUB ORG REGISTRATION  ⏳ ACTION-REQUIRED (user)
+   Repo hardcodes `gridwolf/backend` + `gridwolf/frontend` in 8 places
+   (DOCKER_HUB.md, SECURITY.md, .env.example, docker-compose.hub.yml,
+   docker-compose.prod.yml, deploy/ova/provision.sh, DEPLOYMENT.md cosign
+   example, deploy/azure/gridwolf.bicep default). The `gridwolf` Docker
+   Hub org has NOT been claimed yet by Valinor Intelligence.
+   Pre-release checklist now lives in deploy/MARKETPLACE.md → §Docker
+   Hub. If the name is taken, fallback is `valinor-gridwolf` (global
+   rename across the 8 paths + cosign examples).
 
 4. MARKETPLACE LISTINGS
    deploy/aws, deploy/azure, deploy/airgap, deploy/kubernetes folders exist

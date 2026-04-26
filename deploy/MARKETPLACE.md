@@ -149,6 +149,31 @@ First review typically takes 2–4 weeks.
 
 ## Docker Hub (Verified Publisher)
 
+> ### ⚠ Pre-release: claim the `gridwolf` organization
+>
+> The repo hardcodes `gridwolf/backend` and `gridwolf/frontend` as the
+> canonical image coordinates (DOCKER_HUB.md, SECURITY.md, .env.example,
+> docker-compose.hub.yml, docker-compose.prod.yml, deploy/ova/provision.sh,
+> DEPLOYMENT.md cosign example, deploy/azure/gridwolf.bicep default).
+>
+> **Before** cutting the first `v1.1.0` release on Docker Hub:
+>
+> 1. Register the `gridwolf` organization at
+>    <https://hub.docker.com/orgs/create> under the Valinor Intelligence
+>    account.
+> 2. Create a **read-only public** repo each for `backend` and `frontend`
+>    inside the `gridwolf` org.
+> 3. Mint a personal access token (Read/Write/Delete) and store as the
+>    GitHub Actions secret `DOCKERHUB_TOKEN`; store the org name as
+>    `DOCKERHUB_USERNAME=gridwolf`.
+> 4. Run the `docker-hub.yml` workflow once on a throwaway tag (e.g.
+>    `v0.0.0-rc.0`) to confirm push permissions, then delete the tags
+>    from the Hub UI.
+>
+> If the `gridwolf` name is taken, the fallback is `valinor-gridwolf` —
+> but that requires a global rename across the 8 hardcoded paths above
+> plus the cosign verification examples.
+
 The `docker-hub.yml` workflow signs images with cosign keyless OIDC and
 attaches SLSA provenance + CycloneDX SBOMs — enough to qualify for the
 **Docker Verified Publisher** badge. Once we have 30+ days of signed pushes,

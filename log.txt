@@ -3,7 +3,7 @@
 Repo: valinorintelligence/Gridwolf
 Branch: main (committing directly, no PR flow yet)
 Working dir: C:\Users\admin\OneDrive - Gulf Business Machines\Documents\Gridwolf-com
-Date range: 2026-04-20 → 2026-04-22
+Date range: 2026-04-20 → 2026-04-26
 
 ================================================================
 WHAT GRIDWOLF IS
@@ -36,7 +36,7 @@ fragile on Windows CRLF.
 COMMITS SHIPPED THIS SESSION (newest last)
 ================================================================
 
-[pending]  feat(ova): reproducible gridwolfOS build pipeline + first-boot wizard
+0b0eb9f  feat(ova): reproducible gridwolfOS build pipeline + first-boot wizard
          Phase 1 — Packer template refresh
            - deploy/ova/packer/gridwolf.pkr.hcl: ISO bumped to 24.04.2,
              build-time sizing trimmed to 4 GB / 2 vCPU (prod sizing
@@ -256,10 +256,18 @@ HOW TO CONTINUE IN CLAUDE CODE CLI
 Paste this to Claude:
 
   "I'm continuing work on Gridwolf. Read log.txt at the repo root for
-   full session context. The next task is Stage 2 of the Gridwolf Control
-   theme revamp — component-level re-skin per the spec in log.txt section
-   'GRIDWOLF CONTROL THEME — FULL SPEC'. Commit to main, watch CI green
-   (lint-backend, lint-frontend, build-frontend), then stop for review."
+   full session context. Next task is OVA Phase 5 — smoke test the
+   gridwolfOS pipeline end-to-end. Cut a `release/v1.1.0-rc.1` tag,
+   wait for the Build Gridwolf OVA workflow to finish, download the
+   gridwolfOS-1.1.0-rc.1.ova artifact, and verify in at least one
+   hypervisor (VirtualBox 7 / VMware Workstation 17 / Proxmox VE 8):
+     - Import succeeds without manual OVF edits
+     - tty1 shows the whiptail first-boot wizard
+     - After wizard completes, https://<ip>:9090 (Cockpit) and
+       https://<ip>:3000 (Gridwolf UI) are reachable
+     - /var/lib/gridwolf/.setup-complete exists; second boot skips
+       the wizard
+   Report back with screenshots / pass-fail per hypervisor."
 
 Guardrails Claude should keep:
   - No demo/mock data anywhere in production code
@@ -276,10 +284,19 @@ Guardrails Claude should keep:
 QUICK REFERENCE
 ================================================================
 
-Build OVA:
+Build OVA — preferred (CI):
+  git tag release/v1.1.0
+  git push origin release/v1.1.0
+  # Then watch:  gh run watch --exit-status
+  # Artifact:    Actions → Build Gridwolf OVA → gridwolfOS-1.1.0
+  # Release:     gh release view release/v1.1.0  (draft)
+
+Build OVA — local / airgap rebuild:
   cd deploy/ova/packer
   packer init .
   packer build -var gridwolf_version=1.1.0 gridwolf.pkr.hcl
+  # Output: build/gridwolf-<ver>-<yyyymmdd>.ova (assembled by
+  # assemble-ova.sh — qemu-img + sed-rendered OVF + tar, no ovftool)
 
 Manual provision on bare Ubuntu 24.04 VM:
   sudo GRIDWOLF_ADMIN_USERNAME=admin \

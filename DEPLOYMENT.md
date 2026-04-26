@@ -8,7 +8,7 @@ Pick the path that matches how you run infrastructure.
 | [Docker Compose](#1-docker-compose) | Laptops, single-VM eval | 3 min |
 | [Air-gapped bundle](#2-air-gapped-bundle) | Offline / classified sites | 10 min (after bundle transfer) |
 | [Kubernetes (Helm)](#3-kubernetes-helm) | Existing k8s clusters, HA | 5 min |
-| [OVA appliance](#4-ova-appliance-esxi--workstation--virtualbox) | vSphere / VirtualBox / Workstation | 8 min |
+| [OVA appliance](#4-ova-appliance-esxi--workstation--virtualbox--proxmox) | vSphere / VirtualBox / Workstation / Proxmox | 8 min |
 | [AWS (CloudFormation)](#5-aws-cloudformation) | AWS self-deploy | 6 min |
 | [Azure (Bicep / ARM)](#6-azure-bicep--arm) | Azure self-deploy | 6 min |
 | [AWS Marketplace](#7-aws-marketplace) | One-click AMI purchase | 5 min |
@@ -100,18 +100,40 @@ Full chart options: [`deploy/kubernetes/helm/gridwolf/values.yaml`](deploy/kuber
 
 ---
 
-## 4. OVA appliance (ESXi / Workstation / VirtualBox)
+## 4. OVA appliance (ESXi / Workstation / VirtualBox / Proxmox)
 
-Each tagged release attaches a signed `.ova` to the GitHub release page.
-Import the OVA, power it on, and Gridwolf auto-configures on first boot.
+Tenable-Core-style appliance: Ubuntu 24.04 LTS + Gridwolf + **Cockpit**
+web console, with an interactive first-boot wizard on the hypervisor
+console. No SSH-required setup, no auto-generated passwords mailed
+through logs.
 
-1. Download `gridwolf-1.1.0.ova` from the [release page](https://github.com/valinorintelligence/Gridwolf/releases).
+OVAs are produced by the [`Build Gridwolf OVA`](.github/workflows/build-ova.yml)
+workflow on every `release/v*` tag and attached to a draft GitHub Release
+as `gridwolfOS-<version>.ova` plus its SHA-256.
+
+| Port | Service                                           |
+| ---- | ------------------------------------------------- |
+| 22   | SSH                                               |
+| 3000 | Gridwolf UI                                       |
+| 8000 | Gridwolf REST + WebSocket API                     |
+| 9090 | Cockpit web console (storage, network, services)  |
+
+**Deploy:**
+
+1. Download `gridwolfOS-<version>.ova` from the [release page](https://github.com/valinorintelligence/Gridwolf/releases).
 2. **ESXi / vCenter:** Host → Actions → Deploy OVF template → browse to the file.
 3. **VirtualBox / Workstation:** File → Import Appliance → select the file.
-4. Boot the VM. Watch the serial console for the auto-generated admin password.
+4. **Proxmox VE:** `qm importovf <vmid> gridwolfOS-<ver>.ova local-lvm`.
+5. Boot the VM. The first-boot wizard runs on `tty1` and walks you through
+   hostname, timezone, NTP, network (DHCP or static IPv4), and the admin
+   password (≥12 chars). When the wizard finishes Cockpit and the Gridwolf
+   service come online and the URLs print on the console.
+6. Browse to `https://<ip>:9090` (Cockpit) or `https://<ip>:3000` (Gridwolf UI).
 
-Default appliance specs: 4 vCPU, 8 GB RAM, 50 GB disk. Adjust to taste
-before first boot.
+Default appliance specs declared in the OVF: **4 vCPU · 8 GB RAM · 40 GB disk**.
+Adjust before first boot if you expect long PCAP retention.
+
+Full operator guide: [`deploy/ova/README.md`](deploy/ova/README.md).
 
 ---
 
@@ -187,7 +209,7 @@ lock-in.
 | Docker Compose | `docker compose pull && docker compose up -d` |
 | Air-gapped | Run `deploy/airgap/update-bundle.sh` on the build host, transfer, re-run `load-and-run.sh` |
 | Kubernetes | `helm upgrade gridwolf ./chart --set image.tag=1.2.0` |
-| OVA | Import the new OVA as a fresh VM, point it at the old data disk (per `packer/README` migration guide) |
+| OVA | In Cockpit → Terminal: `sudo /opt/gridwolf/provision.sh` (re-pulls images, preserves `/opt/gridwolf/.env` + data); or import a fresh OVA and reattach the old data disk |
 | AWS / Azure | `aws cloudformation update-stack` / `az deployment group create` with a bumped `GridwolfVersion` |
 | Marketplaces | Redeploy from the listing — data disks are retained across replacements |
 

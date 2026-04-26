@@ -198,9 +198,11 @@ DEFERRED / OPEN WORK
    DO NOT change SeverityBadge / StatusBadge / ObjectCard TYPE_COLOR_MAP —
    those are semantic.
 
-2. DEPLOYMENT.md UPDATE
-   Top-level DEPLOYMENT.md should reference the new deploy/ova/ path and
-   the Cockpit + Gridwolf port split. Not done yet.
+2. DEPLOYMENT.md UPDATE  ✅ DONE (this session, follow-up commit)
+   §4 rewritten around the gridwolfOS-<ver>.ova naming, the
+   release/v* CI build path, the Cockpit + Gridwolf port split,
+   the first-boot wizard, and Proxmox `qm importovf`. Upgrade
+   row now points at `sudo /opt/gridwolf/provision.sh`.
 
 3. DOCKER HUB IMAGE TAGS
    provision.sh uses `${GRIDWOLF_IMAGE}` / `${GRIDWOLF_FRONTEND_IMAGE}` from

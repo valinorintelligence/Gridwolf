@@ -77,5 +77,6 @@ packer_cache/
 deploy/aws/*.pem
 deploy/azure/*.pem
 
-# Claude Code local settings
+# Claude Code local settings + harness state
 .claude/settings.local.json
+.claude/scheduled_tasks.lock

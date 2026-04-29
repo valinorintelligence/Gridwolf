@@ -38,7 +38,7 @@ services:
     restart: unless-stopped
 
   backend:
-    image: "${GRIDWOLF_IMAGE:-gridwolf/backend:latest}"
+    image: "${GRIDWOLF_IMAGE:-ghcr.io/valinorintelligence/gridwolf-backend:latest}"
     pull_policy: always
     environment:
       GRIDWOLF_DATABASE_URL: "postgresql+asyncpg://gridwolf:${POSTGRES_PASSWORD:?}@postgres:5432/gridwolf"
@@ -64,7 +64,7 @@ services:
     restart: unless-stopped
 
   frontend:
-    image: "${GRIDWOLF_FRONTEND_IMAGE:-gridwolf/frontend:latest}"
+    image: "${GRIDWOLF_FRONTEND_IMAGE:-ghcr.io/valinorintelligence/gridwolf-frontend:latest}"
     pull_policy: always
     ports:
       - "${FRONTEND_PORT:-80}:80"

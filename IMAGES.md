@@ -26,8 +26,8 @@ It produces auditor-ready PDF reports and a real-time web dashboard.
 
 | Image | Purpose |
 | ----- | ------- |
-| `gridwolf/backend:latest`  | FastAPI API + Celery workers + scanners |
-| `gridwolf/frontend:latest` | React SPA served by Nginx              |
+| `ghcr.io/valinorintelligence/gridwolf-backend:latest`  | FastAPI API + Celery workers + scanners |
+| `ghcr.io/valinorintelligence/gridwolf-frontend:latest` | React SPA served by Nginx              |
 
 Tags: `latest`, `1.0.0`, `1.0`, `1`. Multi-arch: `linux/amd64`, `linux/arm64`.
 
@@ -62,7 +62,7 @@ docker run --rm -p 8000:8000 \
   -e GRIDWOLF_SECRET_KEY="$(python3 -c 'import secrets; print(secrets.token_urlsafe(64))')" \
   -e GRIDWOLF_DATABASE_URL="sqlite+aiosqlite:////data/gridwolf.db" \
   -v gridwolf-data:/data \
-  gridwolf/backend:latest
+  ghcr.io/valinorintelligence/gridwolf-backend:latest
 ```
 
 ---

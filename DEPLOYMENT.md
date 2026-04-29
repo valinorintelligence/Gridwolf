@@ -25,7 +25,7 @@ Every signed image carries a Sigstore keyless signature. Before deploying
 in production, verify the supply chain:
 
 ```bash
-cosign verify gridwolf/backend:1.1.0 \
+cosign verify ghcr.io/valinorintelligence/gridwolf-backend:1.1.0 \
   --certificate-identity-regexp='^https://github.com/valinorintelligence/Gridwolf' \
   --certificate-oidc-issuer='https://token.actions.githubusercontent.com'
 ```

@@ -92,15 +92,15 @@
             }
           },
           {
-            "name": "dockerHubUsername",
+            "name": "imageRegistry",
             "type": "Microsoft.Common.TextBox",
-            "label": "Docker Hub namespace",
-            "defaultValue": "gridwolf",
-            "toolTip": "Docker Hub org/user that owns the backend and frontend images. Only change this if you've forked Gridwolf into your own registry.",
+            "label": "Container image registry/namespace",
+            "defaultValue": "ghcr.io/valinorintelligence/gridwolf",
+            "toolTip": "Registry + namespace prefix; '-backend' / '-frontend' are appended. Change only if you've mirrored Gridwolf to your own registry.",
             "constraints": {
               "required": true,
-              "regex": "^[a-z0-9][a-z0-9_-]{1,63}$",
-              "validationMessage": "Must be a valid Docker Hub namespace (lowercase alphanumeric, 2-64 chars)."
+              "regex": "^[a-z0-9./-]{3,128}$",
+              "validationMessage": "Must be a registry path (lowercase alphanumeric, dot, slash, dash)."
             }
           }
         ]
@@ -113,7 +113,7 @@
       "adminPasswordOrKey": "[coalesce(steps('vmConfig').authentication.password, steps('vmConfig').authentication.sshPublicKey)]",
       "dataDiskSizeGB": "[steps('vmConfig').dataDiskSizeGB]",
       "gridwolfVersion": "[steps('software').gridwolfVersion]",
-      "dockerHubUsername": "[steps('software').dockerHubUsername]"
+      "imageRegistry": "[steps('software').imageRegistry]"
     }
   }
 }

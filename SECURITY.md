@@ -61,7 +61,7 @@ Medium+ issues.
 **In scope**
 
 - The Gridwolf backend (`backend/`), frontend (`frontend/`), and CLI
-- Official container images: `gridwolf/backend`, `gridwolf/frontend`
+- Official container images: `ghcr.io/valinorintelligence/gridwolf-backend`, `ghcr.io/valinorintelligence/gridwolf-frontend`
 - Official OVA builds published to GitHub Releases
 - Deployment templates under `deploy/aws/`, `deploy/azure/`, and the Helm chart
 - First-boot setup scripts under `packer/`
@@ -92,12 +92,12 @@ We will not pursue legal action against researchers who:
 
 ## Image Signature Verification
 
-All `gridwolf/backend` and `gridwolf/frontend` images tagged `v1.1.0` or
-later are signed via [Sigstore cosign](https://docs.sigstore.dev/) using
+All `gridwolf-backend` and `gridwolf-frontend` images on GHCR tagged `v1.1.0`
+or later are signed via [Sigstore cosign](https://docs.sigstore.dev/) using
 keyless OIDC — no public key distribution required. Verify before pulling:
 
 ```bash
-cosign verify gridwolf/backend:1.1.0 \
+cosign verify ghcr.io/valinorintelligence/gridwolf-backend:1.1.0 \
   --certificate-identity-regexp='^https://github.com/valinorintelligence/Gridwolf' \
   --certificate-oidc-issuer='https://token.actions.githubusercontent.com'
 ```

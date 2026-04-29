@@ -1,25 +1,23 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# Gridwolf — Docker Hub multi-arch build, push & keyless cosign signing
+# Gridwolf — GHCR multi-arch build, push & keyless cosign signing
 #
 # Triggers:
 #   • Push of any  v*.*.*  tag  →  builds :latest + :<version>, signs both
 #   • Manual workflow dispatch  →  builds :edge (unsigned)
 #
-# Required GitHub repository secrets:
-#   DOCKERHUB_USERNAME   — Docker Hub user / org (e.g. gridwolf)
-#   DOCKERHUB_TOKEN      — Docker Hub access token (not your password)
+# Registry: ghcr.io  (no external account required — uses GITHUB_TOKEN)
 #
 # Images produced:
-#   gridwolf/backend:<version>   linux/amd64  linux/arm64   (cosign-signed)
-#   gridwolf/frontend:<version>  linux/amd64  linux/arm64   (cosign-signed)
+#   ghcr.io/valinorintelligence/gridwolf-backend:<version>   amd64+arm64 (signed)
+#   ghcr.io/valinorintelligence/gridwolf-frontend:<version>  amd64+arm64 (signed)
 #
 # Verification (consumer side):
-#   cosign verify gridwolf/backend:1.0.0 \
+#   cosign verify ghcr.io/valinorintelligence/gridwolf-backend:1.1.0 \
 #     --certificate-identity-regexp='^https://github.com/valinorintelligence/Gridwolf' \
 #     --certificate-oidc-issuer='https://token.actions.githubusercontent.com'
 # ─────────────────────────────────────────────────────────────────────────────
 
-name: Build & Push to Docker Hub
+name: Build & Push Container Images (GHCR)
 
 on:
   push:
@@ -33,23 +31,23 @@ on:
         default: "edge"
 
 env:
-  BACKEND_IMAGE:  ${{ secrets.DOCKERHUB_USERNAME }}/backend
-  FRONTEND_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/frontend
-  COSIGN_YES: "true"   # skip the interactive OIDC prompt (we're non-interactive)
+  REGISTRY:        ghcr.io
+  BACKEND_IMAGE:   ghcr.io/valinorintelligence/gridwolf-backend
+  FRONTEND_IMAGE:  ghcr.io/valinorintelligence/gridwolf-frontend
+  COSIGN_YES:      "true"
 
 jobs:
-  # ── Derive the tag names ───────────────────────────────────────────────────
   meta:
     name: Resolve image tags
     runs-on: ubuntu-latest
     outputs:
-      version:  ${{ steps.tag.outputs.version }}
+      version:   ${{ steps.tag.outputs.version }}
       is_semver: ${{ steps.tag.outputs.is_semver }}
     steps:
       - id: tag
         run: |
           if [[ "${{ github.event_name }}" == "push" ]]; then
-            VERSION="${GITHUB_REF_NAME}"          # e.g. v1.0.0
+            VERSION="${GITHUB_REF_NAME}"
           else
             VERSION="${{ github.event.inputs.tag || 'edge' }}"
           fi
@@ -57,34 +55,31 @@ jobs:
           echo "version=$VERSION"     >> "$GITHUB_OUTPUT"
           echo "is_semver=$IS_SEMVER" >> "$GITHUB_OUTPUT"
 
-  # ── Backend image ──────────────────────────────────────────────────────────
   backend:
     name: Backend — ${{ needs.meta.outputs.version }}
     needs: meta
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write   # required for cosign keyless signing via Sigstore
+      packages: write
+      id-token: write
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up QEMU (arm64 emulation)
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
 
       - name: Install cosign
         if: needs.meta.outputs.is_semver == 'true'
         uses: sigstore/cosign-installer@v3
-        with:
-          cosign-release: v2.2.4
+        with: { cosign-release: v2.2.4 }
 
-      - name: Log in to Docker Hub
+      - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Docker meta (tags + labels)
         id: meta
@@ -118,41 +113,37 @@ jobs:
           TAGS:   ${{ steps.meta.outputs.tags }}
           DIGEST: ${{ steps.build.outputs.digest }}
         run: |
-          # Sign each tag by digest — one signature covers the multi-arch manifest list.
           echo "${TAGS}" | while IFS= read -r tag; do
             [ -n "$tag" ] || continue
             echo "→ cosign sign ${tag}@${DIGEST}"
             cosign sign --yes "${tag}@${DIGEST}"
           done
 
-  # ── Frontend image ─────────────────────────────────────────────────────────
   frontend:
     name: Frontend — ${{ needs.meta.outputs.version }}
     needs: meta
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      packages: write
       id-token: write
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
 
       - name: Install cosign
         if: needs.meta.outputs.is_semver == 'true'
         uses: sigstore/cosign-installer@v3
-        with:
-          cosign-release: v2.2.4
+        with: { cosign-release: v2.2.4 }
 
-      - name: Log in to Docker Hub
+      - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Docker meta
         id: meta
@@ -192,7 +183,6 @@ jobs:
             cosign sign --yes "${tag}@${DIGEST}"
           done
 
-  # ── Summary comment on the GitHub release ─────────────────────────────────
   release-note:
     name: Annotate GitHub release
     needs: [meta, backend, frontend]
@@ -205,10 +195,11 @@ jobs:
         with:
           script: |
             const version = '${{ needs.meta.outputs.version }}';
-            const user    = '${{ secrets.DOCKERHUB_USERNAME }}';
             const repo    = '${{ github.repository }}';
+            const backend  = 'ghcr.io/valinorintelligence/gridwolf-backend';
+            const frontend = 'ghcr.io/valinorintelligence/gridwolf-frontend';
             const body = [
-              `## 🐳 Docker Hub images`,
+              `## 🐳 Container images (GHCR)`,
               ``,
               `\`\`\`bash`,
               `# Quick-start (no source needed)`,
@@ -220,19 +211,18 @@ jobs:
               ``,
               `| Image | Tag | Platforms |`,
               `|---|---|---|`,
-              `| \`${user}/backend\`  | \`${version}\` / \`latest\` | \`linux/amd64\` · \`linux/arm64\` |`,
-              `| \`${user}/frontend\` | \`${version}\` / \`latest\` | \`linux/amd64\` · \`linux/arm64\` |`,
+              `| \`${backend}\`  | \`${version}\` / \`latest\` | \`linux/amd64\` · \`linux/arm64\` |`,
+              `| \`${frontend}\` | \`${version}\` / \`latest\` | \`linux/amd64\` · \`linux/arm64\` |`,
               ``,
               `### 🔐 Verify signatures (cosign keyless)`,
               ``,
               `\`\`\`bash`,
-              `cosign verify ${user}/backend:${version} \\`,
+              `cosign verify ${backend}:${version} \\`,
               `  --certificate-identity-regexp='^https://github.com/${repo}' \\`,
               `  --certificate-oidc-issuer='https://token.actions.githubusercontent.com'`,
               `\`\`\``,
               ``,
-              `Images are signed keyless via Sigstore — no public key required.`,
-              `Provenance (SLSA) and SBOM attestations are attached to every image.`,
+              `Images are signed keyless via Sigstore. Provenance + SBOM attestations attached.`,
             ].join('\n');
 
             const releases = await github.rest.repos.listReleases({
@@ -245,6 +235,6 @@ jobs:
                 owner:      context.repo.owner,
                 repo:       context.repo.repo,
                 release_id: release.id,
-                body:       release.body + '\n\n' + body,
+                body:       (release.body || '') + '\n\n' + body,
               });
             }

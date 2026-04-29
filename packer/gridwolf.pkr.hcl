@@ -10,11 +10,9 @@
 #   Docker               (to pre-pull images into the OVA)
 #
 # Usage:
-#   export GRIDWOLF_VERSION=v0.9.8
-#   export DOCKERHUB_USERNAME=gridwolf
+#   export GRIDWOLF_VERSION=v1.1.0
 #   packer init .
-#   packer build -var "gridwolf_version=$GRIDWOLF_VERSION" \
-#                -var "dockerhub_username=$DOCKERHUB_USERNAME" .
+#   packer build -var "gridwolf_version=$GRIDWOLF_VERSION" .
 # ─────────────────────────────────────────────────────────────────────────────
 
 packer {
@@ -33,9 +31,9 @@ variable "gridwolf_version" {
   default = "latest"
 }
 
-variable "dockerhub_username" {
+variable "registry_namespace" {
   type    = string
-  default = "gridwolf"
+  default = "ghcr.io/valinorintelligence/gridwolf"
 }
 
 variable "vm_cpus" {
@@ -127,7 +125,7 @@ build {
   # 2 — pull Gridwolf images + install compose stack
   provisioner "shell" {
     environment_vars = [
-      "DOCKERHUB_USERNAME=${var.dockerhub_username}",
+      "REGISTRY_NAMESPACE=${var.registry_namespace}",
       "GRIDWOLF_VERSION=${var.gridwolf_version}",
     ]
     script          = "${path.root}/scripts/02-install-gridwolf.sh"

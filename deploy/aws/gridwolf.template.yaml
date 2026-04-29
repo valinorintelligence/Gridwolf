@@ -29,10 +29,10 @@ Parameters:
     Default: "latest"
     Description: Docker Hub image tag (e.g. v0.9.8 or latest)
 
-  DockerHubUsername:
+  ImageRegistry:
     Type: String
-    Default: "gridwolf"
-    Description: Docker Hub organisation/username
+    Default: "ghcr.io/valinorintelligence/gridwolf"
+    Description: Container image registry/namespace prefix (suffixed with -backend / -frontend)
 
   DataVolumeSizeGB:
     Type: Number
@@ -192,8 +192,8 @@ Resources:
           chmod 600 "$INSTALL_DIR/.env"
 
           # Pull images
-          docker pull ${DockerHubUsername}/backend:${GridwolfVersion}
-          docker pull ${DockerHubUsername}/frontend:${GridwolfVersion}
+          docker pull ${ImageRegistry}-backend:${GridwolfVersion}
+          docker pull ${ImageRegistry}-frontend:${GridwolfVersion}
           docker pull postgres:16-alpine
           docker pull redis:7-alpine
 

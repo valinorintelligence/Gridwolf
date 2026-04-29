@@ -30,7 +30,7 @@ services:
     restart: unless-stopped
 
   backend:
-    image: "${GRIDWOLF_IMAGE:-gridwolf/backend:latest}"
+    image: "${GRIDWOLF_IMAGE:-ghcr.io/valinorintelligence/gridwolf-backend:latest}"
     build:
       context: ./backend
       dockerfile: ../Dockerfile.backend
@@ -59,7 +59,7 @@ services:
     restart: unless-stopped
 
   frontend:
-    image: "${GRIDWOLF_FRONTEND_IMAGE:-gridwolf/frontend:latest}"
+    image: "${GRIDWOLF_FRONTEND_IMAGE:-ghcr.io/valinorintelligence/gridwolf-frontend:latest}"
     build:
       context: .
       dockerfile: Dockerfile.frontend
@@ -76,7 +76,7 @@ services:
     restart: unless-stopped
 
   celery-worker:
-    image: "${GRIDWOLF_IMAGE:-gridwolf/backend:latest}"
+    image: "${GRIDWOLF_IMAGE:-ghcr.io/valinorintelligence/gridwolf-backend:latest}"
     build:
       context: ./backend
       dockerfile: ../Dockerfile.backend

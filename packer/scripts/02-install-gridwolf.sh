@@ -2,16 +2,16 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # Gridwolf OVA build — Step 2: Pull images + install application
 # Variables injected by Packer:
-#   DOCKERHUB_USERNAME   e.g. gridwolf
+#   REGISTRY_NAMESPACE   e.g. gridwolf
 #   GRIDWOLF_VERSION     e.g. v0.9.8
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
-DOCKERHUB_USERNAME="${DOCKERHUB_USERNAME:-gridwolf}"
+REGISTRY_NAMESPACE="${REGISTRY_NAMESPACE:-ghcr.io/valinorintelligence/gridwolf}"
 GRIDWOLF_VERSION="${GRIDWOLF_VERSION:-latest}"
 INSTALL_DIR="/opt/gridwolf"
 
-echo "[gridwolf] Installing Gridwolf ${GRIDWOLF_VERSION} from ${DOCKERHUB_USERNAME}..."
+echo "[gridwolf] Installing Gridwolf ${GRIDWOLF_VERSION} from ${REGISTRY_NAMESPACE}..."
 
 # ── Create install directory ──────────────────────────────────────────────────
 mkdir -p "${INSTALL_DIR}"/{data/uploads,data/reports}
@@ -19,8 +19,8 @@ chown -R gridwolf:gridwolf "${INSTALL_DIR}"
 
 # ── Pull Docker images (baked into OVA — no internet needed at runtime) ───────
 IMAGES=(
-  "${DOCKERHUB_USERNAME}/backend:${GRIDWOLF_VERSION}"
-  "${DOCKERHUB_USERNAME}/frontend:${GRIDWOLF_VERSION}"
+  "${REGISTRY_NAMESPACE}-backend:${GRIDWOLF_VERSION}"
+  "${REGISTRY_NAMESPACE}-frontend:${GRIDWOLF_VERSION}"
   "postgres:16-alpine"
   "redis:7-alpine"
 )
@@ -31,8 +31,8 @@ for img in "${IMAGES[@]}"; do
 done
 
 # Tag versioned images as :latest so compose can use fixed tag
-docker tag "${DOCKERHUB_USERNAME}/backend:${GRIDWOLF_VERSION}"  "${DOCKERHUB_USERNAME}/backend:latest"
-docker tag "${DOCKERHUB_USERNAME}/frontend:${GRIDWOLF_VERSION}" "${DOCKERHUB_USERNAME}/frontend:latest"
+docker tag "${REGISTRY_NAMESPACE}-backend:${GRIDWOLF_VERSION}"  "${REGISTRY_NAMESPACE}-backend:latest"
+docker tag "${REGISTRY_NAMESPACE}-frontend:${GRIDWOLF_VERSION}" "${REGISTRY_NAMESPACE}-frontend:latest"
 
 # ── Write docker-compose.yml ───────────────────────────────────────────────────
 cat > "${INSTALL_DIR}/docker-compose.yml" <<EOF
@@ -63,7 +63,7 @@ services:
     restart: unless-stopped
 
   backend:
-    image: ${DOCKERHUB_USERNAME}/backend:latest
+    image: ${REGISTRY_NAMESPACE}-backend:latest
     environment:
       GRIDWOLF_DATABASE_URL: "postgresql+asyncpg://gridwolf:\${POSTGRES_PASSWORD}@postgres:5432/gridwolf"
       GRIDWOLF_REDIS_URL: "redis://redis:6379/0"
@@ -89,7 +89,7 @@ services:
     restart: unless-stopped
 
   frontend:
-    image: ${DOCKERHUB_USERNAME}/frontend:latest
+    image: ${REGISTRY_NAMESPACE}-frontend:latest
     ports:
       - "80:80"
     depends_on:

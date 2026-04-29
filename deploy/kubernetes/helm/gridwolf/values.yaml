@@ -4,8 +4,8 @@
 # ─────────────────────────────────────────────────────────────────────────────
 
 image:
-  registry: docker.io
-  repository: gridwolf
+  registry: ghcr.io
+  repository: valinorintelligence
   pullPolicy: IfNotPresent
   # Tag shared between backend + frontend. Override per-component below if needed.
   tag: "1.1.0"
@@ -17,7 +17,7 @@ fullnameOverride: ""
 # ── Backend (FastAPI + Celery worker baked into one image) ───────────────────
 backend:
   image:
-    repository: ""   # defaults to {{ image.repository }}/backend
+    repository: ""   # defaults to {{ image.repository }}/gridwolf-backend
     tag: ""          # defaults to {{ image.tag }}
   replicaCount: 1
   service:
@@ -55,7 +55,7 @@ backend:
 # ── Frontend (Nginx serving the React SPA) ───────────────────────────────────
 frontend:
   image:
-    repository: ""   # defaults to {{ image.repository }}/frontend
+    repository: ""   # defaults to {{ image.repository }}/gridwolf-frontend
     tag: ""
   replicaCount: 2
   service:

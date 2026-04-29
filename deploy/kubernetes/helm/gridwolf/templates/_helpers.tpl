@@ -43,14 +43,14 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 
 {{/* Backend image */}}
 {{- define "gridwolf.backend.image" -}}
-{{- $repo := default (printf "%s/backend" .Values.image.repository) .Values.backend.image.repository -}}
+{{- $repo := default (printf "%s/gridwolf-backend" .Values.image.repository) .Values.backend.image.repository -}}
 {{- $tag := default .Values.image.tag .Values.backend.image.tag -}}
 {{- printf "%s/%s:%s" .Values.image.registry $repo $tag -}}
 {{- end -}}
 
 {{/* Frontend image */}}
 {{- define "gridwolf.frontend.image" -}}
-{{- $repo := default (printf "%s/frontend" .Values.image.repository) .Values.frontend.image.repository -}}
+{{- $repo := default (printf "%s/gridwolf-frontend" .Values.image.repository) .Values.frontend.image.repository -}}
 {{- $tag := default .Values.image.tag .Values.frontend.image.tag -}}
 {{- printf "%s/%s:%s" .Values.image.registry $repo $tag -}}
 {{- end -}}

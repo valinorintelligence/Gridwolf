@@ -308,13 +308,11 @@ Recommended: 2 vCPU · 4 GB RAM · 20 GB disk
 
 **Build your own OVA** (requires Packer + VirtualBox):
 ```bash
-export GRIDWOLF_VERSION=v1.0.0
-export DOCKERHUB_USERNAME=gridwolf
+export GRIDWOLF_VERSION=v1.1.0
 packer init packer/
-packer build -var "gridwolf_version=$GRIDWOLF_VERSION" \
-             -var "dockerhub_username=$DOCKERHUB_USERNAME" \
-             packer/gridwolf.pkr.hcl
-# → output/gridwolf-v1.0.0-amd64.ova
+packer build -var "gridwolf_version=$GRIDWOLF_VERSION" packer/gridwolf.pkr.hcl
+# → output/gridwolf-v1.1.0-amd64.ova
+# Production builds use deploy/ova/packer/ via .github/workflows/build-ova.yml
 ```
 
 ---

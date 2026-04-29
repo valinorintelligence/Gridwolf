@@ -33,8 +33,8 @@ param authenticationType string = 'sshPublicKey'
 @description('Docker Hub image tag (e.g. v0.9.8 or latest)')
 param gridwolfVersion string = 'latest'
 
-@description('Docker Hub username/org')
-param dockerHubUsername string = 'gridwolf'
+@description('Container image registry/namespace prefix (suffixed with -backend / -frontend)')
+param imageRegistry string = 'ghcr.io/valinorintelligence/gridwolf'
 
 @description('Data disk size in GB')
 param dataDiskSizeGB int = 64
@@ -220,8 +220,8 @@ GRIDWOLF_DEBUG=false
 EOF
 chmod 600 "$INSTALL_DIR/.env"
 
-docker pull ''' + dockerHubUsername + '/' + '''backend:''' + gridwolfVersion + '''
-docker pull ''' + dockerHubUsername + '/' + '''frontend:''' + gridwolfVersion + '''
+docker pull ${imageRegistry}-backend:${gridwolfVersion}
+docker pull ${imageRegistry}-frontend:${gridwolfVersion}
 docker pull postgres:16-alpine redis:7-alpine
 
 curl -fsSL https://raw.githubusercontent.com/valinorintelligence/Gridwolf/main/docker-compose.hub.yml \

@@ -30,7 +30,7 @@ variable "gridwolf_version" {
 
 variable "ubuntu_iso_url" {
   type    = string
-  default = "https://releases.ubuntu.com/24.04/ubuntu-24.04.2-live-server-amd64.iso"
+  default = "https://releases.ubuntu.com/24.04/ubuntu-24.04.4-live-server-amd64.iso"
 }
 
 variable "ubuntu_iso_checksum" {

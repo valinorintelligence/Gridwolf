@@ -35,7 +35,9 @@ variable "ubuntu_iso_url" {
 
 variable "ubuntu_iso_checksum" {
   type    = string
-  default = "file:https://releases.ubuntu.com/24.04/SHA256SUMS"
+  # Pinned to 24.04.4 point release. Replaces `file:…/SHA256SUMS` lookup which
+  # failed in rc.1 (Packer couldn't parse the `*<filename>` format reliably).
+  default = "sha256:e907d92eeec9df64163a7e454cbc8d7755e8ddc7ed42f99dbc80c40f1a138433"
 }
 
 variable "disk_size_mb" {
@@ -79,21 +81,24 @@ source "qemu" "gridwolf" {
   disk_interface   = "virtio"
 
   # Autoinstall via cloud-init (http_directory serves user-data + meta-data).
-  # GRUB `c` console boot path — more robust than the F6/Esc tab path on
-  # UEFI casper as shipped with 24.04.2.
-  http_directory = "http"
-  boot_wait      = "5s"
+  # Canonical GRUB edit-entry pattern: select default entry, press `e` to edit,
+  # jump to end of `linux` line, append autoinstall args, F10 to boot.
+  # `;` is a GRUB statement separator → escape with `\;` so the kernel sees it.
+  http_directory          = "http"
+  boot_wait               = "10s"
+  boot_keygroup_interval  = "150ms"
   boot_command = [
-    "c<wait>",
-    "linux /casper/vmlinuz autoinstall ds=nocloud-net;s=http://{{ .HTTPIP }}:{{ .HTTPPort }}/ ---<enter>",
-    "initrd /casper/initrd<enter>",
-    "boot<enter>",
+    "<wait3s>",
+    "e<wait2s>",
+    "<down><down><down><end>",
+    " autoinstall ds=nocloud-net\\;s=http://{{ .HTTPIP }}:{{ .HTTPPort }}/",
+    "<f10>",
   ]
 
   shutdown_command = "echo 'gridwolf' | sudo -S shutdown -P now"
   ssh_username     = "gridwolf"
   ssh_password     = "gridwolf" # rotated during provision.sh
-  ssh_timeout      = "45m"
+  ssh_timeout      = "30m"
 }
 
 build {

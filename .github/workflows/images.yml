@@ -48,8 +48,10 @@ jobs:
     name: Resolve image tags
     runs-on: ubuntu-latest
     outputs:
-      version:   ${{ steps.tag.outputs.version }}
-      is_semver: ${{ steps.tag.outputs.is_semver }}
+      version:      ${{ steps.tag.outputs.version }}
+      numeric:      ${{ steps.tag.outputs.numeric }}
+      major_minor:  ${{ steps.tag.outputs.major_minor }}
+      is_semver:    ${{ steps.tag.outputs.is_semver }}
     steps:
       - id: tag
         run: |
@@ -59,9 +61,19 @@ jobs:
           else
             VERSION="${{ github.event.inputs.tag || 'edge' }}"
           fi
+          # Numeric form for the canonical image tag (`:1.2.0`).
+          NUMERIC="${VERSION#v}"
+          # Major.minor floating tag (`:1.2`).
+          if [[ "$NUMERIC" =~ ^([0-9]+)\.([0-9]+)\. ]]; then
+            MAJOR_MINOR="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}"
+          else
+            MAJOR_MINOR=""
+          fi
           IS_SEMVER=$([[ "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+ ]] && echo "true" || echo "false")
-          echo "version=$VERSION"     >> "$GITHUB_OUTPUT"
-          echo "is_semver=$IS_SEMVER" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION"          >> "$GITHUB_OUTPUT"
+          echo "numeric=$NUMERIC"          >> "$GITHUB_OUTPUT"
+          echo "major_minor=$MAJOR_MINOR"  >> "$GITHUB_OUTPUT"
+          echo "is_semver=$IS_SEMVER"      >> "$GITHUB_OUTPUT"
 
   backend:
     name: Backend — ${{ needs.meta.outputs.version }}
@@ -95,8 +107,11 @@ jobs:
         with:
           images: ${{ env.BACKEND_IMAGE }}
           tags: |
-            type=semver,pattern={{version}},enable=${{ needs.meta.outputs.is_semver }}
-            type=semver,pattern={{major}}.{{minor}},enable=${{ needs.meta.outputs.is_semver }}
+            # docker/metadata-action's built-in `type=semver` reads the raw git
+            # ref and chokes on the `release/v*` prefix — so we drive tags
+            # explicitly off the resolved values from the `meta` job.
+            type=raw,value=${{ needs.meta.outputs.numeric }},enable=${{ needs.meta.outputs.is_semver }}
+            type=raw,value=${{ needs.meta.outputs.major_minor }},enable=${{ needs.meta.outputs.is_semver }}
             type=raw,value=latest,enable=${{ needs.meta.outputs.is_semver }}
             type=raw,value=${{ needs.meta.outputs.version }},enable=${{ needs.meta.outputs.is_semver == 'false' }}
 
@@ -159,8 +174,11 @@ jobs:
         with:
           images: ${{ env.FRONTEND_IMAGE }}
           tags: |
-            type=semver,pattern={{version}},enable=${{ needs.meta.outputs.is_semver }}
-            type=semver,pattern={{major}}.{{minor}},enable=${{ needs.meta.outputs.is_semver }}
+            # docker/metadata-action's built-in `type=semver` reads the raw git
+            # ref and chokes on the `release/v*` prefix — so we drive tags
+            # explicitly off the resolved values from the `meta` job.
+            type=raw,value=${{ needs.meta.outputs.numeric }},enable=${{ needs.meta.outputs.is_semver }}
+            type=raw,value=${{ needs.meta.outputs.major_minor }},enable=${{ needs.meta.outputs.is_semver }}
             type=raw,value=latest,enable=${{ needs.meta.outputs.is_semver }}
             type=raw,value=${{ needs.meta.outputs.version }},enable=${{ needs.meta.outputs.is_semver == 'false' }}
 

@@ -80,3 +80,6 @@ deploy/azure/*.pem
 # Claude Code local settings + harness state
 .claude/settings.local.json
 .claude/scheduled_tasks.lock
+
+# LinkedIn / marketing drafts — keep local, never publish
+LINKEDIN_*.md

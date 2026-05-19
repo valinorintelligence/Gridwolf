@@ -185,44 +185,10 @@ async def match_session_devices(
             logger.error(f"Error loading session devices: {e}")
             devices = []
     else:
-        # Demo: return matches against sample devices
-        devices = [
-            {
-                "ip_address": "10.1.1.10",
-                "vendor": "Siemens",
-                "model": "S7-1500",
-                "device_type": "PLC",
-                "protocols": ["s7comm"],
-            },
-            {
-                "ip_address": "10.1.1.20",
-                "vendor": "Schneider Electric",
-                "model": "Modicon M340",
-                "device_type": "PLC",
-                "protocols": ["modbus"],
-            },
-            {
-                "ip_address": "10.1.1.30",
-                "vendor": "Rockwell Automation",
-                "model": "ControlLogix 1756",
-                "device_type": "PLC",
-                "protocols": ["enip"],
-            },
-            {
-                "ip_address": "10.1.2.1",
-                "vendor": "Moxa",
-                "model": "EDR-G9010",
-                "device_type": "ROUTER",
-                "protocols": [],
-            },
-            {
-                "ip_address": "10.1.0.1",
-                "vendor": "Fortinet",
-                "model": "FortiGate",
-                "device_type": "FIREWALL",
-                "protocols": [],
-            },
-        ]
+        # No session_id supplied → nothing to match. Production must never
+        # fabricate device data; callers should pass a real session_id from
+        # an actual capture/scan to get matches.
+        devices = []
 
     matches = engine.match_session_devices(devices)
     return {"count": len(matches), "matches": matches}

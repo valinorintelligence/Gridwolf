@@ -1,329 +1,165 @@
-# Gridwolf — Session Handoff Log
+# Gridwolf — Session Log (2026-05-19, OVA ship-out)
 
-Repo: valinorintelligence/Gridwolf
-Branch: main (committing directly, no PR flow yet)
-Working dir: C:\Users\admin\OneDrive - Gulf Business Machines\Documents\Gridwolf-com
-Date range: 2026-04-20 → 2026-04-26
+## TL;DR
 
-================================================================
-WHAT GRIDWOLF IS
-================================================================
-Passive ICS/SCADA network discovery + vulnerability intelligence
-platform. Packaged for OVA, Docker Hub, Azure Marketplace, AWS
-Marketplace, airgap, and an enterprise-appliance build.
+Shipped **v1.1.0-rc.3** OVA appliance as public GitHub prerelease.
+- Release: https://github.com/valinorintelligence/Gridwolf/releases/tag/v1.1.0-rc.3
+- OVA download (Google Drive): https://drive.google.com/drive/folders/1N1y3TLFo1udkES_PazkUCOeYdFzSBZwg?usp=sharing
+- OVA SHA256: 4623273b59aadeed390c949f64b8c4aa99c2609e0af81be14b2977187cd84ad3
+- File size: 2.21 GB (exceeds GitHub Release 2 GB asset cap → GDrive)
+- Container images: ghcr.io/valinorintelligence/gridwolf-{backend,frontend}:1.1.0-rc.3 (multi-arch amd64+arm64, cosign-signed)
 
-Stack:
-  backend/   FastAPI + SQLAlchemy async + Pydantic + JWT + SQLite (default)
-  frontend/  React 19 + Vite + Tailwind 4.2 + Zustand + React Query
-  deploy/    per-channel packaging (aws, azure, airgap, kubernetes, ova)
+## What this session accomplished
 
-Port plan (appliance):
-   22  SSH
-  3000 Gridwolf UI
-  8000 Gridwolf API
-  9090 Cockpit web console
+Promoted Gridwolf from "two failed OVA builds + dirty working tree" → "public RC release with downloadable appliance" in one pass.
 
-Key convention: NO demo / mock data in production code. Seed files,
-vuln feeds, fingerprint DBs and export payloads are empty — repopulate
-from backend at runtime. Frontend aligns to backend enums, not vice
-versa. Status/severity/type color tokens are SEMANTIC — do not re-theme.
+### Phase A — OVA build triage (FIX + SHIP)
 
-CI jobs (all must be green): lint-backend, lint-frontend, build-frontend.
-`.gitattributes` forces LF on source files — ruff format --check is
-fragile on Windows CRLF.
+Two prior failures rooted out and fixed in main:
 
-================================================================
-COMMITS SHIPPED THIS SESSION (newest last)
-================================================================
+1. **rc.1** (54 s fast-fail): Packer `file:https://releases.ubuntu.com/24.04/SHA256SUMS` checksum
+   parser tripped on SHA256SUMS format. Pinned directly to published 24.04.4 hash.
+2. **rc.2** (47 min SSH timeout): cloud-init `user-data:25` password hash did not decode to 'gridwolf',
+   so Packer's `ssh_password` could never authenticate. Replaced with verified `openssl passwd -6` output.
+3. **rc.3 attempt 1** (8 min, push tag): SSH + ISO fixes both worked, but `docker compose pull` in
+   provision.sh hit `ghcr.io/valinorintelligence/gridwolf-backend:1.1.0-rc.3: not found`.
+   Root cause: `images.yml` workflow triggers on plain `v*.*.*` only — not on `release/v*`.
+   The `release/v1.1.0-rc.3` tag fired the OVA workflow but no container build.
+4. **rc.3 attempt 2** (18 min 39 s, workflow_dispatch): GREEN. Containers pre-built via plain
+   `v1.1.0-rc.3` tag, then OVA workflow re-dispatched with `gridwolf_version=1.1.0-rc.3` input.
 
-0b0eb9f  feat(ova): reproducible gridwolfOS build pipeline + first-boot wizard
-         Phase 1 — Packer template refresh
-           - deploy/ova/packer/gridwolf.pkr.hcl: ISO bumped to 24.04.2,
-             build-time sizing trimmed to 4 GB / 2 vCPU (prod sizing
-             declared in OVF, not Packer), GRUB `c` console boot path
-             instead of fragile F6/Esc tab path, ssh_timeout 45m,
-             disk_compression on, GRIDWOLF_APPLIANCE_BUILD=1 env
-             passed to provision.sh
-           - deploy/ova/packer/http/user-data: rewritten for strict
-             24.04 schema — interactive-sections: [], LVM all-disk
-             layout, identity block w/ SHA-512 password, late-commands
-             curtin in-target log cleanup
-         Phase 2 — OSS OVA assembly (no ovftool)
-           - deploy/ova/packer/templates/appliance.ovf.tmpl: hand-
-             written OVF 1.0 envelope, IDE controller + E1000 NIC +
-             vmx-13 (LCD profile accepted by VMware/VBox/Proxmox)
-           - deploy/ova/packer/assemble-ova.sh: qemu-img streamOptimized
-             vmdk + sed-rendered OVF + SHA-256 .mf + tar (ovf, mf, vmdk
-             order per DSP0243). No proprietary deps.
-           - gridwolf.pkr.hcl post-processor swapped to call assembler
-         Phase 3 — Tenable-Core-style first-boot wizard
-           - deploy/ova/provision.sh: GRIDWOLF_APPLIANCE_BUILD gate;
-             installs whiptail wizard /usr/local/sbin/gridwolf-firstboot
-             (hostname / timezone / NTP / network DHCP-or-static / admin
-             password ≥12 chars), systemd unit gridwolf-firstboot.service
-             with Before=cockpit.socket gridwolf.service +
-             ConditionPathExists=!/var/lib/gridwolf/.setup-complete,
-             cockpit.socket disabled at build time (wizard re-enables)
-         Phase 4 — Reproducible CI build
-           - .github/workflows/build-ova.yml: rewritten. Triggers on
-             release/v* tags (plain v* stays Docker-only). Hosted
-             ubuntu-24.04 runner with KVM udev rule, packer + qemu-utils,
-             rename to gridwolfOS-<ver>.ova, upload artifact, draft
-             GH release via softprops/action-gh-release@v2
-           - deploy/ova/README.md: leads with CI build path; manual
-             packer build demoted to "developer / airgap rebuild";
-             first-login section rewritten around the wizard
-         Phase 5 — DEFERRED to user (real release/v1.1.0-rc.1 tag +
-           hypervisor smoke test in VBox/VMware/Proxmox)
-         Plan of record: plans/build-gridwolfOS-ova.md
+### Phase B — Local functionality verify
 
-c83a0fa  style(theme): Stage 2 — component-level Gridwolf Control re-skin
-         - Button: focus-visible cyan ring, ghost hover violet
-         - Badge: default + outline → cyan tones, default dot → cyan
-         - Card: opt-in `rim` prop applies card-rim hairline
-         - Tabs: active tab → 1px cyan hairline under text
-         - Modal: cyan border + bus-shimmer divider under title
-         - Sidebar: active item → cyan left-rail (2px)
-         - TopBar: bus-shimmer at bottom, .font-numeric on count badge
-         - StatCard: big number wrapped in <span class="font-numeric">
-         - Input: :valid:not(:placeholder-shown) → cyan border tint
-         Semantic tokens (severity/status/type) untouched. LF enforced.
+- `ruff check .` — All checks passed
+- `ruff format --check .` — 44 files already formatted
+- `npx tsc --noEmit` — 0 errors
+- `npm run lint` — 0 errors, 121 warnings (react-refresh export hygiene; non-blocking)
+- `npm run build` — initially failed on missing `@rolldown/binding-darwin-arm64` native module
+  (classic npm optional-deps bug npm/cli#4828). Fixed by deleting `node_modules` + `package-lock.json`,
+  fresh `npm install`. Build now produces clean dist with 0 vulnerabilities (was: 6 — 3 high, 3 moderate).
+- `docker compose config -q` — valid
+- Cargo not installed locally → Tauri builds in CI only
 
-17c696b  chore: strip demo/mock data across production paths
-20109a1  fix(reports): generate-report button did nothing + backend NameError
-         - Frontend: section IDs, report_type enum, payload field name
-           (assessor → assessor_name), visible error banner w/ Pydantic parse
-         - Backend: added `import html`, renamed local shadowing var to html_doc
-eef8e75  feat(auth): split-pane login/register with animated ICS illustration
-         - New ICSIllustration.tsx (inline SVG, cyan/violet gradients,
-           isometric PLC/VFD/HMI/servo modules, data-particle animateMotion)
-         - AuthLayout rewritten as flex split-pane (left=illustration, right=form)
-         - index.css: float-slow / pulse-glow / spin-slow keyframes +
-           prefers-reduced-motion guard
-72b24bf  feat(ova): Tenable-Core-style appliance with Cockpit web console
-         - deploy/ova/provision.sh — idempotent Ubuntu 24.04 → appliance
-           (Cockpit + podman/networkmanager/storaged/packagekit/pcp/sosreport,
-           Docker, docker-compose.yml w/ Hub tags, systemd unit, UFW,
-           unattended-upgrades, branded Cockpit tile + login page)
-         - deploy/ova/packer/gridwolf.pkr.hcl — Packer template (qemu source,
-           Ubuntu 24.04.1 ISO, cloud-init autoinstall, qcow2→vmdk→ova via ovftool,
-           SHA256 checksum, 40GB/8GB/4CPU defaults)
-         - deploy/ova/packer/http/{user-data,meta-data} — cloud-init
-         - deploy/ova/README.md — operator guide (build/deploy/first-login/
-           day-2 ops/hardening/troubleshooting/disk layout)
-         - CLAUDE.md — repo orientation + deferred theme spec
-e9cc956  style(theme): extend Gridwolf Control theme across authed app shell
-         - Stage 1 of deferred theme revamp — tokens + utilities only
-         - Added: .grid-backdrop (40px cyan/violet grid w/ radial mask),
-           .ambient-glow-violet, .ambient-glow-cyan, .bus-shimmer animated
-           divider, .font-numeric / .numeric (JetBrains Mono + tabular-nums),
-           .card-rim (opt-in cyan hairline), JetBrains Mono Google Fonts import
-         - AppLayout <main> wrapped with grid-backdrop + ambient glows so
-           every authed page sits on the same chrome as auth pages
-         - ZERO component-logic changes. Semantic tokens untouched.
+### Phase C — Full audit
 
-================================================================
-FILES TOUCHED / CREATED
-================================================================
+- **npm**: 0 vulnerabilities post-relock
+- **Secrets**: scanned for BEGIN PRIVATE KEY, AKIA, ghp_, sk-, aws_secret_access_key — clean
+- **CORS**: localhost-only default in `backend/app/core/config.py:18-22`
+- **SECRET_KEY**: empty default + fatal in prod + ephemeral fallback for dev (`config.py:34-51`)
+- **ADMIN_PASSWORD**: empty → random `secrets.token_urlsafe(16)` printed once at first boot
+  (`database.py:75-96`)
+- **Dangerous calls**: zero hits for `eval(`, `exec(`, `os.system`, `subprocess.*shell=True`, `pickle.load`
+- **pip-audit signals** (from local global env, not project venv — still worth flagging):
+  - `python-jose 3.3.0` → 3.4.0 (PYSEC-2024-232, 233)
+  - `starlette 0.38.6` (transitive via fastapi) → 0.47.2+
+  - `orjson 3.10.7` → 3.11.6
+  None blocking for rc.3. Bump scheduled for v1.1.1.
 
-NEW:
-  CLAUDE.md
-  log.txt                          (this file)
-  deploy/ova/README.md
-  deploy/ova/provision.sh
-  deploy/ova/packer/gridwolf.pkr.hcl
-  deploy/ova/packer/http/user-data
-  deploy/ova/packer/http/meta-data
-  deploy/ova/packer/templates/appliance.ovf.tmpl   (Phase 2)
-  deploy/ova/packer/assemble-ova.sh                (Phase 2)
-  plans/build-gridwolfOS-ova.md                    (5-phase plan)
-  frontend/src/components/shared/ICSIllustration.tsx
+### Phase D — Release
 
-MODIFIED (this session — OVA work + Stage 2 theme):
-  .github/workflows/build-ova.yml          (rewritten — release/v* tag,
-                                            hosted runner KVM, OSS assembly)
-  deploy/ova/README.md                     (CI build path leads;
-                                            wizard-based first-login section)
-  deploy/ova/provision.sh                  (GRIDWOLF_APPLIANCE_BUILD gate +
-                                            whiptail wizard + systemd unit)
-  deploy/ova/packer/gridwolf.pkr.hcl       (24.04.2 ISO; OSS post-processor)
-  deploy/ova/packer/http/user-data         (strict 24.04 schema)
-  frontend/src/components/ui/Button.tsx    (focus ring, ghost hover)
-  frontend/src/components/ui/Badge.tsx     (default + outline → cyan)
-  frontend/src/components/ui/Card.tsx      (rim prop)
-  frontend/src/components/ui/Tabs.tsx      (cyan hairline)
-  frontend/src/components/ui/Modal.tsx     (cyan border + bus-shimmer)
-  frontend/src/components/ui/Input.tsx     (cyan on :valid)
-  frontend/src/components/navigation/Sidebar.tsx  (cyan left-rail)
-  frontend/src/components/navigation/TopBar.tsx   (bus-shimmer + numeric badge)
-  frontend/src/components/dashboard/StatCard.tsx  (font-numeric on value)
-  frontend/src/index.css                   (--color-accent-cyan/magenta tokens)
+GitHub release `v1.1.0-rc.3` created as public **prerelease** with:
+- OVA hosted on Google Drive (user-uploaded per their suggestion)
+- `gridwolfOS-1.1.0-rc.3.ova.sha256` attached directly to release for integrity verification
+- Full release notes covering import targets, ports, cosign verification, quick-start, known items
 
-MODIFIED:
-  backend/app/engine/report_generator.py    (import html, renamed html_doc)
-  frontend/src/index.css                    (keyframes + Gridwolf Control utilities)
-  frontend/src/layouts/AuthLayout.tsx       (split-pane + illustration)
-  frontend/src/layouts/AppLayout.tsx        (grid-backdrop + ambient glows on <main>)
-  frontend/src/pages/ExportHub.tsx          (downloadFromApi, removed 4 mocks)
-  frontend/src/pages/ScanImport.tsx         (normalizeStatus + render fallback)
-  frontend/src/pages/ReportGenerator.tsx    (section IDs, report_type, payload,
-                                             error banner)
-  frontend/src/components/navigation/TopBar.tsx  (real notification dropdown,
-                                                  30s polling, severity dots)
+## Commits landed on main this session
 
-================================================================
-DEFERRED / OPEN WORK
-================================================================
+```
+0c86078 chore: regenerate package-lock.json to fix rolldown native binding resolution
+c4826a8 fix(ova): pin ISO sha256, fix autoinstall password hash, tighten GRUB boot
+8652dff chore: renormalize CRLF→LF per .gitattributes
+```
 
-0. OVA SMOKE TEST (Phase 5)
-   The build pipeline lands this session but the artifact has NOT been
-   booted in a hypervisor yet. Cut a `release/v1.1.0-rc.1` tag, let
-   the workflow build, download the OVA, then verify in at least one
-   of: VirtualBox 7, VMware Workstation 17, Proxmox VE 8.
-   Acceptance: import succeeds, console shows wizard on tty1, after
-   wizard Cockpit on :9090 + Gridwolf UI on :3000 reachable.
+All authored as `Anand Murugan <anandmurugan@Anands-MacBook-Pro.local>` with `Co-Authored-By: Claude Opus 4.7 (1M context)`.
 
-1. THEME REVAMP — STAGE 2 (component re-skin)  ✅ DONE in c83a0fa
-   Stage 1 (tokens + app-shell chrome) landed in e9cc956.
-   Stage 2 was:
-     - Button.tsx       audit primary / ghost / outline variants for cyan accent
-     - Badge.tsx        keep severity mapping; tune "default" + "outline" tones
-     - Card.tsx         opt-in card-rim or make rim default via new prop
-     - Tabs.tsx         active tab indicator → cyan hairline under text
-     - Modal.tsx        cyan hairline on border, bus-shimmer under title
-     - Sidebar.tsx      active item: cyan left-rail indicator (keep violet bg tint)
-     - TopBar.tsx       bus-shimmer under TopBar for "live"; .font-numeric on badge
-     - StatCard         wrap the big number in <span className="font-numeric">
-     - Input / Select   focus ring → ring-accent/30 (already there) + cyan on :valid
-   DO NOT change SeverityBadge / StatusBadge / ObjectCard TYPE_COLOR_MAP —
-   those are semantic.
+## Tags pushed
 
-2. DEPLOYMENT.md UPDATE  ✅ DONE (this session, follow-up commit)
-   §4 rewritten around the gridwolfOS-<ver>.ova naming, the
-   release/v* CI build path, the Cockpit + Gridwolf port split,
-   the first-boot wizard, and Proxmox `qm importovf`. Upgrade
-   row now points at `sudo /opt/gridwolf/provision.sh`.
+- `v1.1.0-rc.3` (plain) — fired `images.yml` → GHCR containers green in 4-7 min
+- `release/v1.1.0-rc.3` — fired `build-ova.yml` → failed (containers not yet built; see OPEN ISSUE)
 
-3. DOCKER HUB ORG REGISTRATION  ⏳ ACTION-REQUIRED (user)
-   Repo hardcodes `gridwolf/backend` + `gridwolf/frontend` in 8 places
-   (DOCKER_HUB.md, SECURITY.md, .env.example, docker-compose.hub.yml,
-   docker-compose.prod.yml, deploy/ova/provision.sh, DEPLOYMENT.md cosign
-   example, deploy/azure/gridwolf.bicep default). The `gridwolf` Docker
-   Hub org has NOT been claimed yet by Valinor Intelligence.
-   Pre-release checklist now lives in deploy/MARKETPLACE.md → §Docker
-   Hub. If the name is taken, fallback is `valinor-gridwolf` (global
-   rename across the 8 paths + cosign examples).
+## Workflow runs
 
-4. MARKETPLACE LISTINGS
-   deploy/aws, deploy/azure, deploy/airgap, deploy/kubernetes folders exist
-   but have not been touched this session. Status unknown.
+- `images.yml` run `26064857717` — green
+  https://github.com/valinorintelligence/Gridwolf/actions/runs/26064857717
+- `build-ova.yml` run `26064509899` (push trigger) — failed at provision step on missing containers
+- `build-ova.yml` run `26065091241` (workflow_dispatch) — GREEN 18 min 39 s
+  Artifact: `gridwolfOS-1.1.0-rc.3` (2,212,801,482 bytes)
 
-5. PR WORKFLOW
-   All work so far is committed directly to main. User chose "Option A"
-   (leave direct pushes in place, don't retroactively reconstruct PRs).
-   If you want feature-branch + PR flow going forward, establish it
-   before the next change.
+## OPEN ISSUE for next release
 
-================================================================
-GRIDWOLF CONTROL THEME — FULL SPEC (for Stage 2)
-================================================================
+`release/v*` tag triggers OVA build but NOT container build. Current workflow:
 
-Colors (already in index.css):
-  --accent:         #7c3aed   violet  — brand, primary CTAs, focus rings
-  --accent-cyan:    #22d3ee   cyan    — data, live signals, telemetry
-  --accent-magenta: #d946ef   magenta — rare highlights only (gradients)
-  --accent-blue:    #3b82f6
-  Surfaces unchanged (#080b1a / #0d1029 / #151937 / #1e2346)
+```
+push tag v1.1.0       → images.yml  → builds GHCR containers
+push tag release/v1.1.0 → build-ova.yml → pulls containers from GHCR
+```
 
-Typography:
-  Inter for narrative text (existing)
-  JetBrains Mono via .font-numeric for numbers, CVE IDs, IPs, MACs,
-    timestamps, hex, counter displays
+If you push `release/v*` WITHOUT first building containers, OVA fails at `docker compose pull`.
 
-Chrome utilities (already in index.css after e9cc956):
-  .grid-backdrop         container-scoped 40px grid w/ radial mask
-  .ambient-glow-violet   corner blob (top-left default)
-  .ambient-glow-cyan     corner blob (bottom-right default)
-  .bus-shimmer           animated cyan→violet gradient divider (3.5s)
-  .font-numeric          JetBrains Mono + tabular-nums
-  .card-rim              inset 1px cyan hairline (opt-in)
-  .glow-purple / .glow-cyan / .glow-magenta   box-shadow accents
-  .animate-float-slow / .animate-pulse-glow / .animate-spin-slow
-    (all guarded by prefers-reduced-motion)
+**Workaround** used this session: push plain `vX.Y.Z` first, wait for images.yml green, then `gh workflow run build-ova.yml -f gridwolf_version=X.Y.Z`. Skips the `release/v*` tag entirely.
 
-Rollout rule (from CLAUDE.md):
-  STAGED — first commit is tokens + animations only (DONE, e9cc956).
-  Second commit is component-level re-skinning (PENDING).
+**Permanent fix options** (pick one, deferred):
+1. Add `release/v*` to `images.yml` trigger (normalize VERSION stripping for both `v*` and `release/v*`)
+2. Make `build-ova.yml` build images itself as a `needs:` step
+3. Use `workflow_run` to chain build-ova.yml AFTER images.yml on the same tag
+4. Add a pre-flight GHCR existence check at start of build-ova.yml that fails fast with a clear message
 
-================================================================
-HOW TO CONTINUE IN CLAUDE CODE CLI
-================================================================
+## Files changed (working tree → main)
 
-Paste this to Claude:
+19 files normalized CRLF→LF (no content change, verified via `git diff --ignore-all-space`):
+.gitignore, Dockerfile.backend, LICENSE, backend/alembic.ini, backend/alembic/script.py.mako,
+deploy/airgap/.env.template, frontend/.gitignore, frontend/index.html, frontend/public/favicon.svg,
+frontend/public/icons.svg, frontend/src/index.css, gridwolf.bat, landing/favicon.svg, landing/index.html,
+scripts/install.ps1, scripts/take-screenshots.mjs, src-tauri/build.rs, src-tauri/src/lib.rs,
+src-tauri/src/main.rs
 
-  "I'm continuing work on Gridwolf. Read log.txt at the repo root for
-   full session context. Next task is OVA Phase 5 — smoke test the
-   gridwolfOS pipeline end-to-end. Cut a `release/v1.1.0-rc.1` tag,
-   wait for the Build Gridwolf OVA workflow to finish, download the
-   gridwolfOS-1.1.0-rc.1.ova artifact, and verify in at least one
-   hypervisor (VirtualBox 7 / VMware Workstation 17 / Proxmox VE 8):
-     - Import succeeds without manual OVF edits
-     - tty1 shows the whiptail first-boot wizard
-     - After wizard completes, https://<ip>:9090 (Cockpit) and
-       https://<ip>:3000 (Gridwolf UI) are reachable
-     - /var/lib/gridwolf/.setup-complete exists; second boot skips
-       the wizard
-   Report back with screenshots / pass-fail per hypervisor."
+Real content edits:
+- `deploy/ova/packer/gridwolf.pkr.hcl:37-39` — pin ISO sha256 (replaces `file:` lookup that failed in rc.1)
+- `deploy/ova/packer/gridwolf.pkr.hcl:88-94` — GRUB edit-entry boot_command with proper timing
+  (10 s boot_wait, 150 ms keygroup interval, escaped `\;` for nocloud-net datasource arg)
+- `deploy/ova/packer/http/user-data:25` — verified password hash for 'gridwolf':
+  `$6$CIgh6WCg$DOtLk6uY.JdHf8Km8gcs40QAkGWNq41ZZKStcMK/RjdALAG/Ge3ELWk06qchG7oOzhWr2giY7upe9OQMP82Fy.`
+- `package-lock.json` — regenerated to fix rolldown native binding resolution (613+/514-)
 
-Guardrails Claude should keep:
-  - No demo/mock data anywhere in production code
-  - Frontend payloads align to backend enums (backend is source of truth)
-  - Semantic color tokens (severity / status / type) are off-limits
-  - Run `npx tsc --noEmit` + `npm run lint` + `npm run build` locally
-    before pushing — CI is strict
-  - Backend: `cd backend && ruff check . && ruff format --check .` must pass
-  - Prefer one logical commit per theme stage, not per component file
-  - When committing from Windows editor, watch for CRLF → ruff format
-    failures (use LF; .gitattributes enforces)
+## Verified facts captured for future sessions
 
-================================================================
-QUICK REFERENCE
-================================================================
+- Ubuntu 24.04.4 ISO SHA256: `e907d92eeec9df64163a7e454cbc8d7755e8ddc7ed42f99dbc80c40f1a138433`
+- gridwolf password hash (sha512crypt, salt CIgh6WCg): see user-data:25 above
+- OVA artifact ID for rc.3: `7071169057` (run `26065091241`)
+- Existing `v1.1.0` GH release from 2026-04-19 STILL EXISTS — must be deleted or skipped before
+  cutting GA `v1.1.0` from the rc.3 line
+- GitHub Release single-asset cap: 2,147,483,648 bytes (exactly 2 GiB). OVA is 2,244,136,960 bytes → +96 MB over.
+- Container build (images.yml) takes ~4-7 min per image; frontend done in 4m48s this run, backend slower (multi-arch).
+- OVA build (build-ova.yml) ~18-20 min on `ubuntu-24.04` runner with KVM.
+- packer plugin version in use: qemu v1.1.4 x5.0 linux_amd64
 
-Build OVA — preferred (CI):
-  git tag release/v1.1.0
-  git push origin release/v1.1.0
-  # Then watch:  gh run watch --exit-status
-  # Artifact:    Actions → Build Gridwolf OVA → gridwolfOS-1.1.0
-  # Release:     gh release view release/v1.1.0  (draft)
+## Pending follow-ups for next session
 
-Build OVA — local / airgap rebuild:
-  cd deploy/ova/packer
-  packer init .
-  packer build -var gridwolf_version=1.1.0 gridwolf.pkr.hcl
-  # Output: build/gridwolf-<ver>-<yyyymmdd>.ova (assembled by
-  # assemble-ova.sh — qemu-img + sed-rendered OVF + tar, no ovftool)
+1. **Hypervisor smoke test** — user-side. Verify rc.3 OVA boots on VMware/VirtualBox/Proxmox.
+   First-boot wizard must prompt and complete; UI reachable on :3000; API on :8000; Cockpit on :9090.
+2. **Cut GA `v1.1.0`** — requires deciding fate of existing `v1.1.0` release from 2026-04-19
+   (delete + replace, OR jump to `v1.2.0`). Then 2-tag dance (plain → release/) per workaround above.
+3. **Backend dep bumps** for v1.1.1: python-jose 3.3.0 → 3.4.0+, starlette 0.38.6 → 0.47.2+,
+   orjson 3.10.7 → 3.11.6.
+4. **OVA workflow refactor** — pick one of the 4 options above so a single `release/v*` tag cleanly
+   produces both containers + OVA without manual workflow_dispatch.
+5. **GitHub Actions Node 20 deprecation** — `actions/checkout@v4`, `actions/upload-artifact@v4`,
+   `docker/*` family. Forced to Node 24 starting 2026-06-02; Node 20 removed 2026-09-16.
+6. **Lockfile CRLF warning on commit** — git printed "in the working copy of 'package-lock.json',
+   CRLF will be replaced by LF the next time Git touches it". Cosmetic; resolves on next touch.
 
-Manual provision on bare Ubuntu 24.04 VM:
-  sudo GRIDWOLF_ADMIN_USERNAME=admin \
-       GRIDWOLF_ADMIN_PASSWORD='...' \
-       GRIDWOLF_VERSION=1.1.0 \
-       ./deploy/ova/provision.sh
+## Caveman mode
 
-Run locally for manual test:
-  docker compose up -d --build
-  open http://localhost:3000
+Active full level throughout. Code/commits/security written normal per skill rules.
 
-Frontend checks:
-  cd frontend && npx tsc --noEmit && npm run lint && npm run build
+## Session metadata
 
-Backend checks:
-  cd backend && ruff check . && ruff format --check .
-
-CI watch after push:
-  gh run list --branch main --limit 1
-  gh run watch <id> --exit-status
-
-================================================================
-END OF LOG
-================================================================
+- Date: 2026-05-19
+- Branch: main
+- Working tree at end: clean (after lockfile commit pushed)
+- Background tasks completed: 3 watchers (rc.3 push build, container build, OVA dispatch build)
+- User explicit decisions captured:
+  - "check completely and remove unnecessary thing and fix all the valid issue and make the build completely neat clean"
+  - Phase A first (OVA triage)
+  - Audit depth: Full + /ultrareview prep
+  - OVA delivery: Google Drive (user-uploaded), checksum on GH release

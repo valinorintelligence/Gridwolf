@@ -17,6 +17,11 @@ on:
 permissions:
   contents: write   # required for softprops/action-gh-release
 
+env:
+  # Force JavaScript actions under Node 24. GitHub starts forcing this
+  # on 2026-06-02 and removes Node 20 on 2026-09-16.
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   build-ova:
     runs-on: ubuntu-24.04

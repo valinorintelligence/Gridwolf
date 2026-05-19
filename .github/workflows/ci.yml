@@ -6,6 +6,12 @@ on:
   pull_request:
     branches: [main]
 
+# Force the runner to execute JavaScript actions under Node 24.
+# GitHub starts forcing this on 2026-06-02 and removes Node 20 on 2026-09-16;
+# opting in early surfaces compatibility issues before the deadline.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   lint-frontend:
     runs-on: ubuntu-latest

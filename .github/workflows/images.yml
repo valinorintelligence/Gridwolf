@@ -39,6 +39,9 @@ env:
   BACKEND_IMAGE:   ghcr.io/valinorintelligence/gridwolf-backend
   FRONTEND_IMAGE:  ghcr.io/valinorintelligence/gridwolf-frontend
   COSIGN_YES:      "true"
+  # Force the runner to execute JavaScript actions under Node 24.
+  # GitHub starts forcing this on 2026-06-02 and removes Node 20 on 2026-09-16.
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
   meta:

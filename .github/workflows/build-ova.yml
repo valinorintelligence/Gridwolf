@@ -64,6 +64,40 @@ jobs:
           packer version
           qemu-img --version
 
+      - name: Wait for GHCR container images
+        # When triggered by a `release/v*` push, the images.yml workflow runs
+        # in parallel. Packer's provision.sh does `docker compose pull` against
+        # `ghcr.io/.../{backend,frontend}:${VERSION}` — if those tags don't
+        # exist yet, provision fails late and wastes ~8 min of build time.
+        # Poll the GHCR manifest endpoint for both images; bail fast with a
+        # clear message if they don't appear within 15 minutes.
+        env:
+          VER: ${{ steps.ver.outputs.version }}
+        run: |
+          set -euo pipefail
+          TOKEN=$(curl -fsSL \
+            "https://ghcr.io/token?scope=repository:valinorintelligence/gridwolf-backend:pull&scope=repository:valinorintelligence/gridwolf-frontend:pull" \
+            | python3 -c 'import json,sys;print(json.load(sys.stdin)["token"])')
+          check() {
+            local repo="$1"
+            curl -fsSL -o /dev/null -w "%{http_code}" \
+              -H "Authorization: Bearer ${TOKEN}" \
+              -H "Accept: application/vnd.oci.image.index.v1+json,application/vnd.docker.distribution.manifest.list.v2+json" \
+              "https://ghcr.io/v2/${repo}/manifests/${VER}"
+          }
+          for i in $(seq 1 90); do
+            BE=$(check valinorintelligence/gridwolf-backend  || echo 000)
+            FE=$(check valinorintelligence/gridwolf-frontend || echo 000)
+            if [ "$BE" = "200" ] && [ "$FE" = "200" ]; then
+              echo "✓ Both images present at tag :${VER}"
+              exit 0
+            fi
+            echo "[$i/90] backend=${BE} frontend=${FE} — waiting 10s..."
+            sleep 10
+          done
+          echo "::error::GHCR images for :${VER} did not appear within 15 min — did images.yml fail or skip?"
+          exit 1
+
       - name: packer init
         working-directory: deploy/ova/packer
         run: packer init .

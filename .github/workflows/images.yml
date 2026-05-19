@@ -22,7 +22,11 @@ name: Build & Push Container Images (GHCR)
 on:
   push:
     tags:
+      # Plain semver tags (canonical container release).
       - "v*.*.*"
+      # `release/v*` also builds images so a single appliance tag triggers
+      # both this workflow and build-ova.yml — see deploy/ova/README.md.
+      - "release/v*.*.*"
   workflow_dispatch:
     inputs:
       tag:
@@ -47,7 +51,8 @@ jobs:
       - id: tag
         run: |
           if [[ "${{ github.event_name }}" == "push" ]]; then
-            VERSION="${GITHUB_REF_NAME}"
+            # Strip optional `release/` prefix so `release/v1.1.0` → `v1.1.0`.
+            VERSION="${GITHUB_REF_NAME#release/}"
           else
             VERSION="${{ github.event.inputs.tag || 'edge' }}"
           fi

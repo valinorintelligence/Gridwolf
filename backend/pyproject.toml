@@ -2,7 +2,7 @@
 name = "gridwolf"
 version = "1.2.0"
 description = "Gridwolf - Passive ICS/SCADA Network Discovery & Topology Visualization"
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115.0",
     "uvicorn[standard]>=0.32.0",
@@ -26,12 +26,36 @@ dependencies = [
 postgres = ["asyncpg>=0.30.0"]
 pdf = ["weasyprint>=62.0"]
 full = ["asyncpg>=0.30.0", "weasyprint>=62.0", "redis>=5.0.0", "celery>=5.4.0"]
-dev = ["pytest>=8.0", "pytest-asyncio>=0.24", "ruff>=0.8.0", "mypy>=1.13"]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+    "pytest-cov>=5.0",
+    "ruff>=0.8.0",
+    "mypy>=1.13",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+filterwarnings = [
+    "ignore::DeprecationWarning:passlib.*",
+    "ignore::DeprecationWarning:jose.*",
+]
 
 [tool.ruff]
 target-version = "py312"
 line-length = 100
+extend-exclude = ["alembic/versions"]
+
+[tool.ruff.lint.per-file-ignores]
+# Test fixtures intentionally import after env setup.
+"tests/conftest.py" = ["E402"]
 
 [build-system]
 requires = ["setuptools>=75.0"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+exclude = ["tests*", "alembic*"]

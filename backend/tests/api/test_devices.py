@@ -6,17 +6,13 @@ from httpx import AsyncClient
 
 
 async def test_list_devices_empty_session(client: AsyncClient) -> None:
-    resp = await client.get(
-        "/api/v1/ics/devices/", params={"session_id": "nonexistent"}
-    )
+    resp = await client.get("/api/v1/ics/devices/", params={"session_id": "nonexistent"})
     assert resp.status_code == 200
     assert resp.json() == []
 
 
 async def test_topology_empty_session(client: AsyncClient) -> None:
-    resp = await client.get(
-        "/api/v1/ics/devices/topology", params={"session_id": "nonexistent"}
-    )
+    resp = await client.get("/api/v1/ics/devices/topology", params={"session_id": "nonexistent"})
     assert resp.status_code == 200
     body = resp.json()
     assert body.get("nodes") == [] or body.get("nodes") == ()
@@ -29,9 +25,7 @@ async def test_topology_requires_session_id(client: AsyncClient) -> None:
 
 
 async def test_stats_empty_session(client: AsyncClient) -> None:
-    resp = await client.get(
-        "/api/v1/ics/devices/stats", params={"session_id": "nonexistent"}
-    )
+    resp = await client.get("/api/v1/ics/devices/stats", params={"session_id": "nonexistent"})
     assert resp.status_code == 200
     body = resp.json()
     assert isinstance(body, dict)

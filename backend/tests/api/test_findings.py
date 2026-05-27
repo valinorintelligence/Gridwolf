@@ -12,9 +12,7 @@ async def test_list_findings_empty(client: AsyncClient) -> None:
 
 
 async def test_list_findings_filter_by_session(client: AsyncClient) -> None:
-    resp = await client.get(
-        "/api/v1/ics/findings/", params={"session_id": "nope"}
-    )
+    resp = await client.get("/api/v1/ics/findings/", params={"session_id": "nope"})
     assert resp.status_code == 200
     assert resp.json() == []
 

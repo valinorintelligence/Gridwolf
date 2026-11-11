@@ -1,0 +1,104 @@
+/* FORGE theme for the Gridwolf front end (f4). Loaded after the stock stylesheet, so these variables win.
+   Palette: FORGE blue #005EB8, charcoal #1F2937, orange #F57C00. Orange is a brand accent only (active marker and
+   decorative gradients); severity colours never use it as a status colour. Accent text on dark uses a lighter tint of
+   the blue so it keeps WCAG AA contrast; text on the light theme uses the brand blue. */
+:root{--bg-primary:#111827;--bg-secondary:#1F2937;--bg-tertiary:#273449;--bg-elevated:#2F3E55;--surface-card:#1F2937;
+--surface-hover:#273449;--surface-active:#2F3E55;--border:#374357;--border-hover:#4B5A72;--border-active:#F57C00;
+--accent:#5AA2E6;--accent-hover:#7AB6EE;--accent-muted:#0B2A4A;--accent-cyan:#7FB8EE;--accent-magenta:#F57C00;--accent-blue:#5AA2E6;
+--content-primary:#F3F4F6;--content-secondary:#C2CAD6;--content-tertiary:#AAB5C5;--content-muted:#9AA6B8;
+--severity-critical:#F87171;--severity-high:#FB923C;--severity-medium:#FACC15;--severity-low:#60A5FA;--severity-info:#9CA3AF;
+--gradient-primary:linear-gradient(135deg,#005EB8,#3B8EDB);--gradient-secondary:linear-gradient(135deg,#005EB8,#3B8EDB);
+--gradient-accent:linear-gradient(135deg,#F57C00,#005EB8)}
+.light{--bg-primary:#F3F6FA;--bg-secondary:#FFFFFF;--bg-tertiary:#E8EEF5;--bg-elevated:#DCE5F0;--surface-card:#FFFFFF;
+--surface-hover:#EEF3F9;--surface-active:#DCE5F0;--border:#D5DDE8;--border-hover:#B8C4D4;--border-active:#005EB8;
+--accent:#005EB8;--accent-hover:#004A93;--accent-muted:#DCEBFA;--accent-cyan:#005EB8;--accent-blue:#005EB8;
+--content-primary:#1F2937;--content-secondary:#4B5563;--content-tertiary:#566274;--content-muted:#6B7686;
+--severity-critical:#B91C1C;--severity-high:#B45309;--severity-medium:#7A5B00;--severity-low:#1D4E89;--severity-info:#4B5563}
+
+/* The stock bundle uses these variables 70 times but never defines them, so those elements fell back to the
+   inherited text colour (light borders on cards, unthemed text). Map them onto the theme variables. */
+:root{--color-border:var(--border);--color-surface:var(--surface-card);--color-bg:var(--bg-primary);
+--color-text-primary:var(--content-primary);--color-text-secondary:var(--content-secondary);--color-text-tertiary:var(--content-tertiary)}
+
+/* The stock ambient glows are violet and cyan; keep them subtle and on-palette. */
+.ambient-glow-violet,.ambient-glow-cyan{opacity:.35}
+
+/* Keyboard focus must be visible on every control. */
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* Text for assistive technology only (used for the page heading added where a page has none). */
+.forge-sr-only{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+
+/* Narrow screens: the sidebar starts collapsed (build patch), the header drops its search box (Cmd+K still works)
+   and tables and wide panels scroll inside their own container instead of widening the page. */
+@media (max-width:767px){
+  header .relative.mx-8{display:none}
+  main{padding-left:.75rem;padding-right:.75rem}
+  main table{display:block;max-width:100%;overflow-x:auto}
+  main pre,main code{white-space:pre-wrap;overflow-wrap:anywhere}
+  main [class*="grid-cols-"]{grid-template-columns:minmax(0,1fr)}
+  main div[class*="h-[calc(100vh-4rem)]"]{flex-direction:column;height:auto}
+  main .w-80{width:100%;max-height:40vh}
+  main .flex-wrap,main [class*="flex"][class*="gap"]{min-width:0}
+}
+
+/* Notification count: white on stock red-500 is 2.8:1. */
+header button[aria-label="Notifications"] > span{background-color:#B91C1C !important;color:#FFFFFF}
+
+/* Muted badges: stock grey #6b7280 on the dark card is 3.0:1. */
+:root{--fg-mute:var(--content-tertiary)}
+.fg-badge.fg-b-mute{color:var(--content-tertiary)}
+/* Purdue level chips: white on cyan/yellow/green is 1.9-3.7:1; dark text passes on every chip colour. */
+span.inline-flex.h-8[class*="min-w-[56px]"]{color:#0B1220}
+
+/* Light mode: the stock bundle hard-codes dark-mode badge colours (bg-*-950 with text-*-400/300). */
+.light [class*="bg-red-950"]{background-color:#FEE2E2 !important}
+.light .text-red-400,.light .text-red-300{color:#B91C1C}
+.light [class*="bg-orange-950"]{background-color:#FFEDD5 !important}
+.light .text-orange-400,.light .text-orange-300{color:#9A3412}
+.light [class*="bg-amber-950"]{background-color:#FEF3C7 !important}
+.light .text-amber-400,.light .text-amber-300{color:#92400E}
+.light [class*="bg-yellow-950"]{background-color:#FEF9C3 !important}
+.light .text-yellow-400,.light .text-yellow-300{color:#854D0E}
+.light [class*="bg-green-950"]{background-color:#DCFCE7 !important}
+.light .text-green-400,.light .text-green-300{color:#166534}
+.light [class*="bg-emerald-950"]{background-color:#D1FAE5 !important}
+.light .text-emerald-400,.light .text-emerald-300{color:#065F46}
+.light [class*="bg-blue-950"]{background-color:#DBEAFE !important}
+.light .text-blue-400,.light .text-blue-300{color:#1E40AF}
+.light [class*="bg-sky-950"]{background-color:#E0F2FE !important}
+.light .text-sky-400,.light .text-sky-300{color:#075985}
+.light [class*="bg-cyan-950"]{background-color:#CFFAFE !important}
+.light .text-cyan-400,.light .text-cyan-300{color:#155E75}
+.light [class*="bg-purple-950"]{background-color:#F3E8FF !important}
+.light .text-purple-400,.light .text-purple-300{color:#6B21A8}
+.light [class*="bg-violet-950"]{background-color:#EDE9FE !important}
+.light .text-violet-400,.light .text-violet-300{color:#5B21B6}
+.light [class*="bg-teal-950"]{background-color:#CCFBF1 !important}
+.light .text-teal-400,.light .text-teal-300{color:#115E59}
+
+/* Light mode: pages that hard-code neutral-* and text-white (vuln feed, advisories, signatures...) were
+   white-on-white or dark-slab-on-light. Remap them onto the theme tokens; coloured buttons keep white text. */
+.light [class*="bg-neutral-900"],.light [class*="bg-neutral-800"]{background-color:var(--surface-hover) !important}
+.light .bg-neutral-700{background-color:var(--surface-active) !important}
+.light [class*="border-neutral-"]{border-color:var(--border)}
+.light .text-neutral-300,.light .text-neutral-400{color:var(--content-secondary)}
+.light .text-neutral-500,.light .text-neutral-600,.light .text-gray-400{color:var(--content-tertiary)}
+.light .text-white:not([class*="bg-"]):not(button):not(button *){color:var(--content-primary)}
+.light .bg-black\/60{background-color:rgba(15,23,42,.45) !important}
+
+/* f7 contrast: accent text on the dark cards was 4.25:1 (now a lighter tint), white text on the accent fill was 3.5:1
+   (filled buttons and tabs use the brand blue in both themes), the Purdue L-chips on yellow were 1.9:1, and the
+   chart legend used a saturated red at 3.9:1. */
+.bg-accent{background-color:#005EB8}
+.hover\:bg-accent-hover:hover,.active\:bg-accent-hover:active{background-color:#004A93}
+span.inline-flex.h-5[class*="min-w-[32px]"]{color:#0B1220}
+.recharts-legend-item-text{color:var(--content-secondary) !important}
+/* The decorative cyan glow extended 100px past the content area and produced a permanent horizontal scrollbar. */
+.ambient-glow-cyan{right:0}
+.ambient-glow-violet{left:0}
+/* FORGE page badges: status colours were 2.5-4.0:1 on the card (light theme worst). */
+:root .fg{--fg-ok:#34D399;--fg-warn:#FACC15;--fg-bad:#F87171;--fg-info:#7FB8EE;--fg-mute:#AAB5C5}
+.light .fg{--fg-ok:#047857;--fg-warn:#854D0E;--fg-bad:#B91C1C;--fg-info:#1D4E89;--fg-mute:#4B5563}

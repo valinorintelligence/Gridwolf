@@ -1,0 +1,37 @@
+[project]
+name = "gridwolf"
+version = "1.2.0"
+description = "Gridwolf - Passive ICS/SCADA Network Discovery & Topology Visualization"
+requires-python = ">=3.9"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "sqlalchemy[asyncio]>=2.0.0",
+    "aiosqlite>=0.20.0",
+    "alembic>=1.14.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "python-jose[cryptography]>=3.4.0",
+    "passlib[bcrypt]>=1.7.4",
+    "bcrypt>=4.0.0,<5.0.0",
+    "python-multipart>=0.0.18",
+    "orjson>=3.11.6",
+    "starlette>=0.47.2",
+    "httpx>=0.28.0",
+    "websockets>=13.0",
+    "scapy>=2.5.0",
+]
+
+[project.optional-dependencies]
+postgres = ["asyncpg>=0.30.0"]
+pdf = ["weasyprint>=62.0"]
+full = ["asyncpg>=0.30.0", "weasyprint>=62.0", "redis>=5.0.0", "celery>=5.4.0"]
+dev = ["pytest>=8.0", "pytest-asyncio>=0.24", "ruff>=0.8.0", "mypy>=1.13"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[build-system]
+requires = ["setuptools>=75.0"]
+build-backend = "setuptools.build_meta"
